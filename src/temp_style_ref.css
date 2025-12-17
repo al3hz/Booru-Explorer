@@ -1,0 +1,23 @@
+/* Pagination Styles Update */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 40px;
+  gap: 20px;
+  flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
+@media (max-width: 640px) {
+  .pagination-wrapper {
+    gap: 10px;
+  }
+  
+  .nav-text {
+    display: none; /* Hide text on mobile to save space */
+  }
+  
+  .nav-btn {
+    padding: 8px 12px; 
+  }
+}
