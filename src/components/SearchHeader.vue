@@ -21,11 +21,11 @@
 
       <nav class="header-nav">
         <router-link to="/" class="nav-item" active-class="active">
-          <i class="lni lni-home-2"></i>
+          <i class="lni lni-home"></i>
           <span>Posts</span>
         </router-link>
         <router-link to="/comments" class="nav-item" active-class="active">
-          <i class="lni lni-comment-1"></i>
+          <i class="lni lni-comments"></i>
           <span>Comments</span>
         </router-link>
         <div class="nav-item kaomoji-pill" @click="changeKaomoji" title="Click to change">
