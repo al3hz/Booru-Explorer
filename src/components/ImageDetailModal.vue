@@ -46,19 +46,25 @@
             <div class="info-header">
               <div class="header-left">
                 <h2 class="post-id">Post #{{ post.id }}</h2>
-                <a 
-                  :href="post.file_url || post.large_file_url" 
-                  target="_blank" 
-                  download 
-                  class="download-btn-icon"
-                  title="Download original image"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                  </svg>
-                </a>
+                <div class="header-actions">
+                  <a 
+                    :href="post.file_url || post.large_file_url" 
+                    target="_blank" 
+                    download 
+                    class="action-btn"
+                    title="Download original image"
+                  >
+                    <i class="lni lni-download"></i>
+                  </a>
+                  <button 
+                    @click="copyImageLink" 
+                    class="action-btn"
+                    :class="{ 'copied': linkCopied }"
+                    title="Copy image link"
+                  >
+                    <i class="lni" :class="linkCopied ? 'lni-checkmark' : 'lni-link'"></i>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -230,6 +236,24 @@ export default {
     const hasMoreComments = ref(false);
     const COMMENTS_LIMIT = 20;
 
+    // Copy Link Logic
+    const linkCopied = ref(false);
+    
+    const copyImageLink = async () => {
+      const url = props.post.file_url || props.post.large_file_url || props.post.sample_url;
+      if (!url) return;
+      
+      try {
+        await navigator.clipboard.writeText(url);
+        linkCopied.value = true;
+        setTimeout(() => {
+          linkCopied.value = false;
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy: ', err);
+      }
+    };
+
     const handleImageError = (e) => {
       loading.value = false;
       const target = e.target;
@@ -360,7 +384,9 @@ export default {
       commentsLoading,
       hasMoreComments,
       loadMoreComments,
-      formatCommentBody
+      formatCommentBody,
+      copyImageLink,
+      linkCopied
     };
   }
 }
@@ -471,7 +497,12 @@ export default {
   color: #fff;
 }
 
-.download-btn-icon {
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
   width: 32px;
   height: 32px;
   background: rgba(167, 139, 250, 0.15);
@@ -484,13 +515,20 @@ export default {
   text-decoration: none;
   font-size: 16px;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
-.download-btn-icon:hover {
+.action-btn:hover {
   background: #a78bfa;
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
+}
+
+.action-btn.copied {
+  background: #4ade80;
+  border-color: #4ade80;
+  color: #0f172a;
 }
 
 .scrollable-info {

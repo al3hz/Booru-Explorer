@@ -30,7 +30,7 @@
                 title="View image details"
               >
                 <img 
-                  :src="postsMap[comment.post_id].preview_file_url || postsMap[comment.post_id].file_url" 
+                  :src="postsMap[comment.post_id].sample_url || postsMap[comment.post_id].large_file_url || postsMap[comment.post_id].preview_file_url" 
                   :alt="`Post #${comment.post_id}`"
                   class="preview-image"
                   loading="lazy"
