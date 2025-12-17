@@ -34,11 +34,11 @@ export function useDanbooruAutocomplete() {
     loadingSuggestions.value = true;
     try {
       // Usamos el endpoint de tags para obtener info detallada (colores, conteo)
-      // search[name_matches]=term* busca prefijos
+      // search[name_matches]=*term* busca coincidencias en cualquier parte (infix) para mostrar más resultados
       // search[order]=count ordena por popularidad
       // search[post_count]=>0 excluye tags vacíos
       const response = await fetch(
-        `https://danbooru.donmai.us/tags.json?search[name_matches]=${lastTerm}*&search[order]=count&search[post_count]=>0&limit=10`
+        `https://danbooru.donmai.us/tags.json?search[name_matches]=*${lastTerm}*&search[order]=count&search[post_count]=>0&limit=25`
       );
       
       if (!response.ok) throw new Error('API Error');

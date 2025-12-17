@@ -481,15 +481,46 @@ export default {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .comments-container {
+    padding: 0;
+  }
+  
   .comment-card {
     flex-direction: column;
+    gap: 12px;
   }
   
   .post-preview-column {
     width: 100%;
-    max-width: 150px;
-    margin: 0 auto;
+    max-width: none;
+  }
+
+  .preview-link {
+    max-width: 100%;
+  }
+
+  .preview-image {
+    max-height: 200px; /* Limit height so it doesn't take up whole screen */
+    width: 100%;
+    object-position: center top;
+  }
+
+  .comment-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    position: relative;
+  }
+
+  .post-link {
+    margin-left: 0;
+    margin-top: 4px;
+    display: inline-block;
+  }
+  
+  .separator {
+    display: none;
   }
 }
 </style>

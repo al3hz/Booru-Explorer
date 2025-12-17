@@ -761,37 +761,43 @@ export default {
     left: 0;
     height: 100vh;
     width: 280px;
-    transform: translateX(-100%);
     z-index: 1000;
-    margin-right: -280px; /* Reset the space it takes */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* By default (sidebarVisible=true in standard logic, but for mobile we might want hidden default? 
+       Actually user logic is: sidebarVisible starts true on desktop, condition setup() sets it based on width.
+       So on mobile sidebarVisible starts false. 
+       When false -> .is-collapsed is applied.
+    */
   }
   
   .sidebar-container.is-collapsed {
-    width: 280px; /* Don't shrink width, just hide offscreen */
     transform: translateX(-100%);
+    width: 280px; /* Maintain width */
   }
-
-  /* When visible, override transform via a specific parent class or just use the negation of is-collapsed logic 
-     Wait, App.vue controls visibility via is-collapsed prop. 
-     If sidebarVisible is FALSE -> is-collapsed class is added.
-     So currently: 
-     - collapsed: translateX(-100%)
-     - visible: transform: none
-  */
   
-  /* We need a way to show it. Logic in template: :class="{ 'is-collapsed': !sidebarVisible }"
-     So if sidebarVisible is TRUE, class is removed.
-  */
-  
+  /* When NOT collapsed (visible) */
   .sidebar-container:not(.is-collapsed) {
     transform: translateX(0);
+    box-shadow: 10px 0 30px rgba(0,0,0,0.5); /* Shadow when open */
   }
-  
+
   .sidebar { 
     overflow-y: auto; 
-    border-radius: 0 16px 16px 0;
+    border-radius: 0;
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
     border-left: none;
     height: 100%;
+    background: rgba(20, 20, 28, 0.95); /* More opaque on mobile */
+  }
+  
+  /* Toggle button needs to be visible even when collapsed? 
+     The generic mobile toggle in HomeView handles opening. 
+     This internal toggle logic might be redundant or confusing on mobile.
+     We should hide the internal header toggle on mobile if the HomeView toggle controls it.
+  */
+  .sidebar-header .toggle-btn {
+    display: none; /* Hide the collapse arrow on mobile sidebar header */
   }
 }
 

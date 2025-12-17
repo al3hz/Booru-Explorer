@@ -231,13 +231,48 @@ export default {
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .header-inner {
-    padding: 15px 20px;
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 16px;
   }
   
+  .brand-section {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
   .brand-text h1 {
-    font-size: 18px;
+    font-size: 20px;
+  }
+  
+  .badge-container {
+    justify-content: center;
+  }
+
+  .author-badge {
+    display: none; /* Hide author badge on mobile to save space */
+  }
+
+  .header-nav {
+    width: 100%;
+    justify-content: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px; /* Space for scrollbar if needed */
+  }
+
+  .nav-item {
+    font-size: 13px;
+    padding: 6px 12px;
+    white-space: nowrap;
   }
   
   .lang-label {
@@ -246,8 +281,8 @@ export default {
   
   .lang-trigger {
     padding: 8px;
-    min-width: auto; /* Reset fixed width */
-    gap: 4px;        /* Small gap for icon + code */
+    min-width: auto;
+    gap: 4px;
   }
 
   .lang-code-mobile {
@@ -263,11 +298,7 @@ export default {
   }
 
   .chevron {
-    display: none;   /* Hide chevron on mobile to save space */
-  }
-
-  .header-nav {
-    gap: 8px;        /* Reduce gap between items */
+    display: none;
   }
 }
 
