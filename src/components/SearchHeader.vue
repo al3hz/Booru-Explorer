@@ -11,7 +11,7 @@
           <div class="logo-glow"></div>
         </router-link>
         <div class="brand-text">
-          <h1>Danbooru Gallery</h1>
+          <h1>Booru Explorer</h1>
           <div class="badge-container">
             <span class="version-badge">v1.2</span>
             <span class="author-badge">Made by Overlain</span>
