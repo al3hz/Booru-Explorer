@@ -53,6 +53,7 @@
                     download 
                     class="action-btn"
                     title="Download original image"
+                    @click.prevent="downloadImage"
                   >
                     <i class="lni lni-download"></i>
                   </a>
@@ -254,6 +255,30 @@ export default {
       }
     };
 
+    const downloadImage = async () => {
+      const url = props.post.file_url || props.post.large_file_url;
+      const filename = `danbooru-${props.post.id}.${props.post.file_ext}`;
+      
+      if (!url) return;
+
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (e) {
+        console.error("Download failed, falling back to new tab", e);
+        window.open(url, '_blank');
+      }
+    };
+
     const handleImageError = (e) => {
       loading.value = false;
       const target = e.target;
@@ -385,8 +410,11 @@ export default {
       hasMoreComments,
       loadMoreComments,
       formatCommentBody,
+      loadMoreComments,
+      formatCommentBody,
       copyImageLink,
-      linkCopied
+      linkCopied,
+      downloadImage
     };
   }
 }
