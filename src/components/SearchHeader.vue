@@ -2,19 +2,28 @@
   <header class="app-header">
     <div class="header-inner">
       <div class="brand-section">
-        <div class="logo-container">
+        <router-link to="/" class="logo-container">
           <div class="logo-icon">💠</div>
           <div class="logo-glow"></div>
-        </div>
+        </router-link>
         <div class="brand-text">
           <h1>Danbooru Gallery</h1>
           <div class="badge-container">
             <span class="version-badge">v1.2</span>
+            <span class="author-badge">Made by Overlain</span>
           </div>
         </div>
       </div>
 
       <nav class="header-nav">
+        <router-link to="/" class="nav-item" active-class="active">
+          <i class="lni lni-home-2"></i>
+          <span>Posts</span>
+        </router-link>
+        <router-link to="/comments" class="nav-item" active-class="active">
+          <i class="lni lni-comment-1"></i>
+          <span>Comments</span>
+        </router-link>
         <div class="nav-item kaomoji-pill" @click="changeKaomoji" title="Click to change">
           <span class="kaomoji-text">{{ currentKaomoji }}</span>
         </div>
@@ -151,6 +160,28 @@ export default {
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
+.author-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.2), rgba(192, 132, 252, 0.2));
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  color: #e2e8f0;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  margin-left: 8px;
+  transition: all 0.3s ease;
+}
+
+.author-badge:hover {
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.3), rgba(192, 132, 252, 0.3));
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.2);
+  color: #fff;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -161,13 +192,31 @@ export default {
   border-radius: 30px;
   transition: all 0.3s ease;
   cursor: pointer;
+  text-decoration: none;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(167, 139, 250, 0.2);
   transform: translateY(-1px);
+  color: #fff;
 }
+
+.nav-item.active {
+  background: rgba(167, 139, 250, 0.15);
+  border-color: rgba(167, 139, 250, 0.3);
+  color: #fff;
+}
+
+.nav-item i {
+  font-size: 16px;
+  color: #a78bfa;
+}
+
+
 
 .kaomoji-text {
   font-family: "Segoe UI Emoji", "Arial", sans-serif;

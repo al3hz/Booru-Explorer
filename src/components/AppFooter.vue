@@ -7,9 +7,11 @@
           https://danbooru.donmai.us/
         </a>
       </p>
-      <a href="https://github.com/al3hz/Booru-Explorer" target="_blank" class="github-link" aria-label="View on GitHub">
-        <i class="lni lni-github"></i>
-      </a>
+      <div class="social-links">
+        <a href="https://github.com/al3hz/Booru-Explorer" target="_blank" class="github-link" aria-label="View on GitHub">
+          <i class="lni lni-github"></i>
+        </a>
+      </div>
     </div>
   </footer>
 </template>
@@ -42,6 +44,12 @@ export default {
   flex-direction: column;
   align-items: center;
   gap: 15px;
+}
+
+.social-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
 }
 
 .copyright {

@@ -83,6 +83,14 @@
                   <span class="label">Score</span>
                   <span class="value">{{ post.score }}</span>
                 </div>
+                <div class="stat-item">
+                  <span class="label">Uploaded</span>
+                  <span class="value">{{ formatDate(post.created_at) }}</span>
+                </div>
+                <div class="stat-item" v-if="post.source">
+                  <span class="label">Source</span>
+                  <a :href="post.source" target="_blank" class="value source-link" title="Open original source">Link ↗</a>
+                </div>
               </div>
 
               <!-- Tags Section -->
@@ -143,12 +151,46 @@
                 </div>
               </div>
               
-              <div class="meta-footer">
-                 <div class="meta-info">
-                   <p>Uploaded on: {{ formatDate(post.created_at) }}</p>
-                   <a v-if="post.source" :href="post.source" target="_blank" class="source-link">Original Source ↗</a>
-                 </div>
+              <!-- Comments Section -->
+              <div v-if="comments.length > 0" class="comments-section">
+                <h3>
+                  Comments
+                  <span style="font-size: 11px; opacity: 0.7;">{{ comments.length }}</span>
+                </h3>
+                <transition-group name="list" tag="div" class="comment-list" appear>
+                  <div 
+                    v-for="(comment, index) in comments" 
+                    :key="comment.id" 
+                    class="comment-item"
+                    :style="{ transitionDelay: `${index * 0.05}s` }"
+                  >
+                    <div class="comment-meta">
+                      <span class="comment-author">User #{{ comment.creator_id }}</span>
+                      <span class="comment-score" :class="{ positive: comment.score > 0, negative: comment.score < 0 }">
+                        Score: {{ comment.score }}
+                      </span>
+                      <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+                    </div>
+                    <div class="comment-body" v-html="formatCommentBody(comment.body)"></div>
+                  </div>
+                </transition-group>
+                
+                <div v-if="hasMoreComments" class="load-more-container">
+                    <button 
+                      class="load-more-btn" 
+                      @click="loadMoreComments" 
+                      :disabled="commentsLoading"
+                    >
+                      <span v-if="commentsLoading" class="mini-spinner"></span>
+                      <span v-else>Load more comments</span>
+                    </button>
+                </div>
               </div>
+              <div v-if="!commentsLoading && comments.length === 0" class="no-comments">
+                No comments
+              </div>
+
+
             </div>
           </div>
         </div>
@@ -161,7 +203,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 
 export default {
   name: 'ImageDetailModal',
@@ -182,6 +224,11 @@ export default {
   emits: ['close', 'next', 'prev', 'search-tag'],
   setup(props, { emit }) {
     const loading = ref(true);
+    const comments = ref([]);
+    const commentsLoading = ref(false);
+    const commentsPage = ref(1);
+    const hasMoreComments = ref(false);
+    const COMMENTS_LIMIT = 20;
 
     const handleImageError = (e) => {
       loading.value = false;
@@ -190,6 +237,59 @@ export default {
         // Simple fallback or hide
         target.style.opacity = '0.5';
       }
+    };
+
+    const fetchComments = async (append = false) => {
+      if (!props.post || !props.post.id) return;
+      
+      commentsLoading.value = true;
+      if (!append) {
+        comments.value = [];
+        commentsPage.value = 1;
+      }
+      
+      try {
+        const res = await fetch(`https://danbooru.donmai.us/comments.json?group_by=comment&search[post_id]=${props.post.id}&limit=${COMMENTS_LIMIT}&page=${commentsPage.value}`);
+        if (res.ok) {
+          const newComments = await res.json();
+          if (append) {
+            comments.value = [...comments.value, ...newComments];
+          } else {
+            comments.value = newComments;
+          }
+          
+          // If we got fewer items than limit, we've reached the end
+          hasMoreComments.value = newComments.length === COMMENTS_LIMIT;
+        }
+      } catch (e) {
+        console.error("Error fetching comments", e);
+      } finally {
+        commentsLoading.value = false;
+      }
+    };
+
+    const loadMoreComments = () => {
+      commentsPage.value++;
+      fetchComments(true);
+    };
+
+    // Watch for post changes to re-fetch comments
+    watch(() => props.post.id, () => {
+       fetchComments(false);
+    }, { immediate: true });
+
+    const formatCommentBody = (body) => {
+      if (!body) return '';
+      let formatted = body
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      
+      formatted = formatted.replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, '<blockquote>$1</blockquote>');
+      formatted = formatted.replace(/\n/g, '<br>');
+      formatted = formatted.replace(/post #(\d+)/gi, '<a href="https://danbooru.donmai.us/posts/$1" target="_blank">post #$1</a>');
+      formatted = formatted.replace(/"(.*?)"\:\[(.*?)\]/g, '<a href="$2" target="_blank">$1</a>');
+      
+      return formatted;
     };
 
     const formatFileSize = (bytes) => {
@@ -255,13 +355,19 @@ export default {
       copyrightTags,
       characterTags,
       generalTags,
-      isVideo
+      isVideo,
+      comments,
+      commentsLoading,
+      hasMoreComments,
+      loadMoreComments,
+      formatCommentBody
     };
   }
 }
 </script>
 
 <style scoped>
+/* Previous Styles... */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -439,6 +545,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  margin-bottom: 30px;
 }
 
 .tag-group h3 {
@@ -474,6 +581,104 @@ export default {
 .tag.copyright { color: #d8b4fe; border: 1px solid rgba(216, 180, 254, 0.2); }
 .tag.general { color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2); }
 
+/* Comments Section Styles */
+.comments-section {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 20px;
+  margin-bottom: 20px;
+}
+
+/* List Transitions for Comments */
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.4s ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.comments-section h3 {
+  font-size: 14px;
+  margin-bottom: 15px;
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.comment-item {
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.comment-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.comment-author {
+  color: #a78bfa;
+  font-weight: 600;
+}
+
+.comment-score {
+  font-weight: 600;
+  color: #94a3b8;
+  font-size: 10px;
+  background: rgba(0,0,0,0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.comment-score.positive { text-shadow: 0 0 10px rgba(74, 222, 128, 0.2); color: #4ade80; }
+.comment-score.negative { color: #f87171; }
+
+.comment-body {
+  color: #cbd5e1;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.comment-body :deep(blockquote) {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-left: 2px solid #a78bfa;
+  background: rgba(167, 139, 250, 0.1);
+  color: #c4b5fd;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.comment-body :deep(a) {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.comment-body :deep(a):hover {
+  text-decoration: underline;
+}
+
+.no-comments {
+  color: #64748b;
+  font-size: 13px;
+  font-style: italic;
+  text-align: center;
+  padding: 10px;
+}
+
 .meta-footer {
   margin-top: 30px;
   font-size: 12px;
@@ -485,6 +690,11 @@ export default {
 .source-link {
   color: #a78bfa;
   text-decoration: none;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .source-link:hover {
@@ -493,7 +703,7 @@ export default {
 
 @media (max-width: 900px) {
   .modal-backdrop {
-    padding: 0; /* Remove backdrop padding on mobile to use full screen */
+    padding: 0;
   }
 
   .modal-container {
@@ -507,33 +717,31 @@ export default {
   .modal-content {
     flex-direction: column;
     overflow-y: auto;
-    /* Enable smooth scrolling */
     -webkit-overflow-scrolling: touch; 
   }
   
   .image-section {
     min-height: 40vh;
-    max-height: 60vh; /* Limit image height so info is reachable */
+    max-height: 60vh;
     padding: 10px;
-    background: #000; /* Darker bg for image contrast */
-    flex-shrink: 0; /* Prevent shrinking */
+    background: #000;
+    flex-shrink: 0;
   }
   
   .info-sidebar {
     width: 100%;
     border-left: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    flex: 1; /* Take remaining space */
-    min-height: 0; /* Fix flex overflow issue */
-    display: block; /* Allow normal block flow for content */
+    flex: 1;
+    min-height: 0;
+    display: block;
   }
 
   .scrollable-info {
-    overflow-y: visible; /* Let the parent .modal-content handle scroll */
-    padding-bottom: 80px; /* Space for nav buttons if fixed */
+    overflow-y: visible;
+    padding-bottom: 80px; 
   }
   
-  /* Adjust header padding since close button is over image */
   .info-header {
     padding-top: 20px; 
   }
@@ -553,6 +761,7 @@ export default {
 }
 
 /* Animations */
+/* ... existing animations ... */
 .slide-fade-enter-active,
 .slide-fade-leave-active {
   transition: all 0.3s ease;
@@ -568,8 +777,6 @@ export default {
   transform: translateX(-20px);
 }
 
-
-/* Image switch fade */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
@@ -636,5 +843,45 @@ export default {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.load-more-btn {
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  color: #c084fc;
+  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.load-more-btn:hover:not(:disabled) {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: #a78bfa;
+}
+
+.load-more-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.mini-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(192, 132, 252, 0.3);
+  border-top-color: #c084fc;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
 }
 </style>
