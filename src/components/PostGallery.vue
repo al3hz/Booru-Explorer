@@ -334,7 +334,7 @@ export default {
     },
 
     handleImageError(event, post) {
-      console.log("Error loading media for post:", post.id);
+     
       const target = event.target;
 
       if (target.tagName === "VIDEO") {
@@ -510,7 +510,7 @@ export default {
         new URL(source);
         window.open(source, "_blank");
       } catch {
-        console.log("Source no es una URL válida:", source);
+        consol.log("Source no es una URL válida:", source);
       }
     },
   },

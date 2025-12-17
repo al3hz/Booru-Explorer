@@ -44,12 +44,11 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     
     try {
       const url = buildSearchUrl(page)
-      console.log('🔍 URL generada:', url)
-      console.log('📋 URL para probar manualmente:', decodeURIComponent(url))
+     
       
       const response = await fetch(url)
       
-      console.log('📊 Estado de respuesta:', response.status, response.statusText)
+  
       
       if (!response.ok) {
         const errorText = await response.text()
@@ -70,7 +69,7 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
       }
       
       const data = await response.json()
-      console.log('✅ Datos recibidos:', data.length, 'elementos')
+   
       
       if (page === 1 || isNewSearch) {
         posts.value = data
