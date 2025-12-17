@@ -7,6 +7,9 @@
           https://danbooru.donmai.us/
         </a>
       </p>
+      <a href="https://github.com/al3hz/Booru-Explorer" target="_blank" class="github-link" aria-label="View on GitHub">
+        <i class="lni lni-github"></i>
+      </a>
     </div>
   </footer>
 </template>
@@ -20,7 +23,7 @@ export default {
 <style scoped>
 .app-footer {
   margin-top: 60px;
-  padding: 20px 0;
+  padding: 30px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   background: linear-gradient(
     to bottom,
@@ -35,6 +38,10 @@ export default {
   margin: 0 auto;
   padding: 0 30px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
 }
 
 .copyright {
@@ -52,6 +59,20 @@ export default {
 .footer-link:hover {
   color: #c084fc;
   text-decoration: underline;
+}
+
+.github-link {
+  color: #94a3b8;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.github-link:hover {
+  color: #fff;
+  transform: scale(1.1);
 }
 
 @media (max-width: 768px) {
