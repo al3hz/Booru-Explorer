@@ -8,14 +8,22 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      component: HomeView,
+      meta: { title: 'Booru Explorer | Anime Image Board' }
     },
     {
       path: '/comments',
       name: 'comments',
-      component: CommentsView
+      component: CommentsView,
+      meta: { title: 'Comments | Booru Explorer' }
     }
   ]
 })
+
+router.afterEach((to) => {
+  if (to.meta.title) {
+    document.title = to.meta.title;
+  }
+});
 
 export default router

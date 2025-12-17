@@ -3,7 +3,11 @@
     <div class="header-inner">
       <div class="brand-section">
         <router-link to="/" class="logo-container">
-          <div class="logo-icon">💠</div>
+          <img 
+            src="https://danbooru.donmai.us/packs/static/danbooru-logo-128x128-ea111b6658173e847734.png" 
+            alt="Danbooru Logo" 
+            class="logo-icon"
+          />
           <div class="logo-glow"></div>
         </router-link>
         <div class="brand-text">
@@ -113,12 +117,10 @@ export default {
 }
 
 .logo-icon {
-  font-size: 28px;
+  width: 32px;
+  height: 32px;
   z-index: 2;
-  background: linear-gradient(135deg, #fff, #a78bfa);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  object-fit: contain;
 }
 
 .logo-glow {

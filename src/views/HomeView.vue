@@ -355,6 +355,17 @@ export default {
       }
     });
 
+    // Dynamic Title Logic
+    watch(searchQuery, (newVal) => {
+      if (newVal) {
+        // Format: "tag1 AND tag2 | Booru Explorer"
+        const formattedTags = newVal.split(/[,，\s]+/).filter(t => t).join(' AND ');
+        document.title = `${formattedTags} | Booru Explorer`;
+      } else {
+        document.title = 'Booru Explorer | Anime Image Board';
+      }
+    });
+
     onUnmounted(() => {
       window.removeEventListener('keydown', handleKeydown);
     });
