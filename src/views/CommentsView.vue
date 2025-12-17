@@ -254,6 +254,10 @@ export default {
   padding: 20px;
 }
 
+.comments-container {
+  min-height: 80vh; /* Prevent footer jump */
+}
+
 .comments-container h2 {
   font-size: 24px;
   margin-bottom: 20px;
