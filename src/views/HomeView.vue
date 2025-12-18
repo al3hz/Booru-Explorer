@@ -362,7 +362,6 @@ export default {
 
     // Watch for route query changes (navigation from other views or same view)
     watch(() => route.query.tags, (newTags) => {
-      console.log('🔍 Route watcher triggered with tags:', newTags);
       if (newTags) {
         inputQuery.value = newTags;
         searchQuery.value = newTags;
