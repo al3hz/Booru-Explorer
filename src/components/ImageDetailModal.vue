@@ -361,6 +361,15 @@ export default {
       formatted = formatted.replace(/post #(\d+)/gi, '<a href="https://danbooru.donmai.us/posts/$1" target="_blank">post #$1</a>');
       formatted = formatted.replace(/"(.*?)"\:\[(.*?)\]/g, '<a href="$2" target="_blank">$1</a>');
       
+      // Handle {{tag}}
+      formatted = formatted.replace(/\{\{(.*?)\}\}/g, '<a href="https://danbooru.donmai.us/posts?tags=$1" target="_blank">$1</a>');
+      
+      // Handle [[wiki]] or [[wiki|label]]
+      formatted = formatted.replace(/\[\[(.*?)\]\]/g, (match, content) => {
+        const [page, text] = content.split('|');
+        return `<a href="https://danbooru.donmai.us/wiki_pages/${page}" target="_blank">${text || page}</a>`;
+      });
+      
       return formatted;
     };
 
