@@ -112,6 +112,15 @@
                 </div>
               </div>
 
+              <!-- Artist Commentary -->
+              <div v-if="commentary" class="commentary-section">
+                <h3>Artist Commentary</h3>
+                <div class="commentary-content">
+                  <h4 v-if="commentary.original_title">{{ commentary.original_title }}</h4>
+                  <div class="commentary-body" v-html="formatCommentBody(commentary.original_description)"></div>
+                </div>
+              </div>
+
               <!-- Tags Section -->
               <div class="tags-section">
                 <!-- Artist Tags -->
@@ -345,9 +354,35 @@ export default {
       fetchComments(true);
     };
 
-    // Watch for post changes to re-fetch comments
+    // Artist Commentary Logic
+    const commentary = ref(null);
+    const commentaryLoading = ref(false);
+
+    const fetchCommentary = async () => {
+      if (!props.post || !props.post.id) return;
+      
+      commentaryLoading.value = true;
+      commentary.value = null;
+
+      try {
+        const res = await fetch(`https://danbooru.donmai.us/artist_commentaries.json?search[post_id]=${props.post.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            commentary.value = data[0];
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching commentary", e);
+      } finally {
+        commentaryLoading.value = false;
+      }
+    };
+
+    // Watch for post changes to re-fetch comments and commentary
     watch(() => props.post.id, () => {
        fetchComments(false);
+       fetchCommentary();
     }, { immediate: true });
 
     const formatCommentBody = (body) => {
@@ -510,18 +545,15 @@ export default {
       hasMoreComments,
       loadMoreComments,
       formatCommentBody,
-      loadMoreComments,
-      formatCommentBody,
       copyImageLink,
       linkCopied,
-      copyImageLink,
-      linkCopied,
-      downloadImage,
       downloadImage,
       downloading,
       getExtensionClass,
       isFlash,
-      ruffleContainer
+      ruffleContainer,
+      commentary,
+      commentaryLoading
     };
   }
 }
@@ -596,6 +628,46 @@ export default {
   padding: 20px;
   position: relative;
   overflow: hidden;
+}
+
+/* Artist Commentary */
+.commentary-section {
+  margin-bottom: 25px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.1);
+}
+
+.commentary-section h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #a78bfa;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.5px;
+}
+
+.commentary-content h4 {
+  font-size: 13px;
+  color: #fff;
+  margin: 0 0 6px 0;
+}
+
+.commentary-body {
+  font-size: 13px;
+  color: #e2e8f0;
+  line-height: 1.5;
+  word-wrap: break-word; /* Ensure text wraps */
+  overflow-wrap: break-word;
+}
+
+.commentary-body :deep(a) {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.commentary-body :deep(a):hover {
+  text-decoration: underline;
 }
 
 .ruffle-container {
@@ -938,8 +1010,8 @@ export default {
     width: 100%;
     border-left: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    flex: 1;
-    min-height: 0;
+    flex: none; /* Don't force fit, let it grow */
+    height: auto;
     display: block;
   }
 
