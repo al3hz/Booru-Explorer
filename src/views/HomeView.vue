@@ -89,7 +89,7 @@
 
 <script>
 import { ref, watch, computed, onMounted, onUnmounted } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import SearchForm from "../components/SearchForm.vue";
 import PostGallery from "../components/PostGallery.vue";
 import ImageDetailModal from "../components/ImageDetailModal.vue";
@@ -104,6 +104,7 @@ export default {
   },
   setup() {
     const route = useRoute();
+    const router = useRouter();
     const inputQuery = ref(""); // Lo que escribe el usuario
     const searchQuery = ref(""); // Lo que realmente se está buscando (applied)
     const limit = ref(10);
@@ -361,6 +362,7 @@ export default {
 
     // Watch for route query changes (navigation from other views or same view)
     watch(() => route.query.tags, (newTags) => {
+      console.log('🔍 Route watcher triggered with tags:', newTags);
       if (newTags) {
         inputQuery.value = newTags;
         searchQuery.value = newTags;
@@ -409,15 +411,18 @@ export default {
 
     const handleTagSearch = async (tag, clearFilter = false) => {
        isRandomMode.value = false;
-       inputQuery.value = tag;
-       searchQuery.value = tag;
        
        if (clearFilter) {
           ratingFilter.value = ""; // Reset to All
        }
        
        selectedPost.value = null; // Cerrar modal
-       await searchPosts(1, true);
+       
+       // Update URL first
+       await router.push({ path: '/', query: { tags: tag } });
+       
+       // Scroll to top
+       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleAction = async (action) => {

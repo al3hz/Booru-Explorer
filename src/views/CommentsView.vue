@@ -135,6 +135,8 @@ export default {
 
     const handleTagSearch = (tag) => {
       selectedPost.value = null; // Close modal
+      // Scroll to top before navigation
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       router.push({ path: '/', query: { tags: tag } });
     };
 
@@ -224,8 +226,8 @@ export default {
       formatted = formatted.replace(/post #(\d+)/gi, '<a href="https://danbooru.donmai.us/posts/$1" target="_blank" class="text-link">post #$1</a>');
       formatted = formatted.replace(/"(.*?)"\:\[(.*?)\]/g, '<a href="$2" target="_blank" class="text-link">$1</a>');
       
-      // Handle {{tag}}
-      formatted = formatted.replace(/\{\{(.*?)\}\}/g, '<a href="https://danbooru.donmai.us/posts?tags=$1" target="_blank" class="text-link">$1</a>');
+      // Handle {{tag}} - use data attribute for internal navigation
+      formatted = formatted.replace(/\{\{(.*?)\}\}/g, '<span class="tag-link" data-tag="$1" style="cursor: pointer; color: #a78bfa; text-decoration: underline;">$1</span>');
       
       // Handle [[wiki]] or [[wiki|label]]
       formatted = formatted.replace(/\[\[(.*?)\]\]/g, (match, content) => {
@@ -280,13 +282,25 @@ export default {
       });
     });
 
+    // Handle tag link clicks via event delegation
+    const handleTagClick = (e) => {
+      if (e.target.classList.contains('tag-link')) {
+        const tag = e.target.dataset.tag;
+        if (tag) {
+          handleTagSearch(tag);
+        }
+      }
+    };
+
     onMounted(() => {
       fetchCommentsAndPosts();
       window.addEventListener('keydown', handleKeydown);
+      document.addEventListener('click', handleTagClick);
     });
 
     onUnmounted(() => {
       window.removeEventListener('keydown', handleKeydown);
+      document.removeEventListener('click', handleTagClick);
     });
 
     return {

@@ -31,7 +31,7 @@
             />
             <button 
               class="search-btn-icon" 
-              @click="$emit('search')"
+              @click="handleSearch"
               :disabled="loading"
               title="Search"
             >
@@ -157,6 +157,7 @@
 
 <script>
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { useDanbooruAutocomplete } from "../composables/useDanbooruAutocomplete";
 import { useDanbooruTrending } from "../composables/useDanbooruTrending";
 
@@ -182,6 +183,7 @@ export default {
     "trigger-action",
   ],
   setup(props, { emit }) {
+    const router = useRouter();
     const { suggestions, fetchSuggestions, clearSuggestions, loadingSuggestions } = useDanbooruAutocomplete();
     const { trendingTags, loadingTrending, fetchTrendingTags } = useDanbooruTrending();
     
@@ -231,9 +233,10 @@ export default {
       fetchTrendingTags();
     };
 
-    const selectTag = (tagName) => {
-      emit("update:search-query", tagName);
-      emit("search", tagName);
+    const selectTag = async (tagName) => {
+      // Update URL and scroll to top
+      await router.push({ path: '/', query: { tags: tagName } });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Autocomplete Logic
@@ -299,13 +302,34 @@ export default {
       if(searchInputRef.value) searchInputRef.value.focus();
     };
 
-    const handleEnter = () => {
+    const handleEnter = async () => {
       if (activeSuggestionIndex.value !== -1 && suggestions.value.length > 0) {
         selectSuggestion(suggestions.value[activeSuggestionIndex.value]);
       } else {
-        emit("search");
+        // Update URL and scroll to top
+        const trimmedQuery = props.searchQuery.trim();
+        if (trimmedQuery) {
+          await router.push({ path: '/', query: { tags: trimmedQuery } });
+        } else {
+          // Navigate to root without tags param when search is empty
+          await router.push({ path: '/' });
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         clearSuggestions();
       }
+    };
+
+    const handleSearch = async () => {
+      // Update URL and scroll to top when search button is clicked
+      const trimmedQuery = props.searchQuery.trim();
+      if (trimmedQuery) {
+        await router.push({ path: '/', query: { tags: trimmedQuery } });
+      } else {
+        // Navigate to root without tags param when search is empty
+        await router.push({ path: '/' });
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      clearSuggestions();
     };
     
     const handleBlur = () => {
@@ -343,6 +367,7 @@ export default {
       navigateSuggestions,
       selectSuggestion,
       handleEnter,
+      handleSearch,
       handleBlur,
       formatCount,
 
