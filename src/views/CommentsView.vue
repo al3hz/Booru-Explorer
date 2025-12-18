@@ -255,6 +255,22 @@ export default {
       return ['mp4', 'webm', 'gifv'].includes(post.file_ext);
     };
 
+    // Optimize background videos when modal is open
+    watch(selectedPost, (newPost) => {
+      const videos = document.querySelectorAll('.comments-list video');
+      videos.forEach(video => {
+        if (newPost) {
+          video.pause();
+        } else {
+          try {
+            video.play();
+          } catch (e) {
+            // Ignore auto-play errors
+          }
+        }
+      });
+    });
+
     onMounted(() => {
       fetchCommentsAndPosts();
       window.addEventListener('keydown', handleKeydown);

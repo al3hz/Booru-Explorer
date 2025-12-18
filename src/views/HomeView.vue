@@ -370,6 +370,23 @@ export default {
       window.removeEventListener('keydown', handleKeydown);
     });
 
+    // Optimize background videos when modal is open
+    watch(selectedPost, (newPost) => {
+      // PostGallery uses .art-card video
+      const videos = document.querySelectorAll('.post-gallery video');
+      videos.forEach(video => {
+        if (newPost) {
+          video.pause();
+        } else {
+          try {
+            video.play();
+          } catch (e) {
+            // Ignore auto-play errors
+          }
+        }
+      });
+    });
+
     const handleTagSearch = async (tag) => {
        isRandomMode.value = false;
        inputQuery.value = tag;
