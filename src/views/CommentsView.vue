@@ -26,6 +26,7 @@
               <div 
                 v-if="postsMap[comment.post_id]" 
                 class="preview-link"
+                :class="{ 'has-family': postsMap[comment.post_id].parent_id || postsMap[comment.post_id].has_children }"
                 @click="openModal(postsMap[comment.post_id])"
                 title="View image details"
               >
@@ -391,6 +392,16 @@ export default {
 
 .preview-link:hover {
   border-color: #a78bfa;
+}
+
+.preview-link.has-family {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.25);
+}
+
+.preview-link.has-family:hover {
+  border-color: rgba(34, 211, 238, 0.8);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.4);
 }
 
 .preview-image {

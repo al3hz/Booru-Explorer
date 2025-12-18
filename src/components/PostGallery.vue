@@ -350,7 +350,7 @@ export default {
         container.innerHTML = `
           <div class="image-error">
             <div class="error-icon">⚠️</div>
-            <div class="error-text">Error al cargar video</div>
+            <div class="error-text">Error loading video</div>
           </div>
         `;
         return;
@@ -365,7 +365,7 @@ export default {
         container.innerHTML = `
           <div class="image-error">
             <div class="error-icon">⚠️</div>
-            <div class="error-text">Error al cargar imagen</div>
+            <div class="error-text">Error loading image</div>
           </div>
         `;
       }
