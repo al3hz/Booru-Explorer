@@ -104,6 +104,7 @@
           :post="selectedPost"
           @close="selectedPost = null"
           @search-tag="handleTagSearch"
+          @update-post="selectedPost = $event"
         />
       </transition>
     </div>
