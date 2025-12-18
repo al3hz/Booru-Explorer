@@ -1,21 +1,48 @@
 <template>
     <div class="modal-backdrop">
       <!-- Nav Buttons -->
-      <button v-if="hasPrev" class="nav-arrow prev" @click.stop="$emit('prev')" title="Previous image">
-        ‹
-      </button>
+      <transition name="fade-arrow">
+        <button v-if="canGoPrev" class="nav-arrow prev" @click.stop="triggerPrev" title="Previous image">
+          ‹
+        </button>
+      </transition>
       
       <div class="modal-container">
         <!-- Close Button Moved Inside but better positioned -->
         <button class="close-btn" @click="$emit('close')">×</button>
         
         <div class="modal-content">
-          <!-- Image Section -->
-          <div class="image-section">
+          <div class="main-column">
+            <!-- Relationship Banner -->
+            <transition name="slide-down">
+              <div v-if="familyPosts.length > 0" class="relationship-banner">
+                <div class="family-info">
+                    This post belongs to a <strong v-if="post.parent_id">parent</strong><strong v-else>group</strong> and has <strong>{{ familyPosts.length - 1 }} siblings</strong>.
+                </div>
+                <div class="family-scroll">
+                    <div 
+                      v-for="fPost in familyPosts" 
+                      :key="fPost.id" 
+                      class="family-thumb"
+                      :class="{ 'active': fPost.id === post.id }"
+                      @click.stop="handleBannerClick(fPost)"
+                    >
+                      <img 
+                        :src="fPost.preview_file_url || fPost.file_url" 
+                        :alt="`Post ${fPost.id}`"
+                        loading="lazy"
+                      />
+                    </div>
+                </div>
+              </div>
+            </transition>
+
+            <!-- Image Section -->
+            <div class="image-section">
             <div v-if="loading" class="image-loader">
               <div class="loader-spinner"></div>
             </div>
-            <transition name="slide-fade" mode="out-in">
+            <transition :name="transitionName" mode="out-in">
               <div v-if="isFlash" class="ruffle-container" ref="ruffleContainer"></div>
               <video
                 v-else-if="isVideo"
@@ -26,7 +53,7 @@
                 loop
                 muted
                 controls
-                @loadeddata="loading = false"
+                @loadeddata="onImageLoad"
                 @error="handleImageError"
               ></video>
               <img 
@@ -35,13 +62,14 @@
                 :src="post.large_file_url || post.file_url || post.preview_file_url" 
                 :alt="`Post ${post.id}`"
                 class="detail-image"
-                @load="loading = false"
+                @load="onImageLoad"
                 @error="handleImageError"
               />
             </transition>
             
           </div>
 
+          </div>
           <!-- Info Sidebar -->
           <div class="info-sidebar">
             <div class="info-header">
@@ -114,22 +142,7 @@
                   <span class="label">Uploader</span>
                   <a :href="`https://danbooru.donmai.us/users/${post.uploader_id}`" target="_blank" class="value source-link">User #{{ post.uploader_id }}</a>
                 </div>
-                <div class="stat-item" v-if="post.parent_id">
-                  <span class="label">Parent</span>
-                  <span 
-                    class="value source-link" 
-                    style="cursor: pointer;"
-                    @click="$emit('search-tag', `id:${post.parent_id}`, true)"
-                  >Post #{{ post.parent_id }}</span>
-                </div>
-                <div class="stat-item" v-if="post.has_children">
-                  <span class="label">Children</span>
-                  <span 
-                    class="value source-link" 
-                    style="cursor: pointer;"
-                    @click="$emit('search-tag', `parent:${post.id}`, true)"
-                  >View Children</span>
-                </div>
+                <!-- Parent/Children removed as requested -->
               </div>
 
               <!-- Artist Commentary -->
@@ -244,9 +257,11 @@
         </div>
       </div>
 
-      <button v-if="hasNext" class="nav-arrow next" @click.stop="$emit('next')" title="Next image">
-        ›
-      </button>
+      <transition name="fade-arrow">
+        <button v-if="canGoNext" class="nav-arrow next" @click.stop="triggerNext" title="Next image">
+          ›
+        </button>
+      </transition>
     </div>
 </template>
 
@@ -269,7 +284,7 @@ export default {
       default: false
     }
   },
-  emits: ['close', 'next', 'prev', 'search-tag'],
+  emits: ['close', 'next', 'prev', 'search-tag', 'update-post'],
   setup(props, { emit }) {
     const loading = ref(true);
     const comments = ref([]);
@@ -332,12 +347,30 @@ export default {
     };
 
     const handleImageError = (e) => {
-      loading.value = false;
+      imageReady.value = true; // Treat error as ready to show fallback
+      checkLoading();
+      loading.value = false; // Ensure fallback shows
       const target = e.target;
       if (target) {
         // Simple fallback or hide
         target.style.opacity = '0.5';
       }
+    };
+
+    // Unified Loading Logic
+    const imageReady = ref(false);
+    const familyReady = ref(false);
+    
+    // Check if both are ready
+    const checkLoading = () => {
+      if (imageReady.value && familyReady.value) {
+        loading.value = false;
+      }
+    };
+    
+    const onImageLoad = () => {
+       imageReady.value = true;
+       checkLoading();
     };
 
     const fetchComments = async (append = false) => {
@@ -399,11 +432,68 @@ export default {
       }
     };
 
-    // Watch for post changes to re-fetch comments and commentary
-    watch(() => props.post.id, () => {
-       fetchComments(false);
-       fetchCommentary();
-    }, { immediate: true });
+    // Family Logic
+    const familyPosts = ref([]);
+    const familyLoading = ref(false);
+    const currentRootId = ref(null); // Track current root to prevent refetching
+
+    const fetchFamily = async () => {
+       if (!props.post) return;
+
+       // Determine root ID
+       let rootId = null;
+       if (props.post.parent_id) {
+         rootId = props.post.parent_id;
+       } else if (props.post.has_children) {
+         rootId = props.post.id;
+       }
+
+       // Checks if we need to fetch
+       if (!rootId) {
+         familyPosts.value = [];
+         currentRootId.value = null;
+         familyReady.value = true; // Nothing to fetch
+         checkLoading();
+         return;
+       }
+
+       // If same family, just return (don't clear, don't refetch)
+       // This prevents flickering when navigating between siblings
+       if (rootId === currentRootId.value && familyPosts.value.length > 0) {
+          familyReady.value = true; // Already have data
+          checkLoading();
+          return;
+       }
+
+       familyPosts.value = [];
+       currentRootId.value = rootId;
+       familyLoading.value = true;
+       
+       try {
+         // Search for parent OR siblings
+         // variants: ~parent:123 ~id:123
+         const tags = `~parent:${rootId} ~id:${rootId}`;
+         const res = await fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(tags)}&limit=20`); // Limit 20 for preview
+         if (res.ok) {
+           let data = await res.json();
+           
+           // Filter invalid posts (must have image URL)
+           familyPosts.value = data
+            .filter(p => p.file_url || p.large_file_url || p.preview_file_url)
+            .sort((a, b) => a.id - b.id);
+         }
+       } catch (e) {
+         console.error("Error fetching family", e);
+         familyPosts.value = [];
+         currentRootId.value = null; // Reset on error so we can try again
+       } finally {
+         familyLoading.value = false;
+         familyReady.value = true;
+         checkLoading();
+       }
+    };
+
+
 
     const formatCommentBody = (body) => {
       if (!body) return '';
@@ -498,17 +588,26 @@ export default {
       });
     };
 
-    // Watch for post changes to reload Ruffle/Content
+    // Watch for post changes to re-fetch comments, commentary AND family
     watch(() => props.post.id, async () => {
+       // Reset ready states (but don't force loading spinner)
+       imageReady.value = false;
+       familyReady.value = false;
+       
+       // Handle special cases
        if (isFlash.value) {
-         loading.value = true;
-         // Give time for v-if="isFlash" to render the div
-         setTimeout(() => loadRuffle(), 100);
+          imageReady.value = true;
+          loadRuffle();
        } else {
-         // Reset for images/video
-         if (loading.value === false) loading.value = true;
+         // Clear ruffle if needed
+         if (ruffleContainer.value) ruffleContainer.value.innerHTML = '';
        }
-    });
+
+       fetchComments(false);
+       fetchCommentary();
+       fetchFamily();
+    }, { immediate: true });
+
 
     // Initial load
     onMounted(() => {
@@ -533,11 +632,74 @@ export default {
       return "";
     };
 
+    // Navigation Logic
+    const transitionName = ref('fade');
+
+    const canGoNext = computed(() => {
+        if (familyPosts.value.length > 0) {
+            const idx = familyPosts.value.findIndex(p => p.id === props.post.id);
+            if (idx !== -1 && idx < familyPosts.value.length - 1) return true;
+        }
+        return props.hasNext;
+    });
+
+    const canGoPrev = computed(() => {
+        if (familyPosts.value.length > 0) {
+            const idx = familyPosts.value.findIndex(p => p.id === props.post.id);
+            if (idx > 0) return true;
+        }
+        return props.hasPrev;
+    });
+
+    const triggerNext = () => {
+        // Priority 1: Standard gallery navigation (if available)
+        if (props.hasNext) {
+            transitionName.value = 'fade';
+            emit('next');
+            return;
+        }
+        
+        // Priority 2: Family navigation (only if no standard next available)
+        if (familyPosts.value.length > 0) {
+            const idx = familyPosts.value.findIndex(p => p.id === props.post.id);
+            if (idx !== -1 && idx < familyPosts.value.length - 1) {
+                transitionName.value = 'fade'; // Enable smooth transition for family
+                emit('update-post', familyPosts.value[idx + 1]);
+                return;
+            }
+        }
+    };
+
+    const triggerPrev = () => {
+        // Priority 1: Standard gallery navigation (if available)
+        if (props.hasPrev) {
+            transitionName.value = 'fade';
+            emit('prev');
+            return;
+        }
+        
+        // Priority 2: Family navigation (only if no standard prev available)
+        if (familyPosts.value.length > 0) {
+            const idx = familyPosts.value.findIndex(p => p.id === props.post.id);
+            if (idx > 0) {
+               transitionName.value = 'fade'; // Enable smooth transition for family
+               emit('update-post', familyPosts.value[idx - 1]);
+               return;
+            }
+        }
+    };
+    
+    // Handle banner click
+    const handleBannerClick = (post) => {
+        transitionName.value = 'fade'; // Enable smooth transition for banner clicks
+        emit('update-post', post);
+    };
+
     // Handle Esc key
     const handleKeydown = (e) => {
       if (e.key === 'Escape') emit('close');
-      if (e.key === 'ArrowRight') emit('next');
-      if (e.key === 'ArrowLeft') emit('prev');
+      if (e.key === 'ArrowRight') triggerNext();
+      if (e.key === 'ArrowLeft') triggerPrev();
     };
 
     onMounted(() => {
@@ -573,7 +735,16 @@ export default {
       isFlash,
       ruffleContainer,
       commentary,
-      commentaryLoading
+      commentaryLoading,
+      familyPosts,
+      familyLoading,
+      onImageLoad,
+      transitionName,
+      canGoNext,
+      canGoPrev,
+      triggerNext,
+      triggerPrev,
+      handleBannerClick
     };
   }
 }
@@ -639,16 +810,142 @@ export default {
   height: 100%;
 }
 
+.main-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Fix flex overflow */
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* Relationship Banner */
+.relationship-banner {
+    background: #332b00; /* Darker yellow/brown theme */
+    border-bottom: 1px solid #665c00;
+    padding: 10px;
+    flex-shrink: 0;
+}
+
+.family-info {
+    font-size: 13px;
+    color: #e2e8f0;
+    margin-bottom: 8px;
+}
+
+.family-info strong {
+    color: #ffd700;
+}
+
+.family-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.family-scroll::-webkit-scrollbar { height: 6px; }
+.family-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+.family-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+
+.family-thumb:hover {
+    opacity: 1;
+}
+
+.family-thumb.active {
+    border-color: #ffd700;
+    opacity: 1;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.family-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 /* Image Section */
 .image-section {
   flex: 1;
-  background: rgba(0, 0, 0, 0.3);
+  /* background: rgba(0, 0, 0, 0.3); Removed as parent has it */
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   position: relative;
   overflow: hidden;
+}
+
+/* Simple fade transition */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Slide down transition for relationship banner */
+.slide-down-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-down-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.slide-down-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+  max-height: 0;
+}
+
+.slide-down-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 200px;
+}
+
+.slide-down-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 200px;
+}
+
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+  max-height: 0;
+}
+
+/* Fade transition for navigation arrows */
+.fade-arrow-enter-active,
+.fade-arrow-leave-active {
+  transition: all 0.25s ease;
+}
+
+.fade-arrow-enter-from,
+.fade-arrow-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.fade-arrow-enter-to,
+.fade-arrow-leave-from {
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* Artist Commentary */

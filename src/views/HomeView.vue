@@ -79,6 +79,7 @@
         @next="navigatePost(1)"
         @prev="navigatePost(-1)"
         @search-tag="handleTagSearch"
+        @update-post="selectedPost = $event"
         :has-next="canNext"
         :has-prev="canPrev"
       />
@@ -153,17 +154,25 @@ export default {
          return currentPostIndex.value < posts.value.length - 1 || hasNextPage.value;
     });
 
+    const lastListPost = ref(null); // Track the post we opened from the list
+
     const openModal = (post) => {
       isRandomMode.value = false;
       selectedPost.value = post;
+      lastListPost.value = post; // Save reference for navigation fallback
     };
 
     const navigatePost = async (direction) => {
       if (!selectedPost.value || isRandomMode.value) return;
       
-      const index = posts.value.findIndex(p => p.id === selectedPost.value.id);
+      let index = posts.value.findIndex(p => p.id === selectedPost.value.id);
       
-      // Si por alguna razón el post no está en la lista actual (edge case), no hacemos nada
+      // Fallback: If current post is not in list (e.g. navigated to child), use last known list post
+      if (index === -1 && lastListPost.value) {
+         index = posts.value.findIndex(p => p.id === lastListPost.value.id);
+      }
+
+      // If still not found, we can't navigate safely
       if (index === -1) return;
       
       const newIndex = index + direction;
@@ -171,6 +180,7 @@ export default {
       // Caso 1: Navegación dentro de la página actual
       if (newIndex >= 0 && newIndex < posts.value.length) {
         selectedPost.value = posts.value[newIndex];
+        lastListPost.value = posts.value[newIndex]; // Update anchor
         return;
       }
 
