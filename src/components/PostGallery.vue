@@ -26,6 +26,7 @@
           v-for="post in posts"
           :key="post.id"
           class="art-card"
+          :class="{ 'has-family': post.parent_id || post.has_children }"
           @click="openPost(post)"
         >
           <!-- Image Section -->
@@ -645,10 +646,21 @@ export default {
 }
 
 .art-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-6px);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   border-color: rgba(167, 139, 250, 0.3);
   background: rgba(35, 35, 45, 0.8);
+}
+
+/* Family indicator - subtle colored border */
+.art-card.has-family {
+  border: 2px solid rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.25);
+}
+
+.art-card.has-family:hover {
+  border-color: rgba(34, 211, 238, 0.8);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.4), 0 20px 25px -5px rgba(0, 0, 0, 0.2);
 }
 
 /* Image Wrapper */
