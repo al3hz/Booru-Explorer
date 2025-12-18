@@ -52,10 +52,12 @@
                     target="_blank" 
                     download 
                     class="action-btn"
+                    :class="{ 'disabled': downloading }"
                     title="Download original image"
-                    @click.prevent="downloadImage"
+                    @click.prevent="!downloading && downloadImage()"
                   >
-                    <i class="lni lni-download"></i>
+                    <i v-if="downloading" class="lni lni-spinner lni-is-spinning"></i>
+                    <i v-else class="lni lni-download"></i>
                   </a>
                   <button 
                     @click="copyImageLink" 
@@ -255,12 +257,17 @@ export default {
       }
     };
 
+    const downloading = ref(false);
+
     const downloadImage = async () => {
+      if (downloading.value) return;
+      
       const url = props.post.file_url || props.post.large_file_url;
       const filename = `danbooru-${props.post.id}.${props.post.file_ext}`;
       
       if (!url) return;
 
+      downloading.value = true;
       try {
         const response = await fetch(url);
         const blob = await response.blob();
@@ -276,6 +283,8 @@ export default {
       } catch (e) {
         console.error("Download failed, falling back to new tab", e);
         window.open(url, '_blank');
+      } finally {
+        downloading.value = false;
       }
     };
 
@@ -414,7 +423,10 @@ export default {
       formatCommentBody,
       copyImageLink,
       linkCopied,
-      downloadImage
+      copyImageLink,
+      linkCopied,
+      downloadImage,
+      downloading
     };
   }
 }
@@ -558,6 +570,14 @@ export default {
   border-color: #4ade80;
   color: #0f172a;
 }
+
+.action-btn.disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+
 
 .scrollable-info {
   flex: 1;
@@ -907,10 +927,6 @@ export default {
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .load-more-container {
   display: flex;
   justify-content: center;
@@ -949,5 +965,14 @@ export default {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   display: inline-block;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.lni-is-spinning {
+  animation: spin 1s infinite linear;
 }
 </style>

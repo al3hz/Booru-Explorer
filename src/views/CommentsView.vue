@@ -29,8 +29,19 @@
                 @click="openModal(postsMap[comment.post_id])"
                 title="View image details"
               >
+                <video
+                  v-if="isVideo(postsMap[comment.post_id])"
+                  :src="postsMap[comment.post_id].large_file_url || postsMap[comment.post_id].file_url"
+                  class="preview-image"
+                  autoplay
+                  loop
+                  muted
+                  playsinline
+                  disablePictureInPicture
+                ></video>
                 <img 
-                  :src="postsMap[comment.post_id].sample_url || postsMap[comment.post_id].large_file_url || postsMap[comment.post_id].preview_file_url" 
+                  v-else
+                  :src="getPostPreview(postsMap[comment.post_id])" 
                   :alt="`Post #${comment.post_id}`"
                   class="preview-image"
                   loading="lazy"
@@ -220,6 +231,30 @@ export default {
       e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj4/PC90ZXh0Pjwvc3ZnPg==';
     };
 
+    const getPostPreview = (post) => {
+      if (!post) return '';
+      
+      // If video, use preview_file_url or find a jpg/webp variant in media_asset
+      const isVideo = ['mp4', 'webm', 'zip', 'rar'].includes(post.file_ext);
+      
+      if (isVideo) {
+        // Try to find a larger preview from variants if available (e.g. 720x720 webp/jpg)
+        if (post.media_asset && post.media_asset.variants) {
+           const preferred = post.media_asset.variants.find(v => (v.type === '720x720' || v.type === '360x360') && ['jpg', 'webp', 'png'].includes(v.file_ext));
+           if (preferred) return preferred.url;
+        }
+        return post.preview_file_url;
+      }
+
+      // For images, prioritize higher res
+      return post.sample_url || post.large_file_url || post.preview_file_url;
+    };
+
+    const isVideo = (post) => {
+      if (!post) return false;
+      return ['mp4', 'webm', 'gifv'].includes(post.file_ext);
+    };
+
     onMounted(() => {
       fetchCommentsAndPosts();
       window.addEventListener('keydown', handleKeydown);
@@ -241,7 +276,9 @@ export default {
       formatBody,
       handleImageError,
       openModal,
-      handleTagSearch
+      handleTagSearch,
+      getPostPreview,
+      isVideo
     };
   }
 };
