@@ -349,9 +349,12 @@ export default {
         searchQuery.value = newTags;
         isRandomMode.value = false;
         searchPosts(1, true);
-      } else if (route.query.tags === undefined && searchQuery.value !== '') {
-          // If tags param removed, maybe clear search? Or do nothing. 
-          // user might have manually cleared url.
+      } else if (route.query.tags === undefined) {
+         // Reset search when navigating to root /
+         inputQuery.value = "";
+         searchQuery.value = "";
+         isRandomMode.value = false;
+         searchPosts(1, true);
       }
     });
 

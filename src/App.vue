@@ -1,10 +1,10 @@
 <template>
   <div id="app" class="app-container">
-    <SearchHeader />
+    <SearchHeader @logo-click="handleLogoClick" />
     
     <router-view v-slot="{ Component }">
       <transition name="fade" mode="out-in">
-        <component :is="Component" />
+        <component :is="Component" :key="viewKey" />
       </transition>
     </router-view>
 
@@ -22,6 +22,24 @@ export default {
     SearchHeader,
     AppFooter,
   },
+  data() {
+    return {
+      refreshKey: 0
+    };
+  },
+  computed: {
+    viewKey() {
+      return this.$route.fullPath + '-' + this.refreshKey;
+    }
+  },
+  methods: {
+    handleLogoClick() {
+      // Si ya estamos en el home sin queries, forzamos recarga
+      if (this.$route.path === '/' && Object.keys(this.$route.query).length === 0) {
+        this.refreshKey++;
+      }
+    }
+  }
 };
 </script>
 

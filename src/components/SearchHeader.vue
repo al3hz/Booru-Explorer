@@ -2,14 +2,14 @@
   <header class="app-header">
     <div class="header-inner">
       <div class="brand-section">
-        <router-link to="/" class="logo-container">
+        <div class="logo-container" @click="handleLogoClick">
           <img 
             src="https://danbooru.donmai.us/packs/static/danbooru-logo-128x128-ea111b6658173e847734.png" 
             alt="Danbooru Logo" 
             class="logo-icon"
           />
           <div class="logo-glow"></div>
-        </router-link>
+        </div>
         <div class="brand-text">
           <h1>Booru Explorer</h1>
           <div class="badge-container">
@@ -39,10 +39,13 @@
 
 <script>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 
 export default {
   name: "SearchHeader",
-  setup() {
+  emits: ['logo-click'],
+  setup(props, { emit }) {
+    const router = useRouter();
     const kaomojis = [
       "(｡◕‿◕｡)",
       "(づ｡◕‿‿◕｡)づ",
@@ -63,13 +66,19 @@ export default {
       currentKaomoji.value = kaomojis[randomIndex];
     };
 
+    const handleLogoClick = () => {
+      emit('logo-click');
+      router.push('/');
+    };
+
     onMounted(() => {
       changeKaomoji();
     });
 
     return {
       currentKaomoji,
-      changeKaomoji
+      changeKaomoji,
+      handleLogoClick
     };
   }
 };
@@ -114,6 +123,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
 }
 
 .logo-icon {
