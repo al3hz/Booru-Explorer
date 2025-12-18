@@ -110,6 +110,26 @@
                   <span class="label">Source</span>
                   <a :href="post.source" target="_blank" class="value source-link" title="Open original source">Link ↗</a>
                 </div>
+                <div class="stat-item">
+                  <span class="label">Uploader</span>
+                  <a :href="`https://danbooru.donmai.us/users/${post.uploader_id}`" target="_blank" class="value source-link">User #{{ post.uploader_id }}</a>
+                </div>
+                <div class="stat-item" v-if="post.parent_id">
+                  <span class="label">Parent</span>
+                  <span 
+                    class="value source-link" 
+                    style="cursor: pointer;"
+                    @click="$emit('search-tag', `id:${post.parent_id}`, true)"
+                  >Post #{{ post.parent_id }}</span>
+                </div>
+                <div class="stat-item" v-if="post.has_children">
+                  <span class="label">Children</span>
+                  <span 
+                    class="value source-link" 
+                    style="cursor: pointer;"
+                    @click="$emit('search-tag', `parent:${post.id}`, true)"
+                  >View Children</span>
+                </div>
               </div>
 
               <!-- Artist Commentary -->
@@ -619,6 +639,7 @@ export default {
   height: 100%;
 }
 
+/* Image Section */
 .image-section {
   flex: 1;
   background: rgba(0, 0, 0, 0.3);

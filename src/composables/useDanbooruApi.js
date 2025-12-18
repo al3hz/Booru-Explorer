@@ -23,10 +23,13 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
       tags = tags ? `${tags} rating:${ratingFilter.value}` : `rating:${ratingFilter.value}`
     }
     
-    
+    // Buffer strategy: Fetch 50% more posts to handle filtered items
+    // This ensures we can fill the requested limit even if some posts are invalid
+    const bufferLimit = Math.ceil(limit.value * 1.5);
+
     const params = new URLSearchParams({
       tags: tags,
-      limit: limit.value.toString(),
+      limit: bufferLimit.toString(),
       page: page.toString()
     })
     
@@ -34,10 +37,8 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
   }
   
   const searchPosts = async (page = 1, isNewSearch = false) => {
-    if (!searchQuery.value.trim() && !ratingFilter.value) {
-      error.value = 'Por favor ingresa tags para buscar'
-      return
-    }
+    // Validation removed to allow "Recent Posts" (empty search)
+    // if (!searchQuery.value.trim() && !ratingFilter.value) { ... }
     
     loading.value = true
     error.value = ''
@@ -71,13 +72,53 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
       const data = await response.json()
    
       
+      
+      // Normalize posts to ensure URLs exist (using media_asset variants if needed)
+      const normalizePost = (post) => {
+        if (!post.file_url || !post.preview_file_url) {
+          if (post.media_asset && post.media_asset.variants) {
+             const variants = post.media_asset.variants;
+             
+             const findUrl = (type) => {
+                const v = variants.find(v => v.type === type);
+                return v ? v.url : null;
+             };
+             
+             if (!post.preview_file_url) {
+                // Try 180x180 or 360x360 for preview
+                post.preview_file_url = findUrl('180x180') || findUrl('360x360');
+             }
+             
+             if (!post.large_file_url) {
+                post.large_file_url = findUrl('sample') || findUrl('720x720');
+             }
+             
+             if (!post.file_url) {
+                post.file_url = findUrl('original');
+             }
+          }
+        }
+        return post;
+      };
+
+      const normalizedData = data.map(normalizePost).filter(post => {
+        // Filter out posts that still don't have any image URL after normalization
+        return post.file_url || post.preview_file_url || post.large_file_url;
+      });
+
+      // Slice to exactly the requested limit to maintain grid consistency
+      // This fills the "holes" but effectively drops the overflow valid posts
+      const finalPosts = normalizedData.slice(0, limit.value);
+
       if (page === 1 || isNewSearch) {
-        posts.value = data
+        posts.value = finalPosts
       } else {
-        posts.value = [...posts.value, ...data]
+        posts.value = [...posts.value, ...finalPosts]
       }
       
-      hasNextPage.value = data.length === limit.value
+      // Check if we likely have a next page based on if we got enough raw data
+      // (Using >= limit ensures we don't falsely say no next page if we sliced)
+      hasNextPage.value = data.length >= limit.value;
       currentPage.value = page
       
       if (data.length === 0) {

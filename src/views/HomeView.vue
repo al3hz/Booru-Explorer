@@ -106,11 +106,18 @@ export default {
     const inputQuery = ref(""); // Lo que escribe el usuario
     const searchQuery = ref(""); // Lo que realmente se está buscando (applied)
     const limit = ref(10);
-    const ratingFilter = ref("general");
+    // Default to All ("") if nothing saved. If saved, use saved value.
+    const savedRating = localStorage.getItem('ratingFilter');
+    const ratingFilter = ref(savedRating !== null ? savedRating : ""); 
     const sidebarVisible = ref(window.innerWidth > 768);
     const infiniteScroll = ref(false);
     const selectedPost = ref(null);
     const isRandomMode = ref(false);
+
+    // Persist rating filter selection
+    watch(ratingFilter, (newVal) => {
+       localStorage.setItem('ratingFilter', newVal);
+    });
     
     // useDanbooruApi usa searchQuery (el valor confirmado)
     const { posts, loading, error, currentPage, hasNextPage, searchPosts } =
@@ -390,10 +397,15 @@ export default {
       });
     });
 
-    const handleTagSearch = async (tag) => {
+    const handleTagSearch = async (tag, clearFilter = false) => {
        isRandomMode.value = false;
        inputQuery.value = tag;
        searchQuery.value = tag;
+       
+       if (clearFilter) {
+          ratingFilter.value = ""; // Reset to All
+       }
+       
        selectedPost.value = null; // Cerrar modal
        await searchPosts(1, true);
     };

@@ -168,7 +168,7 @@ export default {
     searchQuery: { type: String, default: "" },
     loading: { type: Boolean, default: false },
     limit: { type: Number, default: 20 },
-    ratingFilter: { type: String, default: "safe" },
+    ratingFilter: { type: String, default: "" },
     posts: { type: Array, default: () => [] },
     sidebarVisible: { type: Boolean, default: true },
   },
@@ -192,6 +192,7 @@ export default {
     // Rating Dropdown Logic
     const ratingDropdownOpen = ref(false);
     const ratingOptions = [
+      { value: '', label: 'All' },
       { value: 'general', label: 'General (G)' },
       { value: 'safe', label: 'Safe (S)' },
       { value: 'questionable', label: 'Questionable (Q)' },

@@ -30,6 +30,7 @@
         >
           <!-- Image Section -->
           <div class="card-image-wrapper">
+            <!-- Video logic unchanged -->
             <video
               v-if="isAnimatedVideo(post)"
               :src="getImageUrl(post)"
@@ -41,6 +42,8 @@
               playsinline
               @error="handleImageError($event, post)"
             ></video>
+            
+            <!-- Default Image -->
             <img
               v-else
               :src="getImageUrl(post)"
@@ -667,6 +670,21 @@ export default {
 .art-card:hover .card-image {
   transform: scale(1.08);
 }
+
+.card-image-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #1e1e24;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  color: #94a3b8;
+}
+
+.placeholder-icon { font-size: 24px; }
+.placeholder-text { font-size: 13px; font-weight: 500; }
 
 /* Overlays & Badges */
 .card-overlay {
