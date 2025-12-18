@@ -26,6 +26,18 @@ export function useDanbooruAutocomplete() {
     const terms = query.split(/[,，\s]+/);
     const lastTerm = terms[terms.length - 1];
 
+    // Special logic for filetype:
+    if (lastTerm.startsWith('filetype:')) {
+      const extensions = ['jpg', 'png', 'gif', 'webm', 'mp4', 'zip', 'swf', 'avif', 'webp'];
+      suggestions.value = extensions.map(ext => ({
+        name: `filetype:${ext}`,
+        post_count: 0, // Mock count or hidden
+        category: 5,   // Meta tag category
+        class: 'tag-meta'
+      }));
+      return;
+    }
+
     if (lastTerm.length < 2) {
       suggestions.value = [];
       return;

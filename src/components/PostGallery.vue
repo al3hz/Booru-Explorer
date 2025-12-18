@@ -323,6 +323,9 @@ export default {
       if (post.file_ext === "gif") {
         return post.file_url || post.sample_url || post.preview_url || "";
       }
+      if (post.file_ext === "swf") {
+        return post.preview_url || post.preview_file_url || "";
+      }
       // Usar sample_url para mejor calidad
       return (
         post.sample_url ||
@@ -471,10 +474,12 @@ export default {
       const imageExts = ["jpg", "jpeg", "png", "bmp", "tiff", "webp"];
       const videoExts = ["mp4", "webm", "avi", "mov"];
       const animatedExts = ["gif"];
+      const flashExts = ["swf"];
 
       if (imageExts.includes(ext.toLowerCase())) return "format-image";
       if (videoExts.includes(ext.toLowerCase())) return "format-video";
       if (animatedExts.includes(ext.toLowerCase())) return "format-animated";
+      if (flashExts.includes(ext.toLowerCase())) return "format-flash";
       return "";
     },
 
@@ -767,6 +772,7 @@ export default {
 .format-image { color: #60a5fa; border-color: rgba(96, 165, 250, 0.2); }
 .format-video { color: #a78bfa; border-color: rgba(167, 139, 250, 0.2); }
 .format-animated { color: #34d399; border-color: rgba(52, 211, 153, 0.2); }
+.format-flash { color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
 
 /* Stats Row */
 .stats-row {

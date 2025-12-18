@@ -16,8 +16,9 @@
               <div class="loader-spinner"></div>
             </div>
             <transition name="slide-fade" mode="out-in">
+              <div v-if="isFlash" class="ruffle-container" ref="ruffleContainer"></div>
               <video
-                v-if="isVideo"
+                v-else-if="isVideo"
                 :key="`vid-${post.id}`"
                 :src="post.large_file_url || post.file_url"
                 class="detail-image"
@@ -81,6 +82,15 @@
                 <div class="stat-item">
                   <span class="label">Size</span>
                   <span class="value">{{ formatFileSize(post.file_size) }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="label">Format</span>
+                  <span 
+                    class="value rating-pill format" 
+                    :class="getExtensionClass(post.file_ext)"
+                  >
+                    {{ post.file_ext ? post.file_ext.toUpperCase() : 'N/A' }}
+                  </span>
                 </div>
                 <div class="stat-item">
                   <span class="label">Rating</span>
@@ -238,6 +248,10 @@ export default {
     const commentsPage = ref(1);
     const hasMoreComments = ref(false);
     const COMMENTS_LIMIT = 20;
+    
+    // Ruffle logic
+    const ruffleContainer = ref(null);
+    let rufflePlayer = null;
 
     // Copy Link Logic
     const linkCopied = ref(false);
@@ -383,8 +397,77 @@ export default {
 
     const isVideo = computed(() => {
       const ext = props.post.file_ext;
-      return ['mp4', 'webm', 'gifv'].includes(ext);
+      if (['mp4', 'webm', 'gifv'].includes(ext)) return true;
+      // Handle Ugoira (ZIP) that has a converted video url
+      if (ext === 'zip' && props.post.large_file_url && props.post.large_file_url.endsWith('.webm')) {
+        return true;
+      }
+      return false;
     });
+
+    const isFlash = computed(() => {
+      return props.post.file_ext === 'swf';
+    });
+
+    // Initialize Ruffle
+    const loadRuffle = () => {
+      if (!isFlash.value) return;
+
+      requestAnimationFrame(() => {
+        if (!ruffleContainer.value) return;
+        
+        // Limpiar anterior
+        ruffleContainer.value.innerHTML = '';
+        
+        if (window.RufflePlayer) {
+          const ruffle = window.RufflePlayer.newest();
+          rufflePlayer = ruffle.createPlayer();
+          ruffleContainer.value.appendChild(rufflePlayer);
+          
+          rufflePlayer.load(props.post.file_url || props.post.large_file_url);
+          loading.value = false;
+        } else {
+          console.error("Ruffle not loaded");
+          ruffleContainer.value.innerHTML = '<div style="color:white">Player script missing.</div>';
+          loading.value = false;
+        }
+      });
+    };
+
+    // Watch for post changes to reload Ruffle/Content
+    watch(() => props.post.id, async () => {
+       if (isFlash.value) {
+         loading.value = true;
+         // Give time for v-if="isFlash" to render the div
+         setTimeout(() => loadRuffle(), 100);
+       } else {
+         // Reset for images/video
+         if (loading.value === false) loading.value = true;
+       }
+    });
+
+    // Initial load
+    onMounted(() => {
+       if (isFlash.value) {
+          setTimeout(() => loadRuffle(), 100);
+       }
+       window.addEventListener('keydown', handleKeydown);
+       document.body.style.overflow = 'hidden'; 
+    });
+
+    const getExtensionClass = (ext) => {
+      if (!ext) return "";
+      const imageExts = ["jpg", "jpeg", "png", "bmp", "tiff", "webp"];
+      const videoExts = ["mp4", "webm", "avi", "mov", "zip", "rar"];
+      const animatedExts = ["gif"];
+      const flashExts = ["swf"];
+
+      if (imageExts.includes(ext.toLowerCase())) return "format-image";
+      if (videoExts.includes(ext.toLowerCase())) return "format-video";
+      if (animatedExts.includes(ext.toLowerCase())) return "format-animated";
+      if (flashExts.includes(ext.toLowerCase())) return "format-flash";
+      return "";
+    };
 
     // Handle Esc key
     const handleKeydown = (e) => {
@@ -394,8 +477,7 @@ export default {
     };
 
     onMounted(() => {
-      window.addEventListener('keydown', handleKeydown);
-      document.body.style.overflow = 'hidden'; 
+      // Logic moved up to handle Ruffle
     });
 
     onUnmounted(() => {
@@ -426,7 +508,11 @@ export default {
       copyImageLink,
       linkCopied,
       downloadImage,
-      downloading
+      downloadImage,
+      downloading,
+      getExtensionClass,
+      isFlash,
+      ruffleContainer
     };
   }
 }
@@ -501,6 +587,21 @@ export default {
   padding: 20px;
   position: relative;
   overflow: hidden;
+}
+
+.ruffle-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ruffle-container :deep(ruffle-player) {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .detail-image {
@@ -626,6 +727,16 @@ export default {
 .rating-pill.s { color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.2); background: rgba(74, 222, 128, 0.1); }
 .rating-pill.q { color: #facc15; border: 1px solid rgba(250, 204, 21, 0.2); background: rgba(250, 204, 21, 0.1); }
 .rating-pill.e { color: #f87171; border: 1px solid rgba(248, 113, 113, 0.2); background: rgba(248, 113, 113, 0.1); }
+
+.rating-pill.format {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.format-image { color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.2); }
+.format-video { color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.2); }
+.format-animated { color: #34d399; border: 1px solid rgba(52, 211, 153, 0.2); }
+.format-flash { color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
 
 .tags-section {
   display: flex;
