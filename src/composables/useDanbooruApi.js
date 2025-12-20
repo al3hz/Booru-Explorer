@@ -7,6 +7,8 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
   const currentPage = ref(1)
   const hasNextPage = ref(false)
   
+  const totalPosts = ref(0)
+  
   const apiBaseUrl = 'https://danbooru.donmai.us'
   
   const buildSearchUrl = (page = 1) => {
@@ -23,17 +25,41 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
       tags = tags ? `${tags} rating:${ratingFilter.value}` : `rating:${ratingFilter.value}`
     }
     
-    // Buffer strategy: Fetch 50% more posts to handle filtered items
-    // This ensures we can fill the requested limit even if some posts are invalid
-    const bufferLimit = Math.ceil(limit.value * 1.5);
-
+    // Buffer strategy removed for accurate pagination alignment.
+    // We request exactly the limit. If some posts are filtered out (invalid),
+    // the page will show fewer items coverage, but navigation will remain consistent.
+    
     const params = new URLSearchParams({
       tags: tags,
-      limit: bufferLimit.toString(),
+      limit: limit.value.toString(),
       page: page.toString()
     })
     
     return `${apiBaseUrl}/posts.json?${params.toString()}`
+  }
+
+  const fetchCounts = async () => {
+    try {
+      let tags = searchQuery.value.trim()
+      tags = tags.replace(/[,，]+/g, ' ')
+      tags = tags.replace(/\s+/g, ' ')
+      
+      if (ratingFilter.value) {
+        tags = tags.replace(/\s*rating:\w+/g, '')
+        tags = tags.trim()
+        tags = tags ? `${tags} rating:${ratingFilter.value}` : `rating:${ratingFilter.value}`
+      }
+
+      const params = new URLSearchParams({ tags: tags })
+      const res = await fetch(`${apiBaseUrl}/counts/posts.json?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        return data.counts && data.counts.posts ? data.counts.posts : null
+      }
+    } catch (e) {
+      console.warn("Failed to fetch counts:", e)
+    }
+    return null
   }
   
   const searchPosts = async (page = 1, isNewSearch = false) => {
@@ -44,6 +70,19 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     error.value = ''
     
     try {
+      if (page === 1 || isNewSearch) {
+        // Fetch count in parallel or sequence? Sequence is safer for logic, parallel faster.
+        // Let's do it before setting posts to avoid flicker? 
+        // Or just fire it and update state when it returns.
+        // Let's await it to be sure we have it for pagination logic.
+        const count = await fetchCounts()
+        if (count !== null) {
+          totalPosts.value = count
+        } else {
+          totalPosts.value = -1 // -1 means unknown
+        }
+      }
+
       const url = buildSearchUrl(page)
      
       
@@ -116,9 +155,15 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
         posts.value = [...posts.value, ...finalPosts]
       }
       
-      // Check if we likely have a next page based on if we got enough raw data
-      // (Using >= limit ensures we don't falsely say no next page if we sliced)
-      hasNextPage.value = data.length >= limit.value;
+      // Strict Pagination Logic
+      if (totalPosts.value !== -1) {
+         // If we know the total, use strict math
+         hasNextPage.value = (page * limit.value) < totalPosts.value;
+      } else {
+         // Fallback: Check if we likely have a next page based on if we got enough raw data
+         hasNextPage.value = data.length >= limit.value;
+      }
+
       currentPage.value = page
       
       if (data.length === 0) {
@@ -154,6 +199,6 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     error,
     currentPage,
     hasNextPage,
-    searchPosts
+    searchPosts,
   }
 }

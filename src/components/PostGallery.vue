@@ -144,7 +144,7 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="hasNextPage && !infiniteScroll" class="pagination-wrapper">
+      <div v-if="!infiniteScroll && (currentPage > 1 || hasNextPage)" class="pagination-wrapper">
         <button
           @click="$emit('change-page', currentPage - 1)"
           :disabled="currentPage === 1 || loading"
@@ -290,12 +290,18 @@ export default {
 
     const getPageNumbers = () => {
       const pages = [];
-      const maxPages = 5;
-      const start = Math.max(1, props.currentPage - Math.floor(maxPages / 2));
-      const end = start + maxPages - 1;
-      for (let i = start; i <= end; i++) {
+      // Show up to 3 previous pages
+      const start = Math.max(1, props.currentPage - 3); 
+      
+      for (let i = start; i <= props.currentPage; i++) {
         pages.push(i);
       }
+      
+      // Only show NEXT page if we know it exists
+      if (props.hasNextPage) {
+        pages.push(props.currentPage + 1);
+      }
+      
       return pages;
     };
 

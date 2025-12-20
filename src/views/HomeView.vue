@@ -298,6 +298,7 @@ export default {
     };
 
     const handlePageChange = async (page) => {
+      if (loading.value) return; 
       await loadPage(page);
       if (!selectedPost.value) {
          window.scrollTo({ top: 0, behavior: "smooth" });
