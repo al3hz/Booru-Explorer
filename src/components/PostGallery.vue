@@ -639,6 +639,7 @@ export default {
 }
 
 .art-card {
+  cursor: pointer;
   background: rgba(30, 30, 40, 0.7);
   border-radius: 16px;
   overflow: hidden;

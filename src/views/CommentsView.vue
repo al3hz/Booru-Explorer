@@ -382,6 +382,7 @@ export default {
 }
 
 .preview-link {
+  cursor: pointer;
   display: block;
   border-radius: 8px;
   overflow: hidden;
