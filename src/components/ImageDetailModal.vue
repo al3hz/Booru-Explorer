@@ -160,13 +160,20 @@
                 <div v-if="artistTags.length" class="tag-group">
                   <h3>Artists</h3>
                   <div class="tag-list">
-                    <span 
+                    <div 
                       v-for="tag in artistTags" 
                       :key="tag" 
-                      class="tag artist"
-                      @click="$emit('search-tag', tag)"
-                      title="Search by artist"
-                    >{{ tag }}</span>
+                      class="tag-wrapper"
+                    >
+                        <span 
+                          class="tag artist"
+                          @click="$emit('search-tag', tag)"
+                          title="Search by artist"
+                        >{{ tag }}</span>
+                        <button class="info-icon-btn" @click.stop="openArtistInfo(tag)" title="Artist Info">
+                            <i class="lni lni-user"></i>
+                        </button>
+                    </div>
                   </div>
                 </div>
 
@@ -262,14 +269,28 @@
           ›
         </button>
       </transition>
+      
+      <!-- Artist Info Modal -->
+      <transition name="fade">
+        <ArtistInfoModal 
+            v-if="showArtistModal" 
+            :artist-name="selectedArtist" 
+            @close="showArtistModal = false"
+            @search="handleArtistSearch"
+        />
+      </transition>
     </div>
 </template>
 
 <script>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import ArtistInfoModal from './ArtistInfoModal.vue';
 
 export default {
   name: 'ImageDetailModal',
+  components: {
+    ArtistInfoModal
+  },
   props: {
     post: {
       type: Object,
@@ -695,8 +716,28 @@ export default {
         emit('update-post', post);
     };
 
+    // Artist Info Logic
+    const showArtistModal = ref(false);
+    const selectedArtist = ref('');
+
+    const openArtistInfo = (tag) => {
+        selectedArtist.value = tag;
+        showArtistModal.value = true;
+    };
+
+    const handleArtistSearch = (tag) => {
+        showArtistModal.value = false;
+        emit('search-tag', tag);
+    };
+
     // Handle Esc key
     const handleKeydown = (e) => {
+      // If artist modal is open, close it first
+      if (showArtistModal.value) {
+          if (e.key === 'Escape') showArtistModal.value = false;
+          return;
+      }
+      
       if (e.key === 'Escape') emit('close');
       if (e.key === 'ArrowRight') triggerNext();
       if (e.key === 'ArrowLeft') triggerPrev();
@@ -744,7 +785,12 @@ export default {
       canGoPrev,
       triggerNext,
       triggerPrev,
-      handleBannerClick
+      triggerPrev,
+      handleBannerClick,
+      showArtistModal,
+      selectedArtist,
+      openArtistInfo,
+      handleArtistSearch
     };
   }
 }
@@ -1157,6 +1203,33 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.tag-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.info-icon-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a78bfa;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+  height: 100%; /* Match tag height if possible */
+}
+
+.info-icon-btn:hover {
+  background: #a78bfa;
+  color: #fff;
+  border-color: #a78bfa;
+  transform: translateY(-1px);
 }
 
 .tag {
