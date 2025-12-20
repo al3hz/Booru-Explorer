@@ -1166,6 +1166,10 @@ export default {
   cursor: pointer;
   background: rgba(255,255,255,0.03);
   transition: all 0.2s;
+  word-break: break-word; /* Allow lazy wrapping */
+  white-space: normal;    /* Ensure it wraps */
+  line-height: 1.4;       /* Improve readability when wrapped */
+  text-align: left;       /* Ensure left align */
 }
 
 .tag:hover {
