@@ -56,18 +56,14 @@
             </div>
             <transition :name="transitionName" mode="out-in">
               <div v-if="isFlash" class="ruffle-container" ref="ruffleContainer"></div>
-              <video
+              <VideoPlayer
                 v-else-if="isVideo"
                 :key="`vid-${post.id}`"
                 :src="post.large_file_url || post.file_url"
                 class="detail-image"
-                autoplay
-                loop
-                muted
-                controls
-                @loadeddata="onImageLoad"
+                @loaded="onImageLoad"
                 @error="handleImageError"
-              ></video>
+              />
               <img 
                 v-else
                 :key="`img-${post.id}`"
@@ -297,9 +293,11 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDanbooruApi } from '../composables/useDanbooruApi';
 import { useDText } from '../composables/useDText';
+import VideoPlayer from './VideoPlayer.vue';
 
 export default {
   name: 'ImageDetailModal',
+  components: { VideoPlayer },
   // ... props ...
   props: {
     post: {
