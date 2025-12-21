@@ -194,8 +194,8 @@ export default {
     // Rating Dropdown Logic
     const ratingDropdownOpen = ref(false);
     const ratingOptions = [
-      { value: '', label: 'All' },
       { value: 'general', label: 'General (G)' },
+      { value: '', label: 'All' },
       { value: 'safe', label: 'Safe (S)' },
       { value: 'questionable', label: 'Questionable (Q)' },
       { value: 'explicit', label: 'Explicit (E)' }

@@ -144,7 +144,7 @@ export default {
     const limit = ref(10);
     // Default to All ("") if nothing saved. If saved, use saved value.
     const savedRating = localStorage.getItem('ratingFilter');
-    const ratingFilter = ref(savedRating !== null ? savedRating : ""); 
+    const ratingFilter = ref(savedRating !== null ? savedRating : "general"); 
     const sidebarVisible = ref(window.innerWidth > 768);
     const infiniteScroll = ref(false);
     const selectedPost = ref(null);
