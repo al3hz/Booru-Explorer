@@ -171,13 +171,30 @@ export default {
       videoRef.value.loop = isLooping.value;
     };
 
-    const toggleFullscreen = () => {
-      if (!document.fullscreenElement) {
-        containerRef.value.requestFullscreen().catch(err => {
-          console.error(`Error attempting to enable fullscreen: ${err.message}`);
-        });
-      } else {
-        document.exitFullscreen();
+    const toggleFullscreen = async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await containerRef.value.requestFullscreen();
+          
+          // Smart Orientation Lock
+          if (screen.orientation && screen.orientation.lock && videoRef.value) {
+            const ratio = videoRef.value.videoWidth / videoRef.value.videoHeight;
+            const orientation = ratio >= 1 ? 'landscape' : 'portrait';
+            try {
+              await screen.orientation.lock(orientation);
+            } catch (err) {
+              // Lock might fail on some devices/browsers, ignore
+              console.warn('Orientation lock failed:', err);
+            }
+          }
+        } else {
+          await document.exitFullscreen();
+          if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+          }
+        }
+      } catch (err) {
+        console.error(`Error attempting to toggle fullscreen: ${err.message}`);
       }
     };
 
