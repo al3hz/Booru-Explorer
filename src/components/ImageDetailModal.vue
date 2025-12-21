@@ -1466,18 +1466,18 @@ export default {
   .nav-arrow {
     position: fixed; /* Fix to viewport */
     top: auto;
-    bottom: 30px;
+    bottom: 75px; /* Raised to avoid mobile toolbar coverage */
     transform: none;
-    width: 56px;
-    height: 56px;
-    font-size: 28px;
-    background: rgba(0, 0, 0, 0.8);
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    background: rgba(0, 0, 0, 0.6);
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     border: 1px solid rgba(255,255,255,0.15);
   }
   
-  .nav-arrow.prev { left: 20px; margin: 0; }
-  .nav-arrow.next { right: 20px; margin: 0; }
+  .nav-arrow.prev { left: 10px; margin: 0; }
+  .nav-arrow.next { left: 64px; right: auto; margin: 0; }
   
   /* Active state for touch feedback */
   .nav-arrow:active {
