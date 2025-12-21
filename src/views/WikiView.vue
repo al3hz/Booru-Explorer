@@ -153,7 +153,7 @@
             </div>
             
             <div class="actions">
-                <button @click="goToPostSearch" class="search-posts-btn">
+                <button v-if="currentView.hasPosts" @click="goToPostSearch" class="search-posts-btn">
                     Search Posts <i class="lni lni-search-alt" style="margin-left:5px"></i>
                 </button>
                 <a :href="currentView.danbooruUrl" target="_blank" class="danbooru-link">
@@ -459,8 +459,39 @@ export default {
                 danbooruUrl: wikiId 
                     ? `https://danbooru.donmai.us/wiki_pages/${wikiId}`
                     : (isArtist ? `https://danbooru.donmai.us/artists/${artist.value.id}` : `https://danbooru.donmai.us/posts?tags=${query}`),
-                previewPosts: previews
+                previewPosts: previews,
+                hasPosts: false // Default false, will check next
             };
+
+            // Check if tag exists and has posts to show the button
+            if (isArtist) {
+                // Artists usually have posts if they exist in the DB
+                 currentView.value.hasPosts = true; 
+            } else {
+                 try {
+                    // Use normalized tag (underscores) for the exact tag check
+                    const normalizedQuery = normalizeTag(query);
+                    const tagRes = await fetch(`https://danbooru.donmai.us/tags.json?search[name]=${encodeURIComponent(normalizedQuery)}`);
+                    if (tagRes.ok) {
+                        const tags = await tagRes.json();
+                        // If tag exists and has posts > 0
+                        if (tags.length > 0 && tags[0].post_count > 0) {
+                             currentView.value.hasPosts = true;
+                        } else {
+                            // Fallback: Try searching for the exact parameter as passed, just in case
+                            if (query !== normalizedQuery) {
+                                const backupRes = await fetch(`https://danbooru.donmai.us/tags.json?search[name]=${encodeURIComponent(query)}`);
+                                if (backupRes.ok) {
+                                    const backupTags = await backupRes.json();
+                                    if (backupTags.length > 0 && backupTags[0].post_count > 0) {
+                                        currentView.value.hasPosts = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                 } catch (e) { console.warn('Tag check failed', e); }
+            }
             
             // Trigger hydration via watcher or immediate if needed
             // The watch will handle most cases beautifully.

@@ -2,187 +2,148 @@ export function useDText() {
   const parseDText = (text) => {
     if (!text) return '';
 
-    // Escape HTML first to prevent XSS
-    let formatted = text
+    let formatted = text;
+    const placeholders = [];
+    
+    // Helper to store safely
+    const addPlaceholder = (content) => {
+        const id = `__PH_${placeholders.length}__`;
+        placeholders.push(content);
+        return id;
+    };
+
+    // 1. Escape HTML
+    formatted = formatted
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
 
-    // 1. Block-level elements (Quotes, Code)
-    // [quote]...[/quote]
-    formatted = formatted.replace(/\[quote\]([\s\S]*?)\[\/quote\]/g, '<blockquote class="dtext-quote">$1</blockquote>');
-    
-    // [code]...[/code]
-    formatted = formatted.replace(/\[code\]([\s\S]*?)\[\/code\]/g, '<pre class="dtext-code">$1</pre>');
+    // 2. Protect Code and Blocks
+    formatted = formatted.replace(/\[quote\]([\s\S]*?)\[\/quote\]/g, (m, c) => addPlaceholder(`<blockquote class="dtext-quote">${c}</blockquote>`));
+    formatted = formatted.replace(/\[code\]([\s\S]*?)\[\/code\]/g, (m, c) => addPlaceholder(`<pre class="dtext-code">${c}</pre>`));
+    formatted = formatted.replace(/\[tn\]([\s\S]*?)\[\/tn\]/g, (m, c) => addPlaceholder(`<div class="dtext-tn">${c}</div>`));
 
-    // 2. Inline Styles
-    // [b]bold[/b]
-    formatted = formatted.replace(/\[b\](.*?)\[\/b\]/g, '<strong>$1</strong>');
-    
-    // [i]italic[/i]
-    formatted = formatted.replace(/\[i\](.*?)\[\/i\]/g, '<em>$1</em>');
-    
-    // [u]underline[/u]
-    formatted = formatted.replace(/\[u\](.*?)\[\/u\]/g, '<u>$1</u>');
-    
-    // [s]strikethrough[/s]
-    formatted = formatted.replace(/\[s\](.*?)\[\/s\]/g, '<s>$1</s>');
+    // 3. Explicit Links (Wiki, URL, Legacy) - Convert to HTML and Store as Placeholder
 
-    // 3. Links
-    
-    // [[Wiki Page]] or [[Wiki Page|Label]] or [[Wiki Page|]]
+    // [[Wiki Page]]
     formatted = formatted.replace(/\[\[(.*?)(?:\|(.*?))?\]\]/g, (match, link, label) => {
         let displayText = label;
-        // Handle [[page|]] (empty alias) - Danbooru uses this to strip qualifiers
-        if (label === '') {
-            displayText = link.replace(/_\(.*\)$/, '');
-        } else if (!label) {
-            displayText = link;
-        }
-        return `<span class="wiki-link" data-link="${link}" style="color: #a78bfa; cursor: pointer; text-decoration: underline;">${displayText}</span>`;
+        if (label === '') displayText = link.replace(/_\(.*\)$/, '');
+        else if (!label) displayText = link;
+        return addPlaceholder(`<span class="wiki-link" data-link="${link}" style="color: #a78bfa; cursor: pointer; text-decoration: underline;">${displayText}</span>`);
     });
 
     // [url=http://...]Label[/url]
     formatted = formatted.replace(/\[url=(.*?)\](.*?)\[\/url\]/g, (match, url, label) => {
         let finalUrl = url;
-        if (url.startsWith('/')) {
-            if (url.startsWith('/posts')) finalUrl = '/Booru-Explorer/';
-            else finalUrl = `https://danbooru.donmai.us${url}`;
-        }
-        return `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="dtext-link">${label}</a>`;
+        if (url.startsWith('/')) finalUrl = url.startsWith('/posts') ? '/Booru-Explorer/' : `https://danbooru.donmai.us${url}`;
+        return addPlaceholder(`<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="dtext-link">${label}</a>`);
     });
     
-    // "Label":[Url] (Note: quotes are already escaped to &quot;)
-    formatted = formatted.replace(/&quot;(.*?)&quot;:\[(.*?)\]/g, (match, label, url) => {
-        let finalUrl = url;
-        if (url.startsWith('/')) {
-            if (url.startsWith('/posts')) finalUrl = '/Booru-Explorer/';
-            else finalUrl = `https://danbooru.donmai.us${url}`;
-        }
-        return `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="dtext-link">${label}</a>`;
-    });
-
-    // "Label":/url (Non-bracketed links)
-    formatted = formatted.replace(/&quot;(.*?)&quot;:(\/[^\s<]+)/g, (match, label, path) => {
-        let finalUrl;
-        if (path.startsWith('/posts')) {
-            finalUrl = '/Booru-Explorer/';
-        } else {
-            finalUrl = `https://danbooru.donmai.us${path}`;
-        }
-        return `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="dtext-link">${label}</a>`;
-    });
-
-    // "Label":#id (Internal Anchors)
-    formatted = formatted.replace(/&quot;(.*?)&quot;:#([\w\-]+)/g, '<a href="#$2" class="dtext-link dtext-anchor" data-anchor="$2">$1</a>');
-
-    // !post #id (Post Stub for hydration)
-    formatted = formatted.replace(/!post #(\d+)/g, '<span class="dtext-post-stub" data-post-id="$1">Loading post #$1...</span>');
-
-    // !asset #id (Asset Stub for hydration)
-    formatted = formatted.replace(/!asset #(\d+)/g, '<span class="dtext-asset-stub" data-asset-id="$1">Loading asset #$1...</span>');
-
-    // [tn]...[/tn] (Thumbnail container)
-    formatted = formatted.replace(/\[tn\]([\s\S]*?)\[\/tn\]/g, '<div class="dtext-tn">$1</div>');
-
     // [url]http://...[/url]
-    formatted = formatted.replace(/\[url\](.*?)\[\/url\]/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="dtext-link">$1</a>');
+    formatted = formatted.replace(/\[url\](.*?)\[\/url\]/g, (match, url) => {
+        return addPlaceholder(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="dtext-link">${url}</a>`);
+    });
 
-    // topic #id (Forum links)
-    formatted = formatted.replace(/topic #(\d+)/gi, '<a href="https://danbooru.donmai.us/forum_topics/$1" target="_blank" rel="noopener noreferrer" class="dtext-link">topic #$1</a>');
+    // "Label":URL (Legacy) using &quot; for quotes
+    // Matches: &quot;Label&quot;:http://... OR &quot;Label&quot;:/...
+    formatted = formatted.replace(/&quot;(.*?)&quot;:((?:https?:\/\/|\/)[^\s<]+)/g, (match, label, path) => {
+        let finalUrl = path;
+        if (path.startsWith('/')) finalUrl = path.startsWith('/posts') ? '/Booru-Explorer/' : `https://danbooru.donmai.us${path}`;
+        return addPlaceholder(`<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="dtext-link">${label}</a>`);
+    });
 
-    // {{status:tag}} (Status tags)
+    // Forum Topics: topic #123
+    formatted = formatted.replace(/topic #(\d+)/gi, (m, id) => {
+        return addPlaceholder(`<a href="https://danbooru.donmai.us/forum_topics/${id}" target="_blank" rel="noopener noreferrer" class="dtext-link">topic #${id}</a>`);
+    });
+
+    // Internal Anchors: "Label":#id
+    formatted = formatted.replace(/&quot;(.*?)&quot;:#([\w\-]+)/g, (m, label, id) => {
+        return addPlaceholder(`<a href="#${id}" class="dtext-link dtext-anchor" data-anchor="${id}">${label}</a>`);
+    });
+
+    // 4. Raw URLs (Now safe to be greedy because other links are hidden)
+    formatted = formatted.replace(/(https?:\/\/[^\s<"']+)/g, (match) => {
+        return addPlaceholder(`<a href="${match}" target="_blank" rel="noopener noreferrer" class="dtext-link">${match}</a>`);
+    });
+
+    // 5. Hydration Stubs (convert to placeholders to protect them)
+    formatted = formatted.replace(/!post #(\d+)/g, (m, id) => addPlaceholder(`<span class="dtext-post-stub" data-post-id="${id}">Loading post #${id}...</span>`));
+    formatted = formatted.replace(/!asset #(\d+)/g, (m, id) => addPlaceholder(`<span class="dtext-asset-stub" data-asset-id="${id}">Loading asset #${id}...</span>`));
+    
+    // {{status:tag}}
     formatted = formatted.replace(/\{\{status:(.*?)\}\}/g, (match, tag) => {
         const fullTag = `status:${tag}`;
-        return `<span class="status-link" data-tag="${fullTag}" style="color: #f87171; cursor: pointer; text-decoration: underline;">${fullTag}</span>`;
+        return addPlaceholder(`<span class="status-link" data-tag="${fullTag}" style="color: #f87171; cursor: pointer; text-decoration: underline;">${fullTag}</span>`);
     });
 
-    // Raw URLs (simple detection)
-    formatted = formatted.replace(/(?<!["=])(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="dtext-link">$1</a>');
-
-
-    // [expand=Title]Content[/expand]
-    formatted = formatted.replace(/\[expand=(.*?)\]([\s\S]*?)\[\/expand\]/g, (match, title, content) => {
-        const id = 'acc-' + Math.random().toString(36).substr(2, 9);
-        const isEmpty = !content || !content.trim();
-        const finalContent = isEmpty ? '<span class="dtext-empty">No results found.</span>' : content;
-        
-        return `<div class="dtext-accordion">
-            <input type="checkbox" id="${id}" class="accordion-checkbox">
-            <label for="${id}" class="accordion-header">${title}</label>
-            <div class="accordion-content"><div>${finalContent}</div></div>
-        </div>`;
-    });
+    // 6. Formatting that could contain placeholders (like bolding a link)
+    // We let these run *around* placeholders. Placeholders are just weird text now.
     
-    // [expand]Content[/expand]
-    formatted = formatted.replace(/\[expand\]([\s\S]*?)\[\/expand\]/g, (match, content) => {
-        const id = 'acc-' + Math.random().toString(36).substr(2, 9);
-        const isEmpty = !content || !content.trim();
-        const finalContent = isEmpty ? '<span class="dtext-empty">No results found.</span>' : content;
+    // [b]...[/b]
+    formatted = formatted.replace(/\[b\](.*?)\[\/b\]/g, '<strong>$1</strong>');
+    // [i]...[/i]
+    formatted = formatted.replace(/\[i\](.*?)\[\/i\]/g, '<em>$1</em>');
+    // [u]...[/u]
+    formatted = formatted.replace(/\[u\](.*?)\[\/u\]/g, '<u>$1</u>');
+    // [s]...[/s]
+    formatted = formatted.replace(/\[s\](.*?)\[\/s\]/g, '<s>$1</s>');
 
-        return `<div class="dtext-accordion">
-            <input type="checkbox" id="${id}" class="accordion-checkbox">
-            <label for="${id}" class="accordion-header">Expand</label>
-            <div class="accordion-content"><div>${finalContent}</div></div>
-        </div>`;
-    });
-
-    // 4. Headers (h1. to h6.) - Supports h1. and h1#id.
-    // h4. Title
+    // Headers
     formatted = formatted.replace(/(?:^|\n)h([1-6])(?:#([\w\-]+))?\.\s*(.*?)(?=\r|\n|$)/g, (match, level, id, content) => {
         const idAttr = id ? ` id="dtext-${id}"` : '';
         return `<h${level}${idAttr}>${content}</h${level}>`;
     });
 
-    // 5. Lists (simple numeric and bullet)
-    // ** Nested Item
+    // Lists
     formatted = formatted.replace(/(?:^|\n)\*\* (.*?)(?=\r|\n|$)/g, '<div class="dtext-list-item nested"><span>$1</span></div>');
-
-    // * Item
     formatted = formatted.replace(/(?:^|\n)\* (.*?)(?=\r|\n|$)/g, (match, content) => {
-        // Check if the item contains a post or asset preview stub
-        const isPreview = content.includes('dtext-post-stub') || content.includes('dtext-asset-stub');
-        if (isPreview) {
-            // Robustly separate the stub from the label (stripping the colon)
-            const firstColon = content.indexOf(':');
-            if (firstColon !== -1) {
-                const stub = content.substring(0, firstColon).trim();
-                const label = content.substring(firstColon + 1).trim();
-                if (label) {
-                    return `<div class="dtext-list-item dtext-preview-item"><span>${stub}<span class="preview-label">${label}</span></span></div>`;
-                }
-            }
-            return `<div class="dtext-list-item dtext-preview-item"><span>${content}</span></div>`;
-        }
+        // We can't easily check for stubs inside content now because they are placeholders.
+        // But the CSS logic for dtext-preview-item works on structure.
+        // We'll just render generic item and let styles/JS handle specific layout if needed.
+        // Or we can peek: if content includes __PH_... and that placeholder is a stub.
+        // For simplicity, just render standard list item.
         return `<div class="dtext-list-item"><span>${content}</span></div>`;
     });
 
-    // 6. Line breaks - Paragraph-like logic
-    // - Danbooru DText: Double newline = new paragraph/break
-    // - Single newline = space (usually)
-    
-    // First, protect <br> that might have been added by stubs/etc (though currently we use divs/spans)
-    
-    // Replace double newlines with a special placeholder to avoid being caught by single newline rule
+    // Expand
+    // Note: [expand] might contain placeholders. 
+    formatted = formatted.replace(/\[expand(?:=(.*?))?\]([\s\S]*?)\[\/expand\]/g, (match, title, content) => {
+        const id = 'acc-' + Math.random().toString(36).substr(2, 9);
+        const displayTitle = title || 'Expand';
+        const finalContent = (!content || !content.trim()) ? '<span class="dtext-empty">No results found.</span>' : content;
+        
+        return `<div class="dtext-accordion">
+            <input type="checkbox" id="${id}" class="accordion-checkbox">
+            <label for="${id}" class="accordion-header">${displayTitle}</label>
+            <div class="accordion-content"><div>${finalContent}</div></div>
+        </div>`;
+    });
+
+    // Line breaks
     formatted = formatted.replace(/(\r\n\r\n|\n\n|\r\r)/g, '<br><br>');
-    
-    // Replace single newlines with spaces (if they are not already inside a tag or followed/preceded by block elements)
-    // For now, let's just make it simpler: single newline -> space, but don't break headers/lists
-    // Headers and lists already match ^|\n, so we can replace \n with spaces if not followed by * or h[1-6]
-    formatted = formatted.replace(/\n(?!\*|\bh[1-6]\.)/g, ' ');
-
-    // Cleanup extra spaces
+    formatted = formatted.replace(/\n(?!\*|\bh[1-6]\.)/g, ' '); // Single newline -> space
     formatted = formatted.replace(/[ ]{2,}/g, ' ');
-    
-    // Finally convert remaining newlines (at start of headers/lists) to <br> to ensure they stack
-    formatted = formatted.replace(/\n/g, '<br>');
+    formatted = formatted.replace(/\n/g, '<br>'); // Remaining newlines for headers/lists
 
-    // Cleanup whitespace around block elements
+    // Cleanup whitespace around headers/divs
     formatted = formatted.replace(/(<\/h[1-6]>)<br>/g, '$1');
     formatted = formatted.replace(/<br>(<h[1-6]>)/g, '$1');
     formatted = formatted.replace(/(<\/div>)<br>(<div)/g, '$1$2');
+
+    // 7. Restore Placeholders
+    // Loop until no placeholders remain (handle nested if any, though our logic is flat for now)
+    // We reverse loop to ensure inner placeholders are resolved if we had nesting (we don't really, but safety)
+    
+    // Actually, simple replacement is fine.
+    placeholders.forEach((html, index) => {
+        const id = `__PH_${index}__`;
+        // Use split/join to replace all occurrences if any (though usually 1)
+        formatted = formatted.split(id).join(html);
+    });
 
     return formatted;
   };

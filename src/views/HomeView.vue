@@ -441,7 +441,10 @@ export default {
       selectedPost,
       openModal,
       navigatePost,
+      openModal,
+      navigatePost,
       canPrev,
+      canNext,
       handleAction,
       showTimeoutInfo
     };
