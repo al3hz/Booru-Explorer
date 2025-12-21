@@ -16,6 +16,12 @@ const router = createRouter({
       name: 'comments',
       component: CommentsView,
       meta: { title: 'Comments | Booru Explorer' }
+    },
+    {
+      path: '/wiki/:query',
+      name: 'wiki',
+      component: () => import('../views/WikiView.vue'),
+      meta: { title: 'Wiki | Booru Explorer' }
     }
   ]
 })

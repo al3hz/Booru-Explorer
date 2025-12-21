@@ -150,7 +150,7 @@
                 <h3>Artist Commentary</h3>
                 <div class="commentary-content">
                   <h4 v-if="commentary.original_title">{{ commentary.original_title }}</h4>
-                  <div class="commentary-body" v-html="formatCommentBody(commentary.original_description)"></div>
+                  <div class="commentary-body" v-html="parseDText(commentary.original_description)"></div>
                 </div>
               </div>
 
@@ -239,7 +239,7 @@
                       </span>
                       <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
                     </div>
-                    <div class="comment-body" v-html="formatCommentBody(comment.body)"></div>
+                    <div class="comment-body" v-html="parseDText(comment.body)"></div>
                   </div>
                 </transition-group>
                 
@@ -270,27 +270,19 @@
         </button>
       </transition>
       
-      <!-- Artist Info Modal -->
-      <transition name="fade">
-        <ArtistInfoModal 
-            v-if="showArtistModal" 
-            :artist-name="selectedArtist" 
-            @close="showArtistModal = false"
-            @search="handleArtistSearch"
-        />
-      </transition>
+
     </div>
 </template>
 
 <script>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import ArtistInfoModal from './ArtistInfoModal.vue';
+import { useRouter } from 'vue-router';
+import { useDanbooruApi } from '../composables/useDanbooruApi';
+import { useDText } from '../composables/useDText';
 
 export default {
   name: 'ImageDetailModal',
-  components: {
-    ArtistInfoModal
-  },
+  // ... props ...
   props: {
     post: {
       type: Object,
@@ -307,6 +299,10 @@ export default {
   },
   emits: ['close', 'next', 'prev', 'search-tag', 'update-post'],
   setup(props, { emit }) {
+    const router = useRouter();
+    const { getPost, getTooglePostConfig, getPostComments, getArtist } = useDanbooruApi();
+    const { parseDText } = useDText();
+    
     const loading = ref(true);
     const comments = ref([]);
     const commentsLoading = ref(false);
@@ -456,12 +452,11 @@ export default {
     // Family Logic
     const familyPosts = ref([]);
     const familyLoading = ref(false);
-    const currentRootId = ref(null); // Track current root to prevent refetching
+    const currentRootId = ref(null);
 
     const fetchFamily = async () => {
        if (!props.post) return;
 
-       // Determine root ID
        let rootId = null;
        if (props.post.parent_id) {
          rootId = props.post.parent_id;
@@ -469,19 +464,16 @@ export default {
          rootId = props.post.id;
        }
 
-       // Checks if we need to fetch
        if (!rootId) {
          familyPosts.value = [];
          currentRootId.value = null;
-         familyReady.value = true; // Nothing to fetch
+         familyReady.value = true;
          checkLoading();
          return;
        }
 
-       // If same family, just return (don't clear, don't refetch)
-       // This prevents flickering when navigating between siblings
        if (rootId === currentRootId.value && familyPosts.value.length > 0) {
-          familyReady.value = true; // Already have data
+          familyReady.value = true; 
           checkLoading();
           return;
        }
@@ -491,14 +483,10 @@ export default {
        familyLoading.value = true;
        
        try {
-         // Search for parent OR siblings
-         // variants: ~parent:123 ~id:123
          const tags = `~parent:${rootId} ~id:${rootId}`;
-         const res = await fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(tags)}&limit=20`); // Limit 20 for preview
+         const res = await fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(tags)}&limit=20`);
          if (res.ok) {
            let data = await res.json();
-           
-           // Filter invalid posts (must have image URL)
            familyPosts.value = data
             .filter(p => p.file_url || p.large_file_url || p.preview_file_url)
             .sort((a, b) => a.id - b.id);
@@ -506,7 +494,7 @@ export default {
        } catch (e) {
          console.error("Error fetching family", e);
          familyPosts.value = [];
-         currentRootId.value = null; // Reset on error so we can try again
+         currentRootId.value = null;
        } finally {
          familyLoading.value = false;
          familyReady.value = true;
@@ -515,29 +503,6 @@ export default {
     };
 
 
-
-    const formatCommentBody = (body) => {
-      if (!body) return '';
-      let formatted = body
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      
-      formatted = formatted.replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, '<blockquote>$1</blockquote>');
-      formatted = formatted.replace(/\n/g, '<br>');
-      formatted = formatted.replace(/post #(\d+)/gi, '<a href="https://danbooru.donmai.us/posts/$1" target="_blank">post #$1</a>');
-      formatted = formatted.replace(/"(.*?)"\:\[(.*?)\]/g, '<a href="$2" target="_blank">$1</a>');
-      
-      // Handle {{tag}}
-      formatted = formatted.replace(/\{\{(.*?)\}\}/g, '<a href="https://danbooru.donmai.us/posts?tags=$1" target="_blank">$1</a>');
-      
-      // Handle [[wiki]] or [[wiki|label]]
-      formatted = formatted.replace(/\[\[(.*?)\]\]/g, (match, content) => {
-        const [page, text] = content.split('|');
-        return `<a href="https://danbooru.donmai.us/wiki_pages/${page}" target="_blank">${text || page}</a>`;
-      });
-      
-      return formatted;
-    };
 
     const formatFileSize = (bytes) => {
       if (!bytes) return 'N/A';
@@ -573,7 +538,6 @@ export default {
     const isVideo = computed(() => {
       const ext = props.post.file_ext;
       if (['mp4', 'webm', 'gifv'].includes(ext)) return true;
-      // Handle Ugoira (ZIP) that has a converted video url
       if (ext === 'zip' && props.post.large_file_url && props.post.large_file_url.endsWith('.webm')) {
         return true;
       }
@@ -584,14 +548,12 @@ export default {
       return props.post.file_ext === 'swf';
     });
 
-    // Initialize Ruffle
     const loadRuffle = () => {
       if (!isFlash.value) return;
 
       requestAnimationFrame(() => {
         if (!ruffleContainer.value) return;
         
-        // Limpiar anterior
         ruffleContainer.value.innerHTML = '';
         
         if (window.RufflePlayer) {
@@ -609,18 +571,14 @@ export default {
       });
     };
 
-    // Watch for post changes to re-fetch comments, commentary AND family
     watch(() => props.post.id, async () => {
-       // Reset ready states (but don't force loading spinner)
        imageReady.value = false;
        familyReady.value = false;
        
-       // Handle special cases
        if (isFlash.value) {
           imageReady.value = true;
           loadRuffle();
        } else {
-         // Clear ruffle if needed
          if (ruffleContainer.value) ruffleContainer.value.innerHTML = '';
        }
 
@@ -629,8 +587,6 @@ export default {
        fetchFamily();
     }, { immediate: true });
 
-
-    // Initial load
     onMounted(() => {
        if (isFlash.value) {
           setTimeout(() => loadRuffle(), 100);
@@ -653,99 +609,49 @@ export default {
       return "";
     };
 
-    // Navigation Logic
     const transitionName = ref('fade');
 
-    const canGoNext = computed(() => {
-        if (familyPosts.value.length > 0) {
-            const idx = familyPosts.value.findIndex(p => p.id === props.post.id);
-            if (idx !== -1 && idx < familyPosts.value.length - 1) return true;
-        }
-        return props.hasNext;
-    });
-
-    const canGoPrev = computed(() => {
-        if (familyPosts.value.length > 0) {
-            const idx = familyPosts.value.findIndex(p => p.id === props.post.id);
-            if (idx > 0) return true;
-        }
-        return props.hasPrev;
-    });
+    const canGoNext = computed(() => props.hasNext);
+    const canGoPrev = computed(() => props.hasPrev);
 
     const triggerNext = () => {
-        // Priority 1: Standard gallery navigation (if available)
         if (props.hasNext) {
             transitionName.value = 'fade';
             emit('next');
-            return;
-        }
-        
-        // Priority 2: Family navigation (only if no standard next available)
-        if (familyPosts.value.length > 0) {
-            const idx = familyPosts.value.findIndex(p => p.id === props.post.id);
-            if (idx !== -1 && idx < familyPosts.value.length - 1) {
-                transitionName.value = 'fade'; // Enable smooth transition for family
-                emit('update-post', familyPosts.value[idx + 1]);
-                return;
-            }
         }
     };
 
     const triggerPrev = () => {
-        // Priority 1: Standard gallery navigation (if available)
         if (props.hasPrev) {
             transitionName.value = 'fade';
             emit('prev');
-            return;
-        }
-        
-        // Priority 2: Family navigation (only if no standard prev available)
-        if (familyPosts.value.length > 0) {
-            const idx = familyPosts.value.findIndex(p => p.id === props.post.id);
-            if (idx > 0) {
-               transitionName.value = 'fade'; // Enable smooth transition for family
-               emit('update-post', familyPosts.value[idx - 1]);
-               return;
-            }
         }
     };
     
-    // Handle banner click
     const handleBannerClick = (post) => {
-        transitionName.value = 'fade'; // Enable smooth transition for banner clicks
+        transitionName.value = 'fade'; 
         emit('update-post', post);
     };
 
-    // Artist Info Logic
-    const showArtistModal = ref(false);
-    const selectedArtist = ref('');
-
+       // Artist Info Navigation
     const openArtistInfo = (tag) => {
-        selectedArtist.value = tag;
-        showArtistModal.value = true;
+        emit('close'); // Close modal
+        router.push({ name: 'wiki', params: { query: tag } });
     };
-
-    const handleArtistSearch = (tag) => {
-        showArtistModal.value = false;
-        emit('search-tag', tag);
-    };
-
-    // Handle Esc key
+    // Since I cannot import inside this string easily, I should return just the minimal changes needed, 
+    // or rewrite the setup to include useRouter. 
+    // I need to be careful. I am replacing the whole block.
+    // I'll add useRouter import at top of script block in next step or use `window.location`? 
+    // Using `emit` to tell parent to navigate is also an option but cleaner to use router here.
+    
+    // Actually, I can just emit a 'wiki' event and handle it in HomeView, or just use useRouter.
+    // I'll choose adding useRouter. I need to make sure I update imports.
+    
     const handleKeydown = (e) => {
-      // If artist modal is open, close it first
-      if (showArtistModal.value) {
-          if (e.key === 'Escape') showArtistModal.value = false;
-          return;
-      }
-      
       if (e.key === 'Escape') emit('close');
       if (e.key === 'ArrowRight') triggerNext();
       if (e.key === 'ArrowLeft') triggerPrev();
     };
-
-    onMounted(() => {
-      // Logic moved up to handle Ruffle
-    });
 
     onUnmounted(() => {
       window.removeEventListener('keydown', handleKeydown);
@@ -767,7 +673,6 @@ export default {
       commentsLoading,
       hasMoreComments,
       loadMoreComments,
-      formatCommentBody,
       copyImageLink,
       linkCopied,
       downloadImage,
@@ -785,13 +690,11 @@ export default {
       canGoPrev,
       triggerNext,
       triggerPrev,
-      triggerPrev,
       handleBannerClick,
-      showArtistModal,
-      selectedArtist,
       openArtistInfo,
-      handleArtistSearch
+      parseDText
     };
+
   }
 }
 </script>
@@ -1335,14 +1238,45 @@ export default {
   font-size: 12px;
 }
 
-.comment-body :deep(a) {
+.comment-text :deep(a) {
   color: #60a5fa;
   text-decoration: none;
 }
 
-.comment-body :deep(a):hover {
+.comment-text :deep(a):hover {
   text-decoration: underline;
 }
+
+/* DText Styles */
+.comment-text :deep(.dtext-quote), .commentary-content :deep(.dtext-quote) {
+    border-left: 3px solid #a78bfa;
+    padding-left: 10px;
+    margin: 10px 0;
+    color: #94ab38;
+    background: rgba(255,255,255,0.05);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.comment-text :deep(.dtext-code), .commentary-content :deep(.dtext-code) {
+    background: #000;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: monospace;
+}
+
+.comment-text :deep(.dtext-link), .commentary-content :deep(.dtext-link) {
+    color: #38bdf8;
+    text-decoration: none;
+}
+
+.comment-text :deep(.dtext-link):hover, .commentary-content :deep(.dtext-link):hover {
+    text-decoration: underline;
+}
+
+.comment-text :deep(strong), .commentary-content :deep(strong) { color: #fff; }
+.comment-text :deep(em), .commentary-content :deep(em) { color: #ddd; }
 
 .no-comments {
   color: #64748b;

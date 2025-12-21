@@ -28,6 +28,10 @@
           <i class="lni lni-comments"></i>
           <span>Comments</span>
         </router-link>
+        <router-link to="/wiki/danbooru" class="nav-item" active-class="active">
+          <i class="lni lni-library"></i>
+          <span>Wiki</span>
+        </router-link>
         <div class="nav-item kaomoji-pill" @click="changeKaomoji" title="Click to change">
           <span class="kaomoji-text">{{ currentKaomoji }}</span>
         </div>
