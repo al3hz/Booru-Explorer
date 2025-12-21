@@ -39,6 +39,18 @@
 
             <!-- Image Section -->
             <div class="image-section">
+            
+            <!-- Pending Overlay -->
+            <transition name="fade">
+              <div v-if="post.is_pending && showPendingOverlay" class="pending-overlay">
+                <i class="lni lni-warning"></i>
+                <span>Pending Approval</span>
+                <span class="separator">•</span>
+                <a href="#" @click.prevent="goToWiki('about:mod_queue')" class="overlay-link" title="Read about moderation queue">Learn more</a>
+                <button class="overlay-close" @click.stop="showPendingOverlay = false">×</button>
+              </div>
+            </transition>
+
             <div v-if="loading" class="image-loader">
               <div class="loader-spinner"></div>
             </div>
@@ -309,6 +321,9 @@ export default {
     const { getPost, getTooglePostConfig, getPostComments, getArtist } = useDanbooruApi();
     const { parseDText } = useDText();
     
+    // Pending Overlay Logic
+    const showPendingOverlay = ref(true);
+
     const loading = ref(true);
     const comments = ref([]);
     const commentsLoading = ref(false);
@@ -578,6 +593,7 @@ export default {
     };
 
     watch(() => props.post.id, async () => {
+       showPendingOverlay.value = true; // Reset overlay visibility
        imageReady.value = false;
        familyReady.value = false;
        
@@ -644,14 +660,11 @@ export default {
         emit('close'); // Close modal
         router.push({ name: 'wiki', params: { query: tag } });
     };
-    // Since I cannot import inside this string easily, I should return just the minimal changes needed, 
-    // or rewrite the setup to include useRouter. 
-    // I need to be careful. I am replacing the whole block.
-    // I'll add useRouter import at top of script block in next step or use `window.location`? 
-    // Using `emit` to tell parent to navigate is also an option but cleaner to use router here.
-    
-    // Actually, I can just emit a 'wiki' event and handle it in HomeView, or just use useRouter.
-    // I'll choose adding useRouter. I need to make sure I update imports.
+    // Helper to navigate to wiki
+    const goToWiki = (page) => {
+        emit('close'); // Close modal
+        router.push({ name: 'wiki', params: { query: page } });
+    };
     
     const handleKeydown = (e) => {
       if (e.key === 'Escape') emit('close');
@@ -698,6 +711,8 @@ export default {
       triggerPrev,
       handleBannerClick,
       openArtistInfo,
+      goToWiki,
+      showPendingOverlay,
       parseDText
     };
 
@@ -964,6 +979,67 @@ export default {
   object-fit: contain;
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.pending-overlay {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 20;
+  background: rgba(245, 158, 11, 0.9);
+  backdrop-filter: blur(8px);
+  padding: 8px 14px;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: all 0.2s;
+}
+
+.pending-overlay:hover {
+  background: rgba(245, 158, 11, 1);
+  transform: translateY(1px);
+}
+
+.pending-overlay .separator {
+  opacity: 0.5;
+}
+
+.overlay-link {
+  color: #fff;
+  text-decoration: underline;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+.overlay-link:hover {
+  opacity: 1;
+}
+
+.overlay-close {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+  margin-left: 6px;
+  cursor: pointer;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay-close:hover {
+  opacity: 1;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
 }
 
 .info-sidebar {
