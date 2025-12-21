@@ -75,6 +75,12 @@
             <div class="info-header">
               <div class="header-left">
                 <h2 class="post-id">Post #{{ post.id }}</h2>
+                <!-- Status Labels -->
+                <div class="status-indicators-modal">
+                    <span v-if="post.is_pending" class="status-badge pending">PENDING</span>
+                    <span v-if="post.is_deleted" class="status-badge deleted">DELETED</span>
+                    <span v-if="post.is_flagged" class="status-badge flagged">FLAGGED</span>
+                </div>
                 <div class="header-actions">
                   <a 
                     :href="post.file_url || post.large_file_url" 
@@ -977,14 +983,42 @@ export default {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
+  flex: 1;
+  flex-wrap: wrap; /* Allow wrapping for badges */
 }
 
 .post-id {
-  margin: 0;
   font-size: 20px;
+  font-weight: 700;
   color: #fff;
+  margin: 0;
 }
+
+.status-indicators-modal {
+    display: flex;
+    gap: 6px;
+}
+
+/* Copied from PostGallery for consistency */
+.status-badge {
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: white;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.status-badge.pending { background: rgba(217, 119, 6, 0.9); color: #fff; }
+.status-badge.deleted { background: rgba(220, 38, 38, 0.9); color: #fff; }
+.status-badge.flagged { background: rgba(147, 51, 234, 0.9); color: #fff; }
 
 .header-actions {
   display: flex;

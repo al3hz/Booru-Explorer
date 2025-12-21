@@ -63,23 +63,20 @@
                 </span>
               </div>
 
-              <!-- Status Icons -->
+              <!-- Status Label -->
               <div class="status-indicators">
                 <span
                   v-if="post.is_pending"
-                  class="status-dot pending"
-                  title="Pending"
-                ></span>
+                  class="status-badge pending"
+                >PENDING</span>
                 <span
                   v-if="post.is_deleted"
-                  class="status-dot deleted"
-                  title="Deleted"
-                ></span>
+                  class="status-badge deleted"
+                >DELETED</span>
                 <span
                   v-if="post.is_flagged"
-                  class="status-dot flagged"
-                  title="Flagged"
-                ></span>
+                  class="status-badge flagged"
+                >FLAGGED</span>
               </div>
             </div>
           </div>
@@ -743,29 +740,39 @@ export default {
   text-transform: uppercase;
   color: white;
   backdrop-filter: blur(4px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-.rating-explicit { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-.rating-questionable { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.rating-safe { background: linear-gradient(135deg, #22c55e, #15803d); }
-.rating-general { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.rating-explicit { background: rgba(220, 38, 38, 0.85); color: #fff; }
+.rating-questionable { background: rgba(217, 119, 6, 0.85); color: #fff; }
+.rating-safe { background: rgba(22, 163, 74, 0.85); color: #fff; }
+.rating-general { background: rgba(37, 99, 235, 0.85); color: #fff; }
 
 .status-indicators {
   display: flex;
   gap: 4px;
 }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+.status-badge {
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: white;
+  text-transform: uppercase;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-.status-dot.pending { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
-.status-dot.deleted { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
-.status-dot.flagged { background: #a855f7; box-shadow: 0 0 8px #a855f7; }
+.status-badge.pending { background: rgba(217, 119, 6, 0.9); color: #fff; }
+.status-badge.deleted { background: rgba(220, 38, 38, 0.9); color: #fff; }
+.status-badge.flagged { background: rgba(147, 51, 234, 0.9); color: #fff; }
 
 /* Content Section */
 .card-content {
