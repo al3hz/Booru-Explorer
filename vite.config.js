@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
-  base: '/',
+  base: process.env.VERCEL ? '/' : '/Booru-Explorer/',
   server: {
     port: 3000
   }
