@@ -32,9 +32,15 @@ export function useDText() {
 
     // 3. Links
     
-    // [[Wiki Page]] or [[Wiki Page|Label]]
+    // [[Wiki Page]] or [[Wiki Page|Label]] or [[Wiki Page|]]
     formatted = formatted.replace(/\[\[(.*?)(?:\|(.*?))?\]\]/g, (match, link, label) => {
-        const displayText = label || link;
+        let displayText = label;
+        // Handle [[page|]] (empty alias) - Danbooru uses this to strip qualifiers
+        if (label === '') {
+            displayText = link.replace(/_\(.*\)$/, '');
+        } else if (!label) {
+            displayText = link;
+        }
         return `<span class="wiki-link" data-link="${link}" style="color: #a78bfa; cursor: pointer; text-decoration: underline;">${displayText}</span>`;
     });
 
@@ -43,6 +49,9 @@ export function useDText() {
     
     // "Label":[Url] (Note: quotes are already escaped to &quot;)
     formatted = formatted.replace(/&quot;(.*?)&quot;:\[(.*?)\]/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="dtext-link">$1</a>');
+
+    // "Label":/url (Non-bracketed links)
+    formatted = formatted.replace(/&quot;(.*?)&quot;:(\/[^\s<]+)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="dtext-link">$1</a>');
 
     // "Label":#id (Internal Anchors)
     formatted = formatted.replace(/&quot;(.*?)&quot;:#([\w\-]+)/g, '<a href="#$2" class="dtext-link dtext-anchor" data-anchor="$2">$1</a>');
@@ -58,6 +67,9 @@ export function useDText() {
 
     // [url]http://...[/url]
     formatted = formatted.replace(/\[url\](.*?)\[\/url\]/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="dtext-link">$1</a>');
+
+    // topic #id (Forum links)
+    formatted = formatted.replace(/topic #(\d+)/gi, '<a href="https://danbooru.donmai.us/forum_topics/$1" target="_blank" rel="noopener noreferrer" class="dtext-link">topic #$1</a>');
 
     // Raw URLs (simple detection)
     formatted = formatted.replace(/(?<!["=])(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="dtext-link">$1</a>');
@@ -97,37 +109,52 @@ export function useDText() {
     });
 
     // 5. Lists (simple numeric and bullet)
+    // ** Nested Item
+    formatted = formatted.replace(/(?:^|\n)\*\* (.*?)(?=\r|\n|$)/g, '<div class="dtext-list-item nested"><span>$1</span></div>');
+
     // * Item
     formatted = formatted.replace(/(?:^|\n)\* (.*?)(?=\r|\n|$)/g, (match, content) => {
         // Check if the item contains a post or asset preview stub
         const isPreview = content.includes('dtext-post-stub') || content.includes('dtext-asset-stub');
         if (isPreview) {
             // Robustly separate the stub from the label (stripping the colon)
-            // Example: "!post #123 : Default" -> stub: "!post #123", label: "Default"
             const firstColon = content.indexOf(':');
             if (firstColon !== -1) {
                 const stub = content.substring(0, firstColon).trim();
                 const label = content.substring(firstColon + 1).trim();
                 if (label) {
-                    return `<div class="dtext-list-item dtext-preview-item">${stub}<span class="preview-label">${label}</span></div>`;
+                    return `<div class="dtext-list-item dtext-preview-item"><span>${stub}<span class="preview-label">${label}</span></span></div>`;
                 }
             }
-            return `<div class="dtext-list-item dtext-preview-item">${content}</div>`;
+            return `<div class="dtext-list-item dtext-preview-item"><span>${content}</span></div>`;
         }
-        return `<div class="dtext-list-item">• ${content}</div>`;
+        return `<div class="dtext-list-item"><span>${content}</span></div>`;
     });
 
-    // 6. Line breaks - Aggressive cleanup
-    // - Condense multiple newlines to max 2 <br>
-    formatted = formatted.replace(/(\r\n|\n|\r){3,}/g, '\n\n'); 
-    formatted = formatted.replace(/(\r\n|\n|\r)/g, '<br>');
+    // 6. Line breaks - Paragraph-like logic
+    // - Danbooru DText: Double newline = new paragraph/break
+    // - Single newline = space (usually)
     
-    // Cleanup <br> after headers (prevent double spacing)
+    // First, protect <br> that might have been added by stubs/etc (though currently we use divs/spans)
+    
+    // Replace double newlines with a special placeholder to avoid being caught by single newline rule
+    formatted = formatted.replace(/(\r\n\r\n|\n\n|\r\r)/g, '<br><br>');
+    
+    // Replace single newlines with spaces (if they are not already inside a tag or followed/preceded by block elements)
+    // For now, let's just make it simpler: single newline -> space, but don't break headers/lists
+    // Headers and lists already match ^|\n, so we can replace \n with spaces if not followed by * or h[1-6]
+    formatted = formatted.replace(/\n(?!\*|\bh[1-6]\.)/g, ' ');
+
+    // Cleanup extra spaces
+    formatted = formatted.replace(/[ ]{2,}/g, ' ');
+    
+    // Finally convert remaining newlines (at start of headers/lists) to <br> to ensure they stack
+    formatted = formatted.replace(/\n/g, '<br>');
+
+    // Cleanup whitespace around block elements
     formatted = formatted.replace(/(<\/h[1-6]>)<br>/g, '$1');
     formatted = formatted.replace(/<br>(<h[1-6]>)/g, '$1');
-    
-    // Cleanup <br> between inline-block post/asset items to allow them to flow horizontally
-    formatted = formatted.replace(/(<\/div>)<br>(<div class="dtext-list-item dtext-preview-item">)/g, '$1$2');
+    formatted = formatted.replace(/(<\/div>)<br>(<div)/g, '$1$2');
 
     return formatted;
   };

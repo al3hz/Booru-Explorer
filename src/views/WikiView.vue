@@ -741,17 +741,36 @@ export default {
 }
 
 .wiki-section h3, .previews-section h3 {
-    font-size: 14px;
+    font-size: 16px;
     text-transform: uppercase;
-    color: #94a3b8;
-    margin-bottom: 15px;
+    color: #a78bfa;
+    margin-top: 30px;
+    margin-bottom: 20px;
     border-left: 3px solid #a78bfa;
-    padding-left: 10px;
+    padding-left: 12px;
 }
 
 .wiki-text {
     font-size: 15px;
     color: #cbd5e1;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    text-align: left;
+}
+
+.wiki-text h4 {
+    font-size: 20px;
+    margin: 35px 0 20px 0;
+    color: #fff;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 8px;
+}
+
+.wiki-text h5 {
+    font-size: 17px;
+    margin: 25px 0 15px 0;
+    color: #e2e8f0;
+    font-weight: 600;
 }
 
 .wiki-text :deep(.wiki-link) {
@@ -766,14 +785,20 @@ export default {
     border-bottom-style: solid;
 }
 
-.wiki-text :deep(.dtext-quote) {
+.wiki-text :deep(.dtext-quote), .wiki-text :deep(.dtext-tn) {
     border-left: 3px solid #a78bfa;
-    padding-left: 10px;
-    margin: 10px 0;
+    padding: 12px 16px;
+    margin: 15px 0;
     color: #94ab38;
-    background: rgba(255,255,255,0.05);
-    padding: 10px;
-    border-radius: 4px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+    font-size: 0.95em;
+}
+
+.wiki-text :deep(.dtext-tn) {
+    border-left-color: #6366f1;
+    color: #cbd5e1;
+    font-style: italic;
 }
 
 .wiki-text :deep(.dtext-code) {
@@ -840,12 +865,30 @@ export default {
     color: #a78bfa;
 }
 
-.wiki-text :deep(.accordion-content) {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.3s ease-out;
-    background: transparent;
-    margin-left: 10px;
+.wiki-text :deep(.dtext-list-item) {
+    margin: 12px 0;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.wiki-text :deep(.dtext-list-item > span) {
+    flex: 1;
+    min-width: 0;
+}
+
+.wiki-text :deep(.dtext-list-item)::before {
+    content: "•";
+    color: #a78bfa;
+    flex-shrink: 0;
+    font-weight: bold;
+}
+
+.wiki-text :deep(.dtext-list-item.nested) {
+    margin-left: 30px;
+    font-size: 0.95em;
+    opacity: 0.9;
 }
 
 .wiki-text :deep(.dtext-accordion input:checked ~ .accordion-content) {
