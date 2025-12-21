@@ -45,13 +45,35 @@ export function useDText() {
     });
 
     // [url=http://...]Label[/url]
-    formatted = formatted.replace(/\[url=(.*?)\](.*?)\[\/url\]/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="dtext-link">$2</a>');
+    formatted = formatted.replace(/\[url=(.*?)\](.*?)\[\/url\]/g, (match, url, label) => {
+        let finalUrl = url;
+        if (url.startsWith('/')) {
+            if (url.startsWith('/posts')) finalUrl = '/Booru-Explorer/';
+            else finalUrl = `https://danbooru.donmai.us${url}`;
+        }
+        return `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="dtext-link">${label}</a>`;
+    });
     
     // "Label":[Url] (Note: quotes are already escaped to &quot;)
-    formatted = formatted.replace(/&quot;(.*?)&quot;:\[(.*?)\]/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="dtext-link">$1</a>');
+    formatted = formatted.replace(/&quot;(.*?)&quot;:\[(.*?)\]/g, (match, label, url) => {
+        let finalUrl = url;
+        if (url.startsWith('/')) {
+            if (url.startsWith('/posts')) finalUrl = '/Booru-Explorer/';
+            else finalUrl = `https://danbooru.donmai.us${url}`;
+        }
+        return `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="dtext-link">${label}</a>`;
+    });
 
     // "Label":/url (Non-bracketed links)
-    formatted = formatted.replace(/&quot;(.*?)&quot;:(\/[^\s<]+)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="dtext-link">$1</a>');
+    formatted = formatted.replace(/&quot;(.*?)&quot;:(\/[^\s<]+)/g, (match, label, path) => {
+        let finalUrl;
+        if (path.startsWith('/posts')) {
+            finalUrl = '/Booru-Explorer/';
+        } else {
+            finalUrl = `https://danbooru.donmai.us${path}`;
+        }
+        return `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="dtext-link">${label}</a>`;
+    });
 
     // "Label":#id (Internal Anchors)
     formatted = formatted.replace(/&quot;(.*?)&quot;:#([\w\-]+)/g, '<a href="#$2" class="dtext-link dtext-anchor" data-anchor="$2">$1</a>');
