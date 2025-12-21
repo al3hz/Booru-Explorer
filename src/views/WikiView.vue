@@ -153,6 +153,9 @@
             </div>
             
             <div class="actions">
+                <button @click="goToPostSearch" class="search-posts-btn">
+                    Search Posts <i class="lni lni-search-alt" style="margin-left:5px"></i>
+                </button>
                 <a :href="currentView.danbooruUrl" target="_blank" class="danbooru-link">
                     View on Danbooru <i class="lni lni-link" style="margin-left:5px"></i>
                 </a>
@@ -272,7 +275,8 @@ export default {
     const fetchPreviewPosts = async (tag) => {
         try {
             const normalizedTag = normalizeTag(tag);
-            const res = await fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(normalizedTag)}&limit=20`);
+            const searchTags = normalizedTag ? `${normalizedTag} -status:deleted` : '-status:deleted';
+            const res = await fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(searchTags)}&limit=20`);
             if (res.ok) {
                 const postsArr = await res.json();
                 const validPosts = postsArr.filter(p => {
@@ -588,7 +592,12 @@ export default {
       selectedPost, handleSearchTag,
       handleNext, handlePrev, canGoNext, canGoPrev,
       getStatusText, getLinkDomain, getLinkIconClass, getHeaderIcon, handleImageError, getPostPreview, isVideo,
-      recentChanges, wikiSearchQuery, autocompleteResults, showAutocomplete, handleWikiSearchInput, submitWikiSearch, handleAliasClick
+      recentChanges, wikiSearchQuery, autocompleteResults, showAutocomplete, handleWikiSearchInput, submitWikiSearch, handleAliasClick,
+      goToPostSearch: () => {
+          if (currentView.value && currentView.value.searchTag) {
+              router.push({ name: 'home', query: { tags: currentView.value.searchTag } });
+          }
+      }
     };
   }
 }
@@ -1249,7 +1258,7 @@ export default {
 
 .wiki-accordion .accordion-content > div {
     overflow: hidden;
-    padding: 8px 12px;
+    line-height: 1.6;
 }
 
 .recent-list li {
@@ -1358,6 +1367,30 @@ export default {
     padding-top: 20px;
 }
 
+.search-posts-btn {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #a78bfa;
+    color: #fff;
+    border: none;
+    justify-content: center;
+    width: 100%;
+    font-family: inherit;
+    box-shadow: 0 4px 12px rgba(167, 139, 250, 0.2);
+}
+
+.search-posts-btn:hover {
+    background: #c084fc;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(167, 139, 250, 0.4);
+}
+
 .danbooru-link {
     padding: 12px 20px;
     border-radius: 8px;
@@ -1367,7 +1400,7 @@ export default {
     align-items: center;
     gap: 8px;
     transition: all 0.2s;
-    background: transparent;
+    background: rgba(255,255,255,0.05);
     color: #94a3b8;
     border: 1px solid rgba(255,255,255,0.1);
     text-decoration: none;
@@ -1378,7 +1411,7 @@ export default {
 .danbooru-link:hover {
     border-color: #64748b;
     color: #fff;
-    background: rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.1);
 }
 
 @keyframes fadeInUp {

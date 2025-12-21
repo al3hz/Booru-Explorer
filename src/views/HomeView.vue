@@ -19,14 +19,14 @@
       ></div>
 
       <SearchForm
-        :search-query="searchQuery"
+        :search-query="inputQuery"
         :loading="loading"
         :limit="limit"
         :rating-filter="ratingFilter"
         :posts="posts"
         :sidebar-visible="sidebarVisible"
         :infinite-scroll="infiniteScroll"
-        @update:search-query="searchQuery = $event"
+        @update:search-query="inputQuery = $event"
         @update:limit="limit = $event"
         @update:rating-filter="ratingFilter = $event"
         @update:infinite-scroll="infiniteScroll = $event"
@@ -41,22 +41,56 @@
           {{ error }}
         </div>
         
-        <div v-if="searchQuery === 'status:deleted'" class="info-banner deleted-mode">
+        <div v-if="appliedQuery === 'status:deleted' || appliedQuery.includes('status:deleted age:<1month')" class="info-banner deleted-mode">
           <span class="icon">🗑️</span>
-          <span>Showing deleted posts</span>
-          <button class="clear-mode-btn" @click="handleSearch('')" title="Volver a inicio">✕</button>
+          <span>Showing deleted posts of the month</span>
+          <button class="clear-mode-btn" @click="handleSearch('')" title="Clear filter">✕</button>
         </div>
 
-        <div v-if="searchQuery === 'order:score'" class="info-banner likes-mode">
-          <span class="icon">❤️</span>
-          <span>Showing most liked posts</span>
-          <button class="clear-mode-btn" @click="handleSearch('')" title="Volver a inicio">✕</button>
+        <div v-if="appliedQuery === 'order:score' || appliedQuery.includes('order:score age:<1month')" class="likes-mode-container">
+          <div class="info-banner likes-mode">
+            <span class="icon">❤️</span>
+            <span>Showing top posts of the month</span>
+            <button class="info-help-btn" @click="showTimeoutInfo = !showTimeoutInfo" title="Why only a month?">
+              {{ showTimeoutInfo ? 'Hide info' : 'Why a month?' }}
+            </button>
+            <button class="clear-mode-btn" @click="handleSearch('')" title="Clear filter">✕</button>
+          </div>
+          <Transition name="expand">
+            <div v-if="showTimeoutInfo" class="timeout-explanation">
+              <strong>Search Timeout Explanation</strong>
+              <p>Some kinds of searches are slower than others on Danbooru. Global rankings (like <code>order:score</code>) are extremely heavy and usually time out.</p>
+              <div class="danbooru-info-box">
+                <p><strong>Danbooru says:</strong> Usually this happens when your search is too complex, or when there aren't many recent posts matching your search.</p>
+                <p>To ensure stability, we automatically apply <code>age:&lt;1month</code>.</p>
+              </div>
+              <p><strong>Tips:</strong></p>
+              <ul>
+                <li><code>order:score age:&lt;1week</code> (Best of the week)</li>
+                <li><code>tag_name order:score</code> (Best of a specific tag)</li>
+              </ul>
+            </div>
+          </Transition>
         </div>
 
-        <div v-if="searchQuery === 'order:favcount'" class="info-banner favs-mode">
-          <span class="icon">⭐</span>
-          <span>Showing most favorited posts</span>
-          <button class="clear-mode-btn" @click="handleSearch('')" title="Volver a inicio">✕</button>
+        <div v-if="appliedQuery === 'order:favcount' || appliedQuery.includes('order:favcount age:<1month')" class="favs-mode-container">
+          <div class="info-banner favs-mode">
+            <span class="icon">⭐</span>
+            <span>Showing most favorited of the month</span>
+            <button class="info-help-btn" @click="showTimeoutInfo = !showTimeoutInfo" title="Why only a month?">
+              {{ showTimeoutInfo ? 'Hide info' : 'Why a month?' }}
+            </button>
+            <button class="clear-mode-btn" @click="handleSearch('')" title="Clear filter">✕</button>
+          </div>
+          <Transition name="expand">
+            <div v-if="showTimeoutInfo" class="timeout-explanation">
+              <strong>Search Timeout Explanation</strong>
+              <p>To prevent the "Search took too long" error, we restrict global rankings to the last month.</p>
+              <div class="danbooru-info-box">
+                <p>Members are limited to searches that take up to 3 seconds long. Without this filter, global sorting would fail for everyone.</p>
+              </div>
+            </div>
+          </Transition>
         </div>
 
         <PostGallery
@@ -106,7 +140,7 @@ export default {
     const route = useRoute();
     const router = useRouter();
     const inputQuery = ref(""); // Lo que escribe el usuario
-    const searchQuery = ref(""); // Lo que realmente se está buscando (applied)
+    const appliedQuery = ref(""); // Lo que realmente se está buscando (applied)
     const limit = ref(10);
     // Default to All ("") if nothing saved. If saved, use saved value.
     const savedRating = localStorage.getItem('ratingFilter');
@@ -115,19 +149,20 @@ export default {
     const infiniteScroll = ref(false);
     const selectedPost = ref(null);
     const isRandomMode = ref(false);
+    const showTimeoutInfo = ref(false);
 
     // Persist rating filter selection
     watch(ratingFilter, (newVal) => {
        localStorage.setItem('ratingFilter', newVal);
     });
     
-    // useDanbooruApi usa searchQuery (el valor confirmado)
+    // useDanbooruApi usa appliedQuery (el valor confirmado)
     const { posts, loading, error, currentPage, hasNextPage, searchPosts } =
-      useDanbooruApi(searchQuery, limit, ratingFilter);
+      useDanbooruApi(appliedQuery, limit, ratingFilter);
 
     const parsedTags = computed(() => {
-      // Usamos inputQuery o searchQuery? Para visualizar lo que se busca: searchQuery
-      return searchQuery.value
+      // Usamos inputQuery o appliedQuery? Para visualizar lo que se busca: appliedQuery
+      return appliedQuery.value
         .trim()
         .split(/[,，\s]+/)
         .map((tag) => tag.trim())
@@ -215,85 +250,21 @@ export default {
       // Si overrideQuery es string (viene de click en tag), úsalo. Si es evento o nulo, usa inputQuery.
       const finalQuery = (typeof overrideQuery === 'string') ? overrideQuery : inputQuery.value;
 
-      // Sincronizar inputQuery si vino por override para que el input se actualice visualmente (aunque ya el v-model debería haberlo hecho, esto asegura)
-      if (typeof overrideQuery === 'string') {
-         inputQuery.value = overrideQuery;
-      }
-
       // Auto-close sidebar on mobile
       if (window.innerWidth <= 768) {
         sidebarVisible.value = false;
       }
 
       isRandomMode.value = false;
-      searchQuery.value = finalQuery; // CONFIRMAMOS el texto
-      currentPage.value = 1;
+      
+      // Update URL. The watcher will handle the actual searchPosts call.
+      await router.push({ path: '/', query: { tags: finalQuery || undefined } });
       window.scrollTo({ top: 0, behavior: "smooth" });
-      await searchPosts(1, true);
-
-      // Si no hay resultados, verificamos si hay tags inválidos
-      if (posts.value.length === 0) {
-        
-        const currentTags = searchQuery.value
-          .trim()
-          .split(/[,，\s]+/)
-          .filter(t => t.length > 0);
-
-        if (currentTags.length > 0) {
-          try {
-            // Validamos cada tag individualmente para mayor seguridad
-            // Limitamos a 5 tags para no saturar el rate limit (10 req/s)
-            const tagsToValidate = currentTags.slice(0, 5);
-            
-            const validationPromises = tagsToValidate.map(async (tag) => {
-              // search[name] busca coincidencia exacta
-              const res = await fetch(`https://danbooru.donmai.us/tags.json?search[name]=${tag}`);
-              if (res.ok) {
-                const data = await res.json();
-                return data.length > 0 ? tag : null;
-              }
-              return null;
-            });
-
-            const validatedResults = await Promise.all(validationPromises);
-            const validTags = validatedResults.filter(t => t !== null);
-
-            // Si se encontraron tags válidos (o si al menos uno era inválido y se borró)
-            // Solo actualizamos si la cantidad de tags validos es menor a la original
-            // (lo que implica que alguno era malo)
-            // Ojo: Si validTags es 0 y currentTags > 0, borra todo (lo cual es correcto si todo es invalido)
-            // Pero si el usuario dice "me borra todo", es porque quizas 1 era valido.
-            
-            if (validTags.length < tagsToValidate.length) {
-              const cleanedQuery = validTags.join(' ');
-              // inputQuery.value = cleanedQuery; // DESACTIVADO: No borrar input del usuario
-              // searchQuery.value = cleanedQuery;
-              
-              if (cleanedQuery === '') {
-                 // Si realmente todo estaba mal
-                 error.value = 'Ningún tag válido encontrado.';
-              } else {
-                 error.value = 'Algunos tags no existen.';
-              }
-              
-              // Opcional: Re-buscar si quedó algo válido
-              if (cleanedQuery !== '') {
-                 // searchPosts(1, true); // Descomentar si queremos auto-buscar
-              }
-            } else if (currentTags.length > 5) {
-               // Si había mas de 5, no borramos nada por precaución
-               error.value = 'Demasiados tags para validar automáticamente.';
-            }
-
-          } catch (e) {
-            console.error("Error validando tags", e);
-          }
-        }
-      }
     };
 
+
     const loadPage = async (page) => {
-      // searchPosts usa internamente searchQuery, que no ha cambiado si solo escribimos en el input
+      // searchPosts usa internamente appliedQuery, que no ha cambiado si solo escribimos en el input
       await searchPosts(page, true);
     };
 
@@ -307,11 +278,11 @@ export default {
 
     const setExample = (example) => {
       inputQuery.value = example;
-      handleSearch(); // Esto hará commit del example a searchQuery
+      handleSearch(); // Esto hará commit del example a appliedQuery
     };
 
     // Watch para cambios en ratingFilter o limit
-    // Estos refrescan la búsqueda ACTUAL (searchQuery), no lo que se esté escribiendo pendiente
+    // Estos refrescan la búsqueda ACTUAL (appliedQuery), no lo que se esté escribiendo pendiente
     watch([ratingFilter, limit], () => {
       currentPage.value = 1;
       searchPosts(1, true);
@@ -354,7 +325,7 @@ export default {
       // Check for query params
       if (route.query.tags) {
         inputQuery.value = route.query.tags;
-        searchQuery.value = route.query.tags;
+        appliedQuery.value = route.query.tags;
       }
       
       searchPosts(1, true);
@@ -363,22 +334,19 @@ export default {
 
     // Watch for route query changes (navigation from other views or same view)
     watch(() => route.query.tags, (newTags) => {
-      if (newTags) {
-        inputQuery.value = newTags;
-        searchQuery.value = newTags;
-        isRandomMode.value = false;
-        searchPosts(1, true);
-      } else if (route.query.tags === undefined) {
-         // Reset search when navigating to root /
-         inputQuery.value = "";
-         searchQuery.value = "";
-         isRandomMode.value = false;
-         searchPosts(1, true);
-      }
+      // Update internal states to match URL
+      const normalizedTags = newTags || "";
+      inputQuery.value = normalizedTags;
+      appliedQuery.value = normalizedTags;
+      isRandomMode.value = false;
+      currentPage.value = 1;
+      
+      // Execute the search
+      searchPosts(1, true);
     });
 
     // Dynamic Title Logic
-    watch(searchQuery, (newVal) => {
+    watch(appliedQuery, (newVal) => {
       if (newVal) {
         // Format: "tag1 AND tag2 | Booru Explorer"
         const formattedTags = newVal.split(/[,，\s]+/).filter(t => t).join(' AND ');
@@ -427,17 +395,11 @@ export default {
 
     const handleAction = async (action) => {
       if (action === 'deleted') {
-        isRandomMode.value = false;
-        inputQuery.value = 'status:deleted';
-        handleSearch();
+        handleSearch('status:deleted');
       } else if (action === 'most-liked') {
-        isRandomMode.value = false;
-        inputQuery.value = 'order:score';
-        handleSearch();
+        handleSearch('order:score');
       } else if (action === 'most-favorited') {
-        isRandomMode.value = false;
-        inputQuery.value = 'order:favcount';
-        handleSearch();
+        handleSearch('order:favcount');
       } else if (action === 'random') {
         isRandomMode.value = true;
         try {
@@ -459,7 +421,8 @@ export default {
     };
 
     return {
-      searchQuery: inputQuery, // Pasamos inputQuery al form para que escriba ahí
+      inputQuery,
+      appliedQuery,
       posts,
       loading,
       error,
@@ -478,9 +441,9 @@ export default {
       selectedPost,
       openModal,
       navigatePost,
-      canNext,
       canPrev,
-      handleAction
+      handleAction,
+      showTimeoutInfo
     };
   },
 };
@@ -506,17 +469,17 @@ export default {
 }
 
 .info-banner {
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #93c5fd;
-  padding: 12px 16px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 14px;
-  font-weight: 500;
+    background: #3b82f626;
+    border: 1px solid rgba(59, 130, 246, .3);
+    color: #93c5fd;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 500;
 }
 
 .info-banner.deleted-mode {
@@ -550,6 +513,74 @@ export default {
 
 .clear-mode-btn:hover {
   opacity: 1;
+}
+
+.info-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.info-help-btn {
+    margin-left: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: inherit;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.info-help-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.timeout-explanation {
+    margin-top: -10px;
+    margin-bottom: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #cbd5e1;
+}
+
+.timeout-explanation ul {
+    margin-left: 20px;
+    margin-top: 5px;
+}
+
+.timeout-explanation strong {
+    color: #fff;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.danbooru-info-box {
+    background: rgba(0, 0, 0, 0.2);
+    border-left: 3px solid #64748b;
+    padding: 8px 12px;
+    margin: 12px 0;
+    font-style: italic;
+}
+
+.expand-enter-active, .expand-leave-active {
+    transition: all 0.3s ease;
+    max-height: 300px;
+    overflow: hidden;
+}
+
+.expand-enter-from, .expand-leave-to {
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 /* Mobile Responsiveness Styles */

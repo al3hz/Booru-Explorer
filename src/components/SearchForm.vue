@@ -132,17 +132,17 @@
         <div class="actions-section">
           <label class="section-label">Extra</label>
           <div class="actions-grid">
-            <button class="quick-action-btn" @click="$emit('trigger-action', 'most-liked')" title="Most Liked">
+            <button class="quick-action-btn" @click="$emit('trigger-action', 'most-liked')" title="Most Liked (Month)">
               <span class="action-icon">❤️</span>
-              <span class="action-label">Likes</span>
+              <span class="action-label">Likes (M)</span>
             </button>
-            <button class="quick-action-btn" @click="$emit('trigger-action', 'most-favorited')" title="Most Favorited">
+            <button class="quick-action-btn" @click="$emit('trigger-action', 'most-favorited')" title="Most Favorited (Month)">
               <span class="action-icon">⭐</span>
-              <span class="action-label">Favs</span>
+              <span class="action-label">Favs (M)</span>
             </button>
-            <button class="quick-action-btn" @click="$emit('trigger-action', 'deleted')" title="Deleted Posts">
+            <button class="quick-action-btn" @click="$emit('trigger-action', 'deleted')" title="Deleted Posts (Month)">
               <span class="action-icon">🗑️</span>
-              <span class="action-label">Deleted</span>
+              <span class="action-label">Deleted (M)</span>
             </button>
             <button class="quick-action-btn" @click="$emit('trigger-action', 'random')" title="Random Post">
               <span class="action-icon">🎲</span>

@@ -18,11 +18,31 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     tags = tags.replace(/[,，]+/g, ' ')
     tags = tags.replace(/\s+/g, ' ')
     
+    // Proactive Filtering: Exclude deleted posts unless specifically requested
+    // Optimization: Skip filtering for heavy sorts (order:score, order:favcount) to prevent 500 timeouts
+    const isHeavySort = tags.includes('order:score') || tags.includes('order:favcount');
+    
+    // Safety Measure: If it's a heavy sort or global deleted search and no specific tags are present, add a time constraint
+    const hasSpecificTags = tags.split(' ').some(t => {
+      const low = t.toLowerCase().trim();
+      return low && !low.startsWith('order:') && !low.startsWith('rating:') && !low.startsWith('status:') && !low.startsWith('age:') && !low.startsWith('-');
+    });
+
+    const isDeletedSearch = tags.includes('status:deleted');
+    if ((isHeavySort || isDeletedSearch) && !hasSpecificTags && !tags.includes('age:')) {
+        // Tightening to 1 month for global heavy/deleted searches to ensure stability
+        tags = tags ? `${tags} age:<1month` : 'age:<1month';
+    }
+
+    if (!isHeavySort && !isDeletedSearch && !tags.includes('status:deleted') && !tags.includes('status:any')) {
+        tags = tags ? `${tags} -status:deleted` : '-status:deleted'
+    }
+
     // Usar siempre el ratingFilter
     if (ratingFilter.value) {
-      tags = tags.replace(/\s*rating:\w+/g, '')
-      tags = tags.trim()
-      tags = tags ? `${tags} rating:${ratingFilter.value}` : `rating:${ratingFilter.value}`
+      // Remove any existing rating in the query string to prioritize the selected filter
+      tags = tags.replace(/\s*rating:[sqge]/gi, '').trim();
+      tags = tags ? `${tags} rating:${ratingFilter.value.toLowerCase()}` : `rating:${ratingFilter.value.toLowerCase()}`;
     }
     
     // Buffer strategy removed for accurate pagination alignment.
@@ -39,15 +59,47 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
   }
 
   const fetchCounts = async () => {
+    let rawTags = searchQuery.value.trim().replace(/[,，]+/g, ' ').replace(/\s+/g, ' ');
+    
+    // Broad Query Check: Skip counting if search is too broad (efficiency)
+    // A search is broad if it has no specific tags, just a rating, or just a sort.
+    const hasSpecificTags = rawTags.split(' ').some(t => {
+      return t && !t.startsWith('order:') && !t.startsWith('rating:') && !t.startsWith('status:') && !t.startsWith('-');
+    });
+
+    if (!hasSpecificTags) {
+        // Optimization: For very broad searches, don't waste time counting millions of posts
+        // This includes global searches, just sorts, or just rating filters.
+        // It prevents the "Database Timeout" when doing global order:score searches.
+        return null;
+    }
+
     try {
-      let tags = searchQuery.value.trim()
-      tags = tags.replace(/[,，]+/g, ' ')
-      tags = tags.replace(/\s+/g, ' ')
-      
+      let tags = rawTags;
       if (ratingFilter.value) {
         tags = tags.replace(/\s*rating:\w+/g, '')
         tags = tags.trim()
         tags = tags ? `${tags} rating:${ratingFilter.value}` : `rating:${ratingFilter.value}`
+      }
+      // Proactive Filtering for counts
+      // Optimization 1: Remove sorting tags for counts as they are irrelevant and can cause timeouts
+      tags = tags.replace(/\s*order:\w+/g, '').trim();
+
+      // Optimization 2: Add safety age filter for broad searches if needed
+      // Tightening to 1 month for consistency and stability
+      const isHeavyQuery = tags.includes('favcount') || tags.includes('score');
+      if (isHeavyQuery && !hasSpecificTags && !tags.includes('age:')) {
+         tags = tags ? `${tags} age:<1month` : 'age:<1month';
+      }
+
+      if (!tags.includes('status:deleted') && !tags.includes('status:any')) {
+        tags = tags ? `${tags} -status:deleted` : '-status:deleted'
+      }
+
+      // Final check: if after removing order we are basically doing a global count, skip it.
+      const cleanedTags = tags.replace(/\s*order:\w+/g, '').replace(/\s*rating:\w+/g, '').replace(/\s*-status:deleted/g, '').trim();
+      if (!cleanedTags && !tags.includes('age:')) {
+          return null;
       }
 
       const params = new URLSearchParams({ tags: tags })
@@ -70,23 +122,24 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     error.value = ''
     
     try {
+      const url = buildSearchUrl(page)
+      
+      // Parallel Execution: Don't let the count block the main results
+      let countPromise = Promise.resolve(null);
       if (page === 1 || isNewSearch) {
-        // Fetch count in parallel or sequence? Sequence is safer for logic, parallel faster.
-        // Let's do it before setting posts to avoid flicker? 
-        // Or just fire it and update state when it returns.
-        // Let's await it to be sure we have it for pagination logic.
-        const count = await fetchCounts()
-        if (count !== null) {
-          totalPosts.value = count
-        } else {
-          totalPosts.value = -1 // -1 means unknown
-        }
+        countPromise = fetchCounts();
       }
 
-      const url = buildSearchUrl(page)
-     
-      
-      const response = await fetch(url)
+      const postsPromise = fetch(url);
+
+      // We await both, but they are running in parallel now
+      const [countResult, response] = await Promise.all([countPromise, postsPromise]);
+
+      if (countResult !== null) {
+        totalPosts.value = countResult;
+      } else if (page === 1 || isNewSearch) {
+        totalPosts.value = -1; // Unknown
+      }
       
   
       
