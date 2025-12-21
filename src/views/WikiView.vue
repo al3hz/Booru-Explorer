@@ -499,6 +499,11 @@ export default {
             const link = e.target.dataset.link;
             if(link) router.push({ name: 'wiki', params: { query: link } });
         }
+
+        if(e.target.classList.contains('status-link')) {
+            const tag = e.target.dataset.tag;
+            if(tag) router.push({ name: 'home', query: { tags: tag } });
+        }
         
         if(e.target.classList.contains('dtext-anchor')) {
             e.preventDefault();
@@ -873,16 +878,44 @@ export default {
     width: 100%;
 }
 
-.wiki-text :deep(.dtext-list-item > span) {
-    flex: 1;
-    min-width: 0;
+/* Previews should flow horizontally */
+.wiki-text :deep(.dtext-list-item.dtext-preview-item) {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    width: auto;
+    margin: 15px 15px 15px 0;
+    text-align: center;
+    vertical-align: top;
+    gap: 8px;
 }
 
-.wiki-text :deep(.dtext-list-item)::before {
+.wiki-text :deep(.dtext-post-preview) {
+    max-width: 180px;
+    max-height: 250px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.wiki-text :deep(.dtext-post-preview):hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(167, 139, 250, 0.3);
+}
+
+.wiki-text :deep(.preview-label) {
+    font-size: 0.85em;
+    color: #a78bfa;
+    font-weight: 500;
+}
+
+.wiki-text :deep(.dtext-list-item:not(.dtext-preview-item))::before {
     content: "•";
     color: #a78bfa;
     flex-shrink: 0;
     font-weight: bold;
+    margin-right: 12px;
 }
 
 .wiki-text :deep(.dtext-list-item.nested) {

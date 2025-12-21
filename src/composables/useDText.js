@@ -93,6 +93,12 @@ export function useDText() {
     // topic #id (Forum links)
     formatted = formatted.replace(/topic #(\d+)/gi, '<a href="https://danbooru.donmai.us/forum_topics/$1" target="_blank" rel="noopener noreferrer" class="dtext-link">topic #$1</a>');
 
+    // {{status:tag}} (Status tags)
+    formatted = formatted.replace(/\{\{status:(.*?)\}\}/g, (match, tag) => {
+        const fullTag = `status:${tag}`;
+        return `<span class="status-link" data-tag="${fullTag}" style="color: #f87171; cursor: pointer; text-decoration: underline;">${fullTag}</span>`;
+    });
+
     // Raw URLs (simple detection)
     formatted = formatted.replace(/(?<!["=])(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="dtext-link">$1</a>');
 
