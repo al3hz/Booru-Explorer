@@ -1,8 +1,40 @@
 <template>
     <div class="modal-backdrop">
+      <!-- Fullscreen Zoom Overlay (Mobile) -->
+      <transition name="fade">
+        <div 
+          v-if="isMobileFullscreen" 
+          class="fullscreen-zoom-overlay"
+          @touchstart.stop="onZoomTouchStart"
+          @touchmove.stop="onZoomTouchMove"
+          @touchend.stop="onZoomTouchEnd"
+        >
+          <button class="fullscreen-close" @click.stop="toggleMobileFullscreen">×</button>
+          
+          <transition :name="transitionName" mode="out-in">
+            <VideoPlayer
+              v-if="isVideo"
+              :key="`fs-vid-${post.id}`"
+              :src="post.large_file_url || post.file_url"
+              class="fullscreen-image"
+              :autoplay="true"
+              :controls="true"
+              @click.stop
+            />
+            <img 
+              v-else
+              :key="`fs-img-${post.id}`"
+              :src="post.large_file_url || post.file_url" 
+              class="fullscreen-image"
+              :style="{ transform: `scale(${imageScale}) translate(${translateX / imageScale}px, ${translateY / imageScale}px)` }"
+              alt="Fullscreen view"
+            />
+          </transition>
+        </div>
+      </transition>
       <!-- Nav Buttons -->
       <transition name="fade-arrow">
-        <button v-if="canGoPrev" class="nav-arrow prev" @click.stop="triggerPrev" title="Previous image">
+        <button v-if="canGoPrev && !isMobileFullscreen" class="nav-arrow prev" @click.stop="triggerPrev" title="Previous image">
           ‹
         </button>
       </transition>
@@ -38,7 +70,11 @@
             </transition>
 
             <!-- Image Section -->
-            <div class="image-section">
+            <div 
+              class="image-section"
+              @touchstart="onTouchStart"
+              @touchend="onTouchEnd"
+            >
             
             <!-- Pending Overlay -->
             <transition name="fade">
@@ -63,6 +99,7 @@
                 class="detail-image"
                 @loaded="onImageLoad"
                 @error="handleImageError"
+                @click="toggleMobileFullscreen"
               />
               <img 
                 v-else
@@ -72,6 +109,7 @@
                 class="detail-image"
                 @load="onImageLoad"
                 @error="handleImageError"
+                @click="toggleMobileFullscreen"
               />
             </transition>
             
@@ -279,7 +317,7 @@
       </div>
 
       <transition name="fade-arrow">
-        <button v-if="canGoNext" class="nav-arrow next" @click.stop="triggerNext" title="Next image">
+        <button v-if="canGoNext && !isMobileFullscreen" class="nav-arrow next" @click.stop="triggerNext" title="Next image">
           ›
         </button>
       </transition>
@@ -664,10 +702,135 @@ export default {
         router.push({ name: 'wiki', params: { query: page } });
     };
     
+    // Swipe Logic for Mobile
+    const touchStartX = ref(0);
+    const touchEndX = ref(0);
+    const SWIPE_THRESHOLD = 50;
+
+    const onTouchStart = (e) => {
+      touchStartX.value = e.changedTouches[0].screenX;
+    };
+
+    const onTouchEnd = (e) => {
+      touchEndX.value = e.changedTouches[0].screenX;
+      handleSwipe();
+    };
+
+    // Mobile Fullscreen & Zoom Logic
+    const isMobileFullscreen = ref(false);
+    const imageScale = ref(1);
+    const lastTouchDistance = ref(0);
+    const initialScale = ref(1);
+    
+    // Pan state
+    const translateX = ref(0);
+    const translateY = ref(0);
+    const lastPanX = ref(0);
+    const lastPanY = ref(0);
+
+    const toggleMobileFullscreen = () => {
+      if (isMobileFullscreen.value) {
+        closeMobileFullscreen();
+        return;
+      }
+      
+      // Allow fullscreen for all types on mobile
+      if (window.innerWidth <= 768 && !isFlash.value) {
+        isMobileFullscreen.value = true;
+        document.body.style.overflow = 'hidden'; 
+        // Reset zoom state on open
+        resetZoom();
+      }
+    };
+
+    const closeMobileFullscreen = () => {
+      isMobileFullscreen.value = false;
+      resetZoom();
+      // Restore previous overflow state (handled by onUnmounted or watcher typically)
+    };
+
+    const resetZoom = () => {
+      imageScale.value = 1;
+      translateX.value = 0;
+      translateY.value = 0;
+    };
+
+    const getDistance = (touches) => {
+      return Math.hypot(
+        touches[0].pageX - touches[1].pageX,
+        touches[0].pageY - touches[1].pageY
+      );
+    };
+
+    const onZoomTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        lastTouchDistance.value = getDistance(e.touches);
+        initialScale.value = imageScale.value;
+      } else if (e.touches.length === 1) {
+        lastPanX.value = e.touches[0].pageX;
+        lastPanY.value = e.touches[0].pageY;
+        // Capture start for swipe detection
+        touchStartX.value = e.touches[0].screenX;
+      }
+    };
+
+    const onZoomTouchMove = (e) => {
+      if (e.touches.length === 2) {
+        // Pinch Zoom
+        const dist = getDistance(e.touches);
+        const delta = dist / lastTouchDistance.value;
+        const newScale = initialScale.value * delta;
+        // Limit zoom levels
+        imageScale.value = Math.min(Math.max(1, newScale), 5); 
+        e.preventDefault(); // Prevent page scroll
+      } else if (e.touches.length === 1 && imageScale.value > 1) {
+        // Pan (only when zoomed in)
+        const deltaX = e.touches[0].pageX - lastPanX.value;
+        const deltaY = e.touches[0].pageY - lastPanY.value;
+        
+        translateX.value += deltaX;
+        translateY.value += deltaY;
+        
+        lastPanX.value = e.touches[0].pageX;
+        lastPanY.value = e.touches[0].pageY;
+        e.preventDefault();
+      }
+    };
+    
+    const onZoomTouchEnd = (e) => {
+       if (imageScale.value < 1.1) {
+         resetZoom(); 
+       }
+       // Capture end for swipe detection
+       if (e.changedTouches.length > 0) {
+         touchEndX.value = e.changedTouches[0].screenX;
+         handleSwipe();
+       }
+    };
+    
+    // Update handleSwipe to work in fullscreen IF not zoomed
+    const handleSwipe = () => {
+      // If fullscreen and zoomed in (> 1.1), don't swipe nav
+      if (isMobileFullscreen.value && imageScale.value > 1.1) return;
+
+      const diff = touchStartX.value - touchEndX.value;
+      if (Math.abs(diff) > SWIPE_THRESHOLD) {
+         if (diff > 0) triggerNext();
+         else triggerPrev();
+      }
+    };
+
     const handleKeydown = (e) => {
+      if (isMobileFullscreen.value && e.key === 'Escape') {
+         closeMobileFullscreen();
+         return;
+      }
       if (e.key === 'Escape') emit('close');
-      if (e.key === 'ArrowRight') triggerNext();
-      if (e.key === 'ArrowLeft') triggerPrev();
+      // ...
+      if (!isMobileFullscreen.value) {
+         if (e.key === 'ArrowRight') triggerNext();
+         if (e.key === 'ArrowLeft') triggerPrev();
+      }
     };
 
     onUnmounted(() => {
@@ -711,14 +874,64 @@ export default {
       openArtistInfo,
       goToWiki,
       showPendingOverlay,
-      parseDText
+      parseDText,
+      onTouchStart,
+      parseDText,
+      onTouchStart,
+      onTouchEnd,
+      isMobileFullscreen,
+      toggleMobileFullscreen,
+      imageScale,
+      onZoomTouchStart,
+      onZoomTouchMove,
+      onZoomTouchEnd,
+      onZoomTouchEnd,
+      resetZoom,
+      translateX,
+      translateY
     };
-
   }
 }
 </script>
 
 <style scoped>
+/* Fullscreen Zoom Overlay */
+.fullscreen-zoom-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: black;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.fullscreen-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.1s ease-out; /* Smooth zoom */
+  will-change: transform;
+}
+
+.fullscreen-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 24px;
+  z-index: 1003;
+  cursor: pointer;
+}
 /* Previous Styles... */
 .modal-backdrop {
   position: fixed;
