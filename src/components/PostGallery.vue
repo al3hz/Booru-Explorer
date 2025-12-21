@@ -18,6 +18,33 @@
 
     <!-- Gallery Grid with Overlay -->
     <div v-else class="gallery-wrapper">
+      
+      <!-- Rating Distribution Bar -->
+      <Transition name="fade-slide">
+        <div v-if="!loading && (ratingCounts.g || ratingCounts.s || ratingCounts.q || ratingCounts.e)" class="rating-bar">
+           <div class="rating-stat general" title="General">
+              <span class="r-dot"></span>
+              <span class="r-label">General</span>
+              <span class="r-count">{{ formatCount(ratingCounts.g) }}</span>
+           </div>
+           <div class="rating-stat safe" title="Safe">
+              <span class="r-dot"></span>
+              <span class="r-label">Safe</span>
+              <span class="r-count">{{ formatCount(ratingCounts.s) }}</span>
+           </div>
+           <div class="rating-stat questionable" title="Questionable">
+              <span class="r-dot"></span>
+              <span class="r-label">Questionable</span>
+              <span class="r-count">{{ formatCount(ratingCounts.q) }}</span>
+           </div>
+           <div class="rating-stat explicit" title="Explicit">
+              <span class="r-dot"></span>
+              <span class="r-label">Explicit</span>
+              <span class="r-count">{{ formatCount(ratingCounts.e) }}</span>
+           </div>
+        </div>
+      </Transition>
+
       <div v-if="loading" class="grid-loading-overlay">
         <div class="loader-ring small"></div>
       </div>
@@ -216,6 +243,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    ratingCounts: {
+      type: Object,
+      default: () => ({ g: 0, s: 0, q: 0, e: 0 }),
+    },
   },
   emits: ["load-more", "change-page", "post-clicked"],
   setup(props, { emit }) {
@@ -302,9 +333,17 @@ export default {
       return pages;
     };
 
+    const formatCount = (count) => {
+      if (!count) return '0';
+      if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+      if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
+      return count.toString();
+    };
+
     return {
       infiniteScrollTrigger,
-      getPageNumbers
+      getPageNumbers,
+      formatCount
     };
   },
   methods: {
@@ -550,6 +589,51 @@ export default {
   align-items: center;
   justify-content: center;
   min-height: 300px;
+}
+
+/* Rating Bar */
+.rating-bar {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 20px;
+  background: rgba(20, 20, 25, 0.4);
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  flex-wrap: wrap;
+}
+
+.rating-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.r-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.rating-stat.general .r-dot { background: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
+.rating-stat.safe .r-dot { background: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
+.rating-stat.questionable .r-dot { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+.rating-stat.explicit .r-dot { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+
+.r-label {
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.r-count {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 11px;
 }
 
 @keyframes spin {
@@ -955,5 +1039,24 @@ export default {
   .gallery-grid {
     gap: 10px;
   }
+}
+
+/* Rating Bar Transition */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.4s ease;
+  max-height: 100px;
+  opacity: 1;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+  max-height: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
 }
 </style>

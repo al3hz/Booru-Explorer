@@ -99,6 +99,7 @@
           :current-page="currentPage"
           :has-next-page="hasNextPage"
           :infinite-scroll="infiniteScroll"
+          :rating-counts="ratingCounts"
           @change-page="handlePageChange"
           @post-clicked="openModal"
         />
@@ -128,6 +129,7 @@ import SearchForm from "../components/SearchForm.vue";
 import PostGallery from "../components/PostGallery.vue";
 import ImageDetailModal from "../components/ImageDetailModal.vue";
 import { useDanbooruApi } from "../composables/useDanbooruApi";
+import { useRatingCounts } from "../composables/useRatingCounts";
 
 export default {
   name: "HomeView",
@@ -262,6 +264,8 @@ export default {
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
+    // Integrate Rating Counts
+    const { ratingCounts, loadingCounts, fetchRatingCounts } = useRatingCounts();
 
     const loadPage = async (page) => {
       // searchPosts usa internamente appliedQuery, que no ha cambiado si solo escribimos en el input
@@ -329,6 +333,9 @@ export default {
       }
       
       searchPosts(1, true);
+      // Initial fetch of rating counts
+      fetchRatingCounts(appliedQuery.value);
+      
       window.addEventListener('keydown', handleKeydown);
     });
 
@@ -343,6 +350,8 @@ export default {
       
       // Execute the search
       searchPosts(1, true);
+      // Fetch fresh rating counts
+      fetchRatingCounts(normalizedTags);
     });
 
     // Dynamic Title Logic
@@ -446,7 +455,8 @@ export default {
       canPrev,
       canNext,
       handleAction,
-      showTimeoutInfo
+      showTimeoutInfo,
+      ratingCounts
     };
   },
 };
