@@ -363,38 +363,54 @@ export default {
 @media (max-width: 768px) {
   .header-inner {
     padding: 12px 16px;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: auto 1fr; /* Toggle on left, Nav takes rest */
+    grid-template-areas: 
+      "brand brand"
+      "toggle nav";
     gap: 16px;
-  }
-  
-  .header-left {
-    width: 100%;
-    justify-content: center;
-    gap: 8px;
+    align-items: center;
   }
   
   .toggle-menu-btn {
-    margin-right: 8px;
-    width: 40px;
-    height: 40px;
+    grid-area: toggle;
+    margin-right: 0; /* Let grid gap handle it */
+    width: 36px;
+    height: 36px;
+  }
+
+  .header-nav {
+    grid-area: nav;
+    justify-content: center; /* Center nav items in their space */
+    width: 100%;
+    margin-left: 0;
   }
   
+  .header-left {
+    display: contents; /* Allows children to participate in parent grid directly */
+  }
+
   .brand-section {
+    grid-area: brand;
+    width: 100%;
     justify-content: center;
+    gap: 10px;
   }
 
   .brand-text {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
+    gap: 8px;
   }
 
   .brand-text h1 {
-    font-size: 20px;
+    font-size: 18px; /* Slightly smaller to fit in a row */
   }
   
   .badge-container {
-    justify-content: center;
+    margin-top: 0;
+    gap: 0;
   }
 
   .author-badge {
