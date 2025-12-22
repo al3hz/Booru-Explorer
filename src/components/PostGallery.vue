@@ -59,17 +59,14 @@
           <!-- Image Section -->
           <div class="card-image-wrapper">
             <!-- Video logic unchanged -->
-            <video
+            <!-- Video logic using SmartVideo -->
+            <SmartVideo
               v-if="isAnimatedVideo(post)"
               :src="getImageUrl(post)"
               :alt="post.tag_string_general"
-              class="card-image"
-              muted
-              loop
-              autoplay
-              playsinline
+              className="card-image"
               @error="handleImageError($event, post)"
-            ></video>
+            />
             
             <!-- Default Image -->
             <img
@@ -220,8 +217,11 @@
 <script>
 import { ref, onMounted, onUnmounted, watch } from "vue";
 
+import SmartVideo from './SmartVideo.vue';
+
 export default {
   name: "PostGallery",
+  components: { SmartVideo },
   props: {
     posts: {
       type: Array,
