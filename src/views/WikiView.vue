@@ -332,6 +332,12 @@ export default {
                                         if (stub.parentElement) {
                                             stub.parentElement.classList.add('dtext-gallery-layout');
                                             
+                                            // Grid layout fix: Add class to list item container (grandparent)
+                                            if (stub.parentElement.parentElement && 
+                                                stub.parentElement.parentElement.classList.contains('dtext-list-item')) {
+                                                stub.parentElement.parentElement.classList.add('gallery-grid-item');
+                                            }
+
                                             // Optional: Clean up leading ": " from next text node if present
                                             const next = stub.nextSibling;
                                             if (next && next.nodeType === 3) { // Text node
@@ -404,6 +410,13 @@ export default {
                                         // Layout fix
                                         if (stub.parentElement) {
                                             stub.parentElement.classList.add('dtext-gallery-layout');
+                                            
+                                            // Grid layout fix
+                                            if (stub.parentElement.parentElement && 
+                                                stub.parentElement.parentElement.classList.contains('dtext-list-item')) {
+                                                stub.parentElement.parentElement.classList.add('gallery-grid-item');
+                                            }
+
                                             const next = stub.nextSibling;
                                             if (next && next.nodeType === 3) { 
                                                 const text = next.textContent;
@@ -566,6 +579,23 @@ export default {
         if(e.target.classList.contains('status-link')) {
             const tag = e.target.dataset.tag;
             if(tag) router.push({ name: 'home', query: { tags: tag } });
+        }
+
+        if (e.target.classList.contains('post-link')) {
+            const pid = e.target.dataset.postId;
+            if (pid) {
+                if (wikiInlinePosts.value[pid]) {
+                    openPost(wikiInlinePosts.value[pid]);
+                } else {
+                    fetch(`https://danbooru.donmai.us/posts/${pid}.json`)
+                        .then(res => res.json())
+                        .then(post => {
+                            wikiInlinePosts.value[pid] = post;
+                            openPost(post);
+                        })
+                        .catch(err => console.error('Failed to load linked post', err));
+                }
+            }
         }
         
         if(e.target.classList.contains('dtext-anchor')) {
@@ -1488,30 +1518,64 @@ export default {
   opacity: 0;
 }
 /* Layout fix for inline wiki images */
+/* Layout fix for inline wiki images */
 .wiki-text :deep(.dtext-gallery-layout) {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
     margin-bottom: 24px;
-    padding: 10px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 12px;
+    background: transparent; /* Removed dark box */
+    padding: 0;
+    border: none;
 }
 
 .wiki-text :deep(.dtext-post-preview) {
-    display: block;
+    display: inline-block;
+    vertical-align: middle;
     max-width: 100%;
     height: auto;
     border-radius: 8px;
-    margin-bottom: 12px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: none; /* Removed border */
     cursor: pointer;
     transition: transform 0.2s;
 }
 
+.wiki-text :deep(.dtext-gallery-layout .dtext-post-preview) {
+    display: block;
+    margin-bottom: 8px; /* Reduced margin */
+}
+
 .wiki-text :deep(.dtext-post-preview:hover) {
     transform: scale(1.02);
+}
+
+.wiki-text :deep(.gallery-grid-item) {
+    display: inline-block;
+    vertical-align: top;
+    width: 240px;
+    margin: 0 16px 20px 0;
+    list-style: none !important;
+}
+
+.wiki-text :deep(.gallery-grid-item)::before {
+    content: none !important;
+    display: none !important;
+    display: none !important;
+}
+
+@media (max-width: 640px) {
+    .wiki-text :deep(.gallery-grid-item) {
+        display: block;
+        width: 100%;
+        max-width: 300px;
+        margin: 0 auto 20px auto;
+    }
+    
+    /* Remove indentation from list items in gallery mode if present */
+    .wiki-text :deep(.dtext-list-item.gallery-grid-item) {
+        padding-left: 0;
+    }
 }
 </style>

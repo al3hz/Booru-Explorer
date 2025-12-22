@@ -27,12 +27,14 @@ export function useDText() {
 
     // 3. Explicit Links (Wiki, URL, Legacy) - Convert to HTML and Store as Placeholder
 
-    // [[Wiki Page]]
-    formatted = formatted.replace(/\[\[(.*?)(?:\|(.*?))?\]\]/g, (match, link, label) => {
+    // [[Wiki Page]] with optional suffix (e.g. [[cat]]s)
+    formatted = formatted.replace(/\[\[(.*?)(?:\|(.*?))?\]\]([a-z]*)/gi, (match, link, label, suffix) => {
+        const s = suffix || '';
         let displayText = label;
         if (label === '') displayText = link.replace(/_\(.*\)$/, '');
         else if (!label) displayText = link;
-        return addPlaceholder(`<span class="wiki-link" data-link="${link}" style="color: #a78bfa; cursor: pointer; text-decoration: underline;">${displayText}</span>`);
+        
+        return addPlaceholder(`<span class="wiki-link" data-link="${link}" style="color: #a78bfa; cursor: pointer; text-decoration: underline;">${displayText}${s}</span>`);
     });
 
     // [url=http://...]Label[/url]
@@ -58,6 +60,12 @@ export function useDText() {
     // Forum Topics: topic #123
     formatted = formatted.replace(/topic #(\d+)/gi, (m, id) => {
         return addPlaceholder(`<a href="https://danbooru.donmai.us/forum_topics/${id}" target="_blank" rel="noopener noreferrer" class="dtext-link">topic #${id}</a>`);
+    });
+
+    // Posts: Post #123 or post #123 -> Convert to Stub to show preview
+    formatted = formatted.replace(/(?:post|post_id)\s*#(\d+)/gi, (m, id) => {
+        // Use stub to trigger hydration (image loading)
+        return addPlaceholder(`<span class="dtext-post-stub" data-post-id="${id}" data-origin="text">Post #${id}</span>`);
     });
 
     // Internal Anchors: "Label":#id
