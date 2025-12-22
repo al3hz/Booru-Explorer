@@ -19,23 +19,23 @@
     <!-- Gallery Grid with Overlay -->
     <div v-else class="gallery-wrapper">
       
-      <!-- Rating Distribution Loading State -->
-      <Transition name="fade-slide">
-        <div v-if="loadingCounts" class="rating-bar loading">
-           <div class="loader-dots">
-              <span></span><span></span><span></span>
-           </div>
-           <span class="loading-text">Calculating rating distribution...</span>
-        </div>
-      </Transition>
+      <!-- Rating Distribution Container (prevents layout shift) -->
+      <div class="rating-container">
+        <!-- Rating Distribution Loading State -->
+        <Transition name="fade-slide" mode="out-in">
+          <div v-if="loadingCounts" key="loading" class="rating-bar loading">
+             <div class="loader-dots">
+                <span></span><span></span><span></span>
+             </div>
+             <span class="loading-text">Calculating rating distribution...</span>
+          </div>
 
-      <!-- Rating Distribution Bar -->
-      <Transition name="fade-slide">
-        <div v-if="!loading && !loadingCounts && isLimited" class="rating-limit-info">
-          <span class="icon">⚠️</span>
-          <span>Counts by rating are unavailable for this tag due to API complexity limits.</span>
-        </div>
-        <div v-else-if="!loading && !loadingCounts && (tagCount || ratingCounts.g?.count !== null || ratingCounts.s?.count !== null || ratingCounts.q?.count !== null || ratingCounts.e?.count !== null)" class="rating-bar-container">
+          <!-- Rating Distribution Bar -->
+          <div v-else-if="!loading && isLimited" key="limited" class="rating-limit-info">
+            <span class="icon">⚠️</span>
+            <span>Counts by rating are unavailable for this tag due to API complexity limits.</span>
+          </div>
+          <div v-else-if="!loading && (tagCount || ratingCounts.g?.count !== null || ratingCounts.s?.count !== null || ratingCounts.q?.count !== null || ratingCounts.e?.count !== null)" key="ratings" class="rating-bar-container">
            <div class="rating-bar">
               <!-- Left: Total Count -->
               <div class="rating-bar-left">
@@ -74,9 +74,10 @@
                   <span title="API Limit reached">? Limited</span>
                 </div>
               </div>
-           </div>
-        </div>
-      </Transition>
+            </div>
+         </div>
+        </Transition>
+      </div>
 
       <div v-if="loading" class="grid-loading-overlay">
         <div class="loader-ring small"></div>
@@ -1288,22 +1289,26 @@ export default {
   }
 }
 
+/* Rating Container - prevents layout shift */
+.rating-container {
+  position: relative;
+  min-height: 60px;
+  margin-bottom: 20px;
+}
+
 /* Rating Bar Transition */
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: all 0.4s ease;
-  max-height: 100px;
-  opacity: 1;
+  transition: all 0.3s ease;
 }
 
-.fade-slide-enter-from,
-.fade-slide-leave-to {
+.fade-slide-enter-from {
   opacity: 0;
   transform: translateY(-10px);
-  max-height: 0;
-  margin-bottom: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  overflow: hidden;
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 </style>
