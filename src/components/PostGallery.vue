@@ -36,37 +36,46 @@
           <span>Counts by rating are unavailable for this tag due to API complexity limits.</span>
         </div>
         <div v-else-if="!loading && !loadingCounts && (tagCount || ratingCounts.g?.count !== null || ratingCounts.s?.count !== null || ratingCounts.q?.count !== null || ratingCounts.e?.count !== null)" class="rating-bar-container">
-           <div class="rating-bar-header" v-if="tagCount">
-              <span class="total-badge">Total Tag Count: {{ formatCount(tagCount) }}</span>
-              <div class="rating-legend">
-                <span title="Exact count">Exact</span>
-                <span title="Includes deleted posts">~ Approx</span>
-                <span title="API Limit reached">? Limited</span>
+           <div class="rating-bar">
+              <!-- Left: Total Count -->
+              <div class="rating-bar-left">
+                <span v-if="tagCount" class="total-badge">Total Tag Count: {{ formatCount(tagCount) }}</span>
+              </div>
+              
+              <!-- Center: Rating Stats -->
+              <div class="rating-bar-center">
+                <div class="rating-stat general" title="General">
+                  <span class="r-dot"></span>
+                  <span class="r-label">General</span>
+                  <span class="r-count">{{ formatCount(ratingCounts.g) }}</span>
+                </div>
+                <div class="rating-stat safe" title="Safe">
+                  <span class="r-dot"></span>
+                  <span class="r-label">Safe</span>
+                  <span class="r-count">{{ formatCount(ratingCounts.s) }}</span>
+                </div>
+                <div class="rating-stat questionable" title="Questionable">
+                  <span class="r-dot"></span>
+                  <span class="r-label">Questionable</span>
+                  <span class="r-count">{{ formatCount(ratingCounts.q) }}</span>
+                </div>
+                <div class="rating-stat explicit" title="Explicit">
+                  <span class="r-dot"></span>
+                  <span class="r-label">Explicit</span>
+                  <span class="r-count">{{ formatCount(ratingCounts.e) }}</span>
+                </div>
+              </div>
+
+              <!-- Right: Legend -->
+              <div class="rating-bar-right">
+                <div class="rating-legend">
+                  <span title="Exact count">Exact</span>
+                  <span title="Includes deleted posts">~ Approx</span>
+                  <span title="API Limit reached">? Limited</span>
+                </div>
               </div>
            </div>
-           <div class="rating-bar">
-              <div class="rating-stat general" title="General">
-              <span class="r-dot"></span>
-              <span class="r-label">General</span>
-              <span class="r-count">{{ formatCount(ratingCounts.g) }}</span>
-           </div>
-           <div class="rating-stat safe" title="Safe">
-              <span class="r-dot"></span>
-              <span class="r-label">Safe</span>
-              <span class="r-count">{{ formatCount(ratingCounts.s) }}</span>
-           </div>
-           <div class="rating-stat questionable" title="Questionable">
-              <span class="r-dot"></span>
-              <span class="r-label">Questionable</span>
-              <span class="r-count">{{ formatCount(ratingCounts.q) }}</span>
-           </div>
-           <div class="rating-stat explicit" title="Explicit">
-              <span class="r-dot"></span>
-              <span class="r-label">Explicit</span>
-              <span class="r-count">{{ formatCount(ratingCounts.e) }}</span>
-           </div>
         </div>
-      </div>
       </Transition>
 
       <div v-if="loading" class="grid-loading-overlay">
@@ -661,45 +670,68 @@ export default {
 }
 
 /* Rating Bar */
-.rating-bar, .rating-limit-info {
+.rating-bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+  background: rgba(20, 20, 25, 0.4);
+  padding: 12px 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.rating-bar-left {
+  justify-self: start;
+}
+
+.rating-bar-center {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 20px;
-  margin-bottom: 20px;
-  background: rgba(20, 20, 25, 0.4);
-  padding: 10px 24px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  flex-wrap: wrap;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rating-bar-right {
+  justify-self: end;
 }
 
 .rating-limit-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  background: rgba(234, 179, 8, 0.05);
+  padding: 12px 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(234, 179, 8, 0.1);
   color: #94a3b8;
   font-size: 13px;
-  gap: 8px;
-  background: rgba(234, 179, 8, 0.05);
-  border-color: rgba(234, 179, 8, 0.1);
 }
 
 .rating-limit-info .icon {
   color: #eab308;
 }
 
-/* Rating Bar Container & Header */
-.rating-bar-container {
-  margin-bottom: 24px;
+@media (max-width: 1024px) {
+  .rating-bar {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    text-align: center;
+  }
+  
+  .rating-bar-left, .rating-bar-center, .rating-bar-right {
+    justify-self: center;
+  }
 }
 
-.rating-bar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 10px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 12px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+/* Rating Bar Container */
+.rating-bar-container {
+  margin-bottom: 24px;
 }
 
 .total-badge {
