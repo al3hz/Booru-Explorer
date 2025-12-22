@@ -486,35 +486,54 @@ export default {
   width: 300px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
+  /* Añadir estas propiedades para prevenir desbordamiento */
+  overflow: visible;
+  min-height: 0;
 }
 
 
 .sidebar-container.is-collapsed {
   width: 60px;
-  max-height: 70px; /* Increased to fit borders nicely */
-  overflow: hidden; /* Hide content during shrink */
-  border-radius: 12px; /* Prevent clipping corners */
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 60px !important; /* Reducir la altura máxima */
+  padding: 4px;
+  overflow: hidden; /* Cambiar de visible a hidden */
+  /* Asegurar que el contenido no sobresalga */
+  contain: content;
 }
 
 .sidebar-container.is-collapsed .sidebar {
-  background: rgba(20, 20, 28, 0.8);
+  background: rgba(20, 20, 28, 0.6);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2); /* More visible border */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
-  width: 100%; 
-  height: 100%;
-  display: flex; /* Ensure inner content can center */
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  width: 100%;
+  height: 52px; /* Altura fija */
+  min-height: 52px; /* Altura mínima fija */
+  max-height: 52px; /* Altura máxima fija */
+  display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.3s ease;
+  /* Prevenir desbordamiento */
+  overflow: hidden;
+}
+
+/* Hover effect for the collapsed box */
+.sidebar-container.is-collapsed:hover .sidebar {
+  border-color: rgba(167, 139, 250, 0.6);
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.15); /* Soft glow */
+  background: rgba(30, 30, 40, 0.8);
 }
 
 .sidebar-container.is-collapsed .sidebar-header {
   border-bottom: none;
   padding: 0;
-  margin: 0; /* Reset margins */
-  height: auto; /* Let flex parent center it */
-  width: auto;
+  margin: 0;
+  height: 52px;
+  width: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -579,17 +598,21 @@ export default {
 
 .sidebar-content {
   padding: 20px;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s; /* Delay fade in */
+  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
   flex: 1;
+  max-height: calc(100vh - 140px);
 }
 
 .sidebar-content.faded {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
+  transform: translateY(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 /* Custom Scrollbar */
@@ -597,10 +620,22 @@ export default {
 
 /* Animate content fade out when collapsing */
 .sidebar-container.is-collapsed .sidebar-content {
+  display: none !important; /* Ocultar completamente el contenido */
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-10px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  visibility: hidden;
+  height: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-container.is-collapsed .toggle-btn {
+  margin: 0;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 
