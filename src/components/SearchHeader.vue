@@ -1,5 +1,5 @@
 <template>
-  <header class="app-header">
+  <header class="app-header" :class="{ 'header-hidden': isHeaderHidden }">
     <div class="header-inner">
       <div class="header-left">
         <!-- Sidebar Toggle Button (Far Left) -->
@@ -51,6 +51,7 @@
 </template>
 
 <script>
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLayout } from '../composables/useLayout';
 
@@ -60,6 +61,42 @@ export default {
   setup(props, { emit }) {
     const router = useRouter();
     const { isSidebarVisible, toggleSidebar } = useLayout();
+    const isHeaderHidden = ref(false);
+    let lastScrollY = typeof window !== 'undefined' ? window.pageYOffset : 0;
+
+    const handleScroll = () => {
+      // Solo en móviles/tablets (<= 768px)
+      if (window.innerWidth > 768) {
+        if (isHeaderHidden.value) isHeaderHidden.value = false;
+        return;
+      }
+      
+      const currentScrollY = window.pageYOffset;
+      
+      // Ignorar rebotes en iOS
+      if (currentScrollY < 0) return;
+
+      // Tolerancia pequeña para evitar parpadeos
+      if (Math.abs(currentScrollY - lastScrollY) < 5) return;
+
+      // Si estamos muy arriba, siempre mostrar
+      if (currentScrollY < 50) {
+        isHeaderHidden.value = false;
+      } else {
+        // Ocultar si bajamos, mostrar si subimos
+        isHeaderHidden.value = currentScrollY > lastScrollY;
+      }
+      
+      lastScrollY = currentScrollY;
+    };
+
+    onMounted(() => {
+      window.addEventListener('scroll', handleScroll, { passive: true });
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('scroll', handleScroll);
+    });
 
     const handleLogoClick = () => {
       emit('logo-click');
@@ -69,7 +106,8 @@ export default {
     return {
       handleLogoClick,
       isSidebarVisible,
-      toggleSidebar
+      toggleSidebar,
+      isHeaderHidden
     };
   }
 };
@@ -77,10 +115,31 @@ export default {
 
 <style scoped>
 .app-header {
-  position: relative; /* Static flow, but relative container */
+  position: relative;
   background: rgba(20, 20, 28, 0.4);
-  margin-bottom: 40px; /* Increased from 24px to prevent collisions */
-  animation: headerSlideDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  margin-bottom: 40px;
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    position: sticky;
+    top: -1px;
+    z-index: 500;
+    background: rgba(20, 20, 28, 0.7);
+    backdrop-filter: blur(12px);
+    margin-bottom: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.3s ease;
+  }
+}
+
+.header-hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 @keyframes headerSlideDown {
@@ -123,6 +182,7 @@ export default {
   padding: 20px 30px;
   max-width: 1600px;
   margin: 0 auto;
+  animation: headerSlideDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
 .header-border {
