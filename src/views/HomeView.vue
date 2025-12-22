@@ -408,13 +408,16 @@ export default {
         ratingFilter.value = route.query.rating;
       }
       
-      searchPosts(1, true);
-      // Initial fetch of rating counts - normalize tags first
+      // Execute parallel search and count fetch
       const normalizedQuery = appliedQuery.value
         .split(/[,，\s]+/)
         .filter(t => t.trim())
         .join(' ');
-      fetchRatingCounts(normalizedQuery);
+
+      Promise.all([
+        searchPosts(1, true),
+        fetchRatingCounts(normalizedQuery)
+      ]);
       
       // Update URL to include rating if not present
       if (!route.query.rating && ratingFilter.value) {
@@ -456,14 +459,16 @@ export default {
       isRandomMode.value = false;
       currentPage.value = 1;
       
-      // Execute the search
-      searchPosts(1, true);
-      // Fetch fresh rating counts - normalize tags first
+      // Execute fresh parallel search and count fetch
       const normalizedQueryForCounts = normalizedTags
         .split(/[,，\s]+/)
         .filter(t => t.trim())
         .join(' ');
-      fetchRatingCounts(normalizedQueryForCounts);
+      
+      Promise.all([
+        searchPosts(1, true),
+        fetchRatingCounts(normalizedQueryForCounts)
+      ]);
     });
 
     // Dynamic Title Logic

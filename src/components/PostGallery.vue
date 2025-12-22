@@ -19,10 +19,33 @@
     <!-- Gallery Grid with Overlay -->
     <div v-else class="gallery-wrapper">
       
+      <!-- Rating Distribution Loading State -->
+      <Transition name="fade-slide">
+        <div v-if="loadingCounts" class="rating-bar loading">
+           <div class="loader-dots">
+              <span></span><span></span><span></span>
+           </div>
+           <span class="loading-text">Calculating rating distribution...</span>
+        </div>
+      </Transition>
+
       <!-- Rating Distribution Bar -->
       <Transition name="fade-slide">
-        <div v-if="!loading && (ratingCounts.g || ratingCounts.s || ratingCounts.q || ratingCounts.e)" class="rating-bar">
-           <div class="rating-stat general" title="General">
+        <div v-if="!loading && !loadingCounts && isLimited" class="rating-limit-info">
+          <span class="icon">⚠️</span>
+          <span>Counts by rating are unavailable for this tag due to API complexity limits.</span>
+        </div>
+        <div v-else-if="!loading && !loadingCounts && (tagCount || ratingCounts.g?.count !== null || ratingCounts.s?.count !== null || ratingCounts.q?.count !== null || ratingCounts.e?.count !== null)" class="rating-bar-container">
+           <div class="rating-bar-header" v-if="tagCount">
+              <span class="total-badge">Total Tag Count: {{ formatCount(tagCount) }}</span>
+              <div class="rating-legend">
+                <span title="Exact count">Exact</span>
+                <span title="Includes deleted posts">~ Approx</span>
+                <span title="API Limit reached">? Limited</span>
+              </div>
+           </div>
+           <div class="rating-bar">
+              <div class="rating-stat general" title="General">
               <span class="r-dot"></span>
               <span class="r-label">General</span>
               <span class="r-count">{{ formatCount(ratingCounts.g) }}</span>
@@ -43,6 +66,7 @@
               <span class="r-count">{{ formatCount(ratingCounts.e) }}</span>
            </div>
         </div>
+      </div>
       </Transition>
 
       <div v-if="loading" class="grid-loading-overlay">
@@ -220,6 +244,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted, watch } from "vue";
+import { useRatingCounts } from "../composables/useRatingCounts";
 
 import SmartVideo from './SmartVideo.vue';
 
@@ -254,6 +279,7 @@ export default {
   },
   emits: ["load-more", "change-page", "post-clicked"],
   setup(props, { emit }) {
+    const { isLimited, loadingCounts, tagCount } = useRatingCounts();
     const infiniteScrollTrigger = ref(null);
     let observer = null;
 
@@ -337,17 +363,43 @@ export default {
       return pages;
     };
 
-    const formatCount = (count) => {
-      if (!count) return '0';
-      if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-      if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
-      return count.toString();
+    const formatCount = (countData) => {
+      if (countData === null || countData === undefined) return '0';
+      
+      // Handle legacy number case
+      if (typeof countData === 'number') {
+        const val = countData;
+        if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+        if (val >= 1000) return (val / 1000).toFixed(1) + 'k';
+        return val.toString();
+      }
+
+      // Handle object case
+      const val = countData.count;
+      const approx = countData.isApproximate ? '~' : '';
+      
+      if (val === null || val === undefined) return '?';
+      if (val === 0) return '0';
+      
+      let formatted = val.toString();
+      if (val >= 1000000) {
+        formatted = (val / 1000000).toFixed(1) + 'M';
+      } else if (val >= 1000) {
+        formatted = (val / 1000).toFixed(1) + 'k';
+      } else {
+        formatted = val.toString();
+      }
+      
+      return `${approx}${formatted}`;
     };
 
     return {
       infiniteScrollTrigger,
       getPageNumbers,
-      formatCount
+      formatCount,
+      isLimited,
+      loadingCounts,
+      tagCount
     };
   },
   methods: {
@@ -606,9 +658,10 @@ export default {
 }
 
 /* Rating Bar */
-.rating-bar {
+.rating-bar, .rating-limit-info {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 20px;
   margin-bottom: 20px;
   background: rgba(20, 20, 25, 0.4);
@@ -616,6 +669,99 @@ export default {
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   flex-wrap: wrap;
+}
+
+.rating-limit-info {
+  color: #94a3b8;
+  font-size: 13px;
+  gap: 8px;
+  background: rgba(234, 179, 8, 0.05);
+  border-color: rgba(234, 179, 8, 0.1);
+}
+
+.rating-limit-info .icon {
+  color: #eab308;
+}
+
+/* Rating Bar Container & Header */
+.rating-bar-container {
+  margin-bottom: 24px;
+}
+
+.rating-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 12px;
+}
+
+.total-badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+  background: rgba(139, 92, 246, 0.2);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.rating-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.rating-legend span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: help;
+}
+
+.rating-legend span::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Loading State in Rating Bar */
+.rating-bar.loading {
+  gap: 12px;
+  background: rgba(139, 92, 246, 0.05);
+  border-color: rgba(139, 92, 246, 0.1);
+}
+
+.loading-text {
+  font-size: 13px;
+  color: #a78bfa;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.loader-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.loader-dots span {
+  width: 6px;
+  height: 6px;
+  background: #a78bfa;
+  border-radius: 50%;
+  animation: pulse 1.4s infinite ease-in-out both;
+}
+
+.loader-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loader-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes pulse {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
 }
 
 .rating-stat {

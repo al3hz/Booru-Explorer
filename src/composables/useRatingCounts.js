@@ -1,60 +1,126 @@
 import { ref } from 'vue';
 
-export function useRatingCounts() {
-  const ratingCounts = ref({
-    g: 0,
-    s: 0,
-    q: 0,
-    e: 0
-  });
-  const loadingCounts = ref(false);
+// Global state (Singleton)
+const ratingCounts = ref({
+  g: { count: null, isApproximate: false },
+  s: { count: null, isApproximate: false },
+  q: { count: null, isApproximate: false },
+  e: { count: null, isApproximate: false }
+});
+const loadingCounts = ref(false);
+const isLimited = ref(false);
+const tagCount = ref(null); // Reliable total from Tags API
+let currentRequestId = 0;
 
+export function useRatingCounts() {
   const fetchRatingCounts = async (baseTags) => {
+    const requestId = ++currentRequestId;
     loadingCounts.value = true;
+    isLimited.value = false;
+    tagCount.value = null;
     
-    // Clean tags: remove existing rating, order, and status tags to get raw content scope
+    // Reset counts immediately to avoid showing stale data from previous search
+    const zero = { count: null, isApproximate: false };
+    ratingCounts.value = { g: zero, s: zero, q: zero, e: zero };
+
+    // Clean tags
     let tags = baseTags || "";
-    // Remove rating:x
     tags = tags.replace(/rating:[a-z]+/gi, '');
-    // Remove order:x (sorting doesn't affect count, but safer to remove)
     tags = tags.replace(/order:[a-z_]+/gi, '');
-    // Keep status tags? usually we want active posts, so default to -status:deleted if not specified
     if (!tags.includes('status:')) {
        tags = tags + ' -status:deleted';
     }
-    
     tags = tags.trim().replace(/\s+/g, ' ');
 
+    // 1. Fetch Tag Metadata for more accuracy if it's a single tag
+    const words = tags.replace('-status:deleted', '').trim().split(/\s+/);
+    if (words.length === 1 && words[0] && !words[0].includes(':')) {
+       try {
+         const res = await fetch(`https://danbooru.donmai.us/tags.json?search[name]=${words[0]}`);
+         const data = await res.json();
+         if (data && data.length > 0) {
+           tagCount.value = data[0].post_count;
+         }
+       } catch (e) {}
+    }
+
     const ratings = ['g', 's', 'q', 'e'];
-    const requests = ratings.map(r => {
-      const query = tags ? `${tags} rating:${r}` : `rating:${r}`;
-      const params = new URLSearchParams({ tags: query });
-      return fetch(`https://danbooru.donmai.us/counts/posts.json?${params.toString()}`)
-        .then(res => res.json())
-        .then(data => data.counts && data.counts.posts ? data.counts.posts : 0)
-        .catch(() => 0);
+    const requests = ratings.map(async r => {
+      // Intento 1: Búsqueda precisa (CON -status:deleted)
+// ... same logic ...
+      const queryPrecise = tags ? `${tags} rating:${r}` : `rating:${r}`;
+      const paramsPrecise = new URLSearchParams({ tags: queryPrecise });
+      
+      try {
+        const res = await fetch(`https://danbooru.donmai.us/counts/posts.json?${paramsPrecise.toString()}`);
+        const data = await res.json();
+        
+        if (data && data.counts && typeof data.counts.posts === 'number') {
+          return { count: data.counts.posts, isApproximate: false };
+        }
+      } catch (e) {}
+
+      // Intento 2 (Fallback): Búsqueda aproximada (SIN -status:deleted)
+      const cleanTags = tags.replace('-status:deleted', '').trim();
+      const queryFallback = cleanTags ? `${cleanTags} rating:${r}` : `rating:${r}`;
+      const paramsFallback = new URLSearchParams({ tags: queryFallback });
+      
+      try {
+        const res = await fetch(`https://danbooru.donmai.us/counts/posts.json?${paramsFallback.toString()}`);
+        const data = await res.json();
+         
+        if (data && data.counts && typeof data.counts.posts === 'number') {
+          return { count: data.counts.posts, isApproximate: true };
+        }
+      } catch (e) {
+        return null;
+      }
+      return null;
     });
 
     try {
       const results = await Promise.all(requests);
+      
+      // Safety check: Only update if this is still the most recent request
+      if (requestId !== currentRequestId) return;
+
+      // Si todos son null, marcar como limitado
+      if (results.every(r => r === null)) {
+        isLimited.value = true;
+      }
+
+      const safeParams = (res) => res ? res : { count: null, isApproximate: false };
+      
       ratingCounts.value = {
-        g: results[0],
-        s: results[1],
-        q: results[2],
-        e: results[3]
+        g: safeParams(results[0]),
+        s: safeParams(results[1]),
+        q: safeParams(results[2]),
+        e: safeParams(results[3])
       };
+
+      // Si tenemos el total real y los ratings fallaron, esto confirma el límite
+      if (tagCount.value > 0 && results.some(r => r === null)) {
+         // console.log("Confirmation: Tag has posts but API limited the breakdown.");
+      }
+
     } catch (e) {
+      if (requestId !== currentRequestId) return;
       console.error("Error fetching rating counts", e);
-      // Reset on error
-      ratingCounts.value = { g: 0, s: 0, q: 0, e: 0 };
+      isLimited.value = true;
+      const zeroObj = { count: null, isApproximate: false };
+      ratingCounts.value = { g: zeroObj, s: zeroObj, q: zeroObj, e: zeroObj };
     } finally {
-      loadingCounts.value = false;
+      if (requestId === currentRequestId) {
+        loadingCounts.value = false;
+      }
     }
   };
 
   return {
     ratingCounts,
     loadingCounts,
+    isLimited,
+    tagCount,
     fetchRatingCounts
   };
 }
