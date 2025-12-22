@@ -32,9 +32,7 @@
           <i class="lni lni-library"></i>
           <span>Wiki</span>
         </router-link>
-        <div class="nav-item kaomoji-pill" @click="changeKaomoji" title="Click to change">
-          <span class="kaomoji-text">{{ currentKaomoji }}</span>
-        </div>
+
       </nav>
     </div>
     <div class="header-border"></div>
@@ -42,7 +40,6 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 export default {
@@ -50,38 +47,13 @@ export default {
   emits: ['logo-click'],
   setup(props, { emit }) {
     const router = useRouter();
-    const kaomojis = [
-      "(｡◕‿◕｡)",
-      "(づ｡◕‿‿◕｡)づ",
-      "ヽ(•‿•)ノ",
-      "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧",
-      "(✿◠‿◠)",
-      "( ͡° ͜ʖ ͡°)",
-      "(ง'̀-'́)ง",
-      "¯\\_(ツ)_/¯",
-      "(╯°□°）╯︵ ┻━┻",
-      "ಠ_ಠ"
-    ];
-
-    const currentKaomoji = ref(kaomojis[0]);
-
-    const changeKaomoji = () => {
-      const randomIndex = Math.floor(Math.random() * kaomojis.length);
-      currentKaomoji.value = kaomojis[randomIndex];
-    };
 
     const handleLogoClick = () => {
       emit('logo-click');
       router.push('/');
     };
 
-    onMounted(() => {
-      changeKaomoji();
-    });
-
     return {
-      currentKaomoji,
-      changeKaomoji,
       handleLogoClick
     };
   }
@@ -233,13 +205,6 @@ export default {
 }
 
 
-
-.kaomoji-text {
-  font-family: "Segoe UI Emoji", "Arial", sans-serif;
-  color: #c084fc;
-  font-weight: 600;
-  font-size: 14px;
-}
 
 .lang-code-mobile {
   display: none;
