@@ -296,8 +296,14 @@ export default {
 
       isRandomMode.value = false;
       
-      // Update URL. The watcher will handle the actual searchPosts call.
-      await router.push({ path: '/', query: { tags: finalQuery || undefined } });
+      // Update URL with tags and rating. The watcher will handle the actual searchPosts call.
+      await router.push({ 
+        path: '/', 
+        query: { 
+          tags: finalQuery || undefined,
+          rating: ratingFilter.value || undefined
+        } 
+      });
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
@@ -334,6 +340,14 @@ export default {
     watch([ratingFilter, limit], () => {
       currentPage.value = 1;
       searchPosts(1, true);
+      // Update URL to include new rating
+      router.push({ 
+        path: '/', 
+        query: { 
+          tags: appliedQuery.value || undefined,
+          rating: ratingFilter.value || undefined
+        } 
+      });
     });
 
     // Keyboard navigation
@@ -376,6 +390,11 @@ export default {
         appliedQuery.value = route.query.tags;
       }
       
+      // Initialize rating from URL if present
+      if (route.query.rating) {
+        ratingFilter.value = route.query.rating;
+      }
+      
       searchPosts(1, true);
       // Initial fetch of rating counts - normalize tags first
       const normalizedQuery = appliedQuery.value
@@ -383,6 +402,17 @@ export default {
         .filter(t => t.trim())
         .join(' ');
       fetchRatingCounts(normalizedQuery);
+      
+      // Update URL to include rating if not present
+      if (!route.query.rating && ratingFilter.value) {
+        router.replace({ 
+          path: '/', 
+          query: { 
+            tags: route.query.tags || undefined,
+            rating: ratingFilter.value
+          } 
+        });
+      }
       
       window.addEventListener('keydown', handleKeydown);
     });

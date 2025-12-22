@@ -185,7 +185,7 @@
 
 <script>
 import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { useDanbooruAutocomplete } from "../composables/useDanbooruAutocomplete";
 import { useDanbooruTrending } from "../composables/useDanbooruTrending";
 
@@ -213,6 +213,7 @@ export default {
   ],
   setup(props, { emit }) {
     const router = useRouter();
+    const route = useRoute();
     const { suggestions, fetchSuggestions, clearSuggestions, loadingSuggestions } = useDanbooruAutocomplete();
     const { trendingTags, loadingTrending, fetchTrendingTags } = useDanbooruTrending();
     
@@ -372,10 +373,21 @@ export default {
       
       // Update URL and scroll to top when search button is clicked
       if (trimmedQuery) {
-        await router.push({ path: '/', query: { tags: trimmedQuery } });
+        await router.push({ 
+          path: '/', 
+          query: { 
+            tags: trimmedQuery,
+            rating: route.query.rating || undefined
+          } 
+        });
       } else {
         // Navigate to root without tags param when search is empty
-        await router.push({ path: '/' });
+        await router.push({ 
+          path: '/', 
+          query: { 
+            rating: route.query.rating || undefined 
+          } 
+        });
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
       clearSuggestions();
