@@ -176,12 +176,17 @@ export default {
 }
 
 .header-inner {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-areas: 
+    "toggle brand dummy"
+    "toggle nav dummy";
   align-items: center;
-  padding: 20px 30px;
-  max-width: 1600px;
-  margin: 0 auto;
+  gap: 12px;
+  padding: 15px 30px;
+  width: 100%;
+  max-width: 100%; /* Remove long margins */
+  margin: 0;
   animation: headerSlideDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
@@ -198,15 +203,23 @@ export default {
 }
 
 .header-left {
-  display: flex;
-  align-items: center;
+  display: contents; /* Let toggle and brand participate in parent grid directly */
 }
 
 .brand-section {
+  grid-area: brand;
+  justify-self: center;
   display: flex;
   align-items: center;
   gap: 16px;
   animation: fadeInRight 0.5s ease 0.2s backwards;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
 }
 
 .logo-container {
@@ -219,10 +232,12 @@ export default {
 }
 
 .toggle-menu-btn {
+  grid-area: toggle;
+  justify-self: start;
   background: rgba(167, 139, 250, 0.1);
   border: 1px solid rgba(167, 139, 250, 0.2);
   color: #a78bfa;
-  width: 44px; /* Slightly larger for the far-left position */
+  width: 44px;
   height: 44px;
   border-radius: 12px;
   display: flex;
@@ -231,7 +246,6 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 20px;
-  margin-right: 20px;
   flex-shrink: 0;
   z-index: 100;
 }
@@ -277,7 +291,7 @@ export default {
 .badge-container {
   display: flex;
   align-items: center;
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .version-badge {
@@ -460,6 +474,8 @@ export default {
 
 /* Language Dropdown Styles */
 .header-nav {
+  grid-area: nav;
+  justify-self: center;
   display: flex;
   align-items: center;
   gap: 12px;
