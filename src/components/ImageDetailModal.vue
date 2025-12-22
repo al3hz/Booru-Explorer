@@ -148,6 +148,47 @@
                   >
                     <i class="lni" :class="linkCopied ? 'lni-checkmark' : 'lni-link'"></i>
                   </button>
+                  
+                  <!-- Reverse Image Search Dropdown -->
+                  <div class="reverse-search-dropdown">
+                    <button 
+                      @click="toggleSearchDropdown" 
+                      class="action-btn search-trigger"
+                      :class="{ 'active': searchDropdownOpen }"
+                      title="Find Source"
+                    >
+                      <i class="lni lni-search-alt"></i>
+                    </button>
+                    
+                    <transition name="dropdown-fade">
+                      <div v-if="searchDropdownOpen" class="search-dropdown-menu">
+                        <button 
+                          @click="searchSauceNAO" 
+                          class="search-option"
+                          title="Search on SauceNAO"
+                        >
+                          <img src="https://saucenao.com/favicon.ico" alt="SauceNAO" class="service-icon">
+                          <span>SauceNAO</span>
+                        </button>
+                        <button 
+                          @click="searchIQDB" 
+                          class="search-option"
+                          title="Search on IQDB"
+                        >
+                          <img src="https://iqdb.org/favicon.ico" alt="IQDB" class="service-icon">
+                          <span>IQDB</span>
+                        </button>
+                        <button 
+                          @click="searchGoogle" 
+                          class="search-option"
+                          title="Search on Google Lens"
+                        >
+                          <img src="https://www.google.com/favicon.ico" alt="Google" class="service-icon">
+                          <span>Google Lens</span>
+                        </button>
+                      </div>
+                    </transition>
+                  </div>
                 </div>
               </div>
             </div>
@@ -420,6 +461,32 @@ export default {
       }
     };
 
+    // Reverse Image Search Dropdown
+    const searchDropdownOpen = ref(false);
+    
+    const toggleSearchDropdown = () => {
+      searchDropdownOpen.value = !searchDropdownOpen.value;
+    };
+
+    // Reverse Image Search Functions
+    const searchSauceNAO = () => {
+      const imageUrl = encodeURIComponent(mediaSource.value || props.post.preview_file_url);
+      window.open(`https://saucenao.com/search.php?url=${imageUrl}`, '_blank', 'noopener,noreferrer');
+      searchDropdownOpen.value = false;
+    };
+
+    const searchIQDB = () => {
+      const imageUrl = encodeURIComponent(mediaSource.value || props.post.preview_file_url);
+      window.open(`https://iqdb.org/?url=${imageUrl}`, '_blank', 'noopener,noreferrer');
+      searchDropdownOpen.value = false;
+    };
+
+    const searchGoogle = () => {
+      const imageUrl = encodeURIComponent(mediaSource.value || props.post.preview_file_url);
+      window.open(`https://lens.google.com/uploadbyurl?url=${imageUrl}`, '_blank', 'noopener,noreferrer');
+      searchDropdownOpen.value = false;
+    };
+
     const handleImageError = (e) => {
       imageReady.value = true; // Treat error as ready to show fallback
       checkLoading();
@@ -661,6 +728,14 @@ export default {
           setTimeout(() => loadRuffle(), 100);
        }
        window.addEventListener('keydown', handleKeydown);
+       
+       // Close dropdown when clicking outside
+       document.addEventListener('click', (e) => {
+         if (!e.target.closest('.reverse-search-dropdown')) {
+           searchDropdownOpen.value = false;
+         }
+       });
+       
        document.body.style.overflow = 'hidden'; 
     });
 
@@ -873,6 +948,11 @@ export default {
       linkCopied,
       downloadImage,
       downloading,
+      searchDropdownOpen,
+      toggleSearchDropdown,
+      searchSauceNAO,
+      searchIQDB,
+      searchGoogle,
       getExtensionClass,
       isFlash,
       ruffleContainer,
@@ -1286,7 +1366,7 @@ export default {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 5px;
   flex: 1;
   flex-wrap: wrap; /* Allow wrapping for badges */
 }
@@ -1934,6 +2014,115 @@ export default {
     padding-top: 20px; /* Reduce padding on mobile to prevent overlap */
     position: relative;
     z-index: 10; /* Ensure header is above other elements */
+  }
+}
+
+/* Reverse Image Search Dropdown */
+.reverse-search-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.search-trigger {
+  position: relative;
+}
+
+.search-trigger i {
+  font-size: 16px;
+}
+
+.search-trigger.active {
+  background: rgba(167, 139, 250, 0.25);
+  border-color: rgba(167, 139, 250, 0.5);
+}
+
+.search-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  background: rgba(30, 30, 40, 0.98);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1001;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(167, 139, 250, 0.1);
+  transform-origin: top right;
+}
+
+.search-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  width: 100%;
+}
+
+.search-option:hover {
+  background: rgba(167, 139, 250, 0.15);
+  color: #fff;
+  transform: translateX(2px);
+}
+
+.search-option:active {
+  transform: translateX(0);
+  background: rgba(167, 139, 250, 0.25);
+}
+
+.service-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+/* Dropdown fade transition */
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+}
+
+.dropdown-fade-enter-to,
+.dropdown-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@media (max-width: 768px) {
+  .search-dropdown-menu {
+    min-width: 160px;
+    right: -10px; /* Adjust for mobile edge spacing */
+  }
+  
+  .search-option {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  
+  .service-icon {
+    width: 14px;
+    height: 14px;
   }
 }
 

@@ -23,7 +23,7 @@
           <div class="brand-text">
             <h1>Booru Explorer</h1>
             <div class="badge-container">
-              <span class="version-badge">v1.2</span>
+              <span class="version-badge">v{{ appVersion }}</span>
               <span class="author-badge">Made by Overlain</span>
             </div>
           </div>
@@ -54,6 +54,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLayout } from '../composables/useLayout';
+import packageJson from '../../package.json';
 
 export default {
   name: "SearchHeader",
@@ -62,6 +63,7 @@ export default {
     const router = useRouter();
     const { isSidebarVisible, toggleSidebar } = useLayout();
     const isHeaderHidden = ref(false);
+    const appVersion = ref(packageJson.version);
     let lastScrollY = typeof window !== 'undefined' ? window.pageYOffset : 0;
 
     const handleScroll = () => {
@@ -107,7 +109,8 @@ export default {
       handleLogoClick,
       isSidebarVisible,
       toggleSidebar,
-      isHeaderHidden
+      isHeaderHidden,
+      appVersion
     };
   }
 };
