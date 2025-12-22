@@ -143,7 +143,10 @@ export default {
     const router = useRouter();
     const inputQuery = ref(""); // Lo que escribe el usuario
     const appliedQuery = ref(""); // Lo que realmente se está buscando (applied)
-    const limit = ref(10);
+    // Initialize limit from localStorage or default to 10
+    const savedLimit = localStorage.getItem('postsPerPage');
+    const limit = ref(savedLimit ? parseInt(savedLimit, 10) : 10);
+    
     // Default to All ("") if nothing saved. If saved, use saved value.
     const savedRating = localStorage.getItem('ratingFilter');
     const ratingFilter = ref(savedRating !== null ? savedRating : "general"); 
@@ -156,6 +159,11 @@ export default {
     // Persist rating filter selection
     watch(ratingFilter, (newVal) => {
        localStorage.setItem('ratingFilter', newVal);
+    });
+
+    // Persist posts per page limit
+    watch(limit, (newVal) => {
+       localStorage.setItem('postsPerPage', newVal);
     });
     
     // useDanbooruApi usa appliedQuery (el valor confirmado)
