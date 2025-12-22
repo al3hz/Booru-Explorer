@@ -327,6 +327,21 @@ export default {
                                         img.loading = 'lazy';
                                         img.title = `Post #${pid}`;
                                         img.onclick = () => openPost(post); 
+                                        
+                                        // Layout fix: Add class to parent for centering
+                                        if (stub.parentElement) {
+                                            stub.parentElement.classList.add('dtext-gallery-layout');
+                                            
+                                            // Optional: Clean up leading ": " from next text node if present
+                                            const next = stub.nextSibling;
+                                            if (next && next.nodeType === 3) { // Text node
+                                                const text = next.textContent;
+                                                if (text.trim().startsWith(':')) {
+                                                    next.textContent = text.replace(/^\s*:\s*/, '');
+                                                }
+                                            }
+                                        }
+
                                         stub.replaceWith(img);
                                     } else {
                                         stub.textContent = `[Post #${pid} - No preview]`;
@@ -385,6 +400,19 @@ export default {
                                                 if (post) openPost(post);
                                             };
                                         }
+
+                                        // Layout fix
+                                        if (stub.parentElement) {
+                                            stub.parentElement.classList.add('dtext-gallery-layout');
+                                            const next = stub.nextSibling;
+                                            if (next && next.nodeType === 3) { 
+                                                const text = next.textContent;
+                                                if (text.trim().startsWith(':')) {
+                                                    next.textContent = text.replace(/^\s*:\s*/, '');
+                                                }
+                                            }
+                                        }
+
                                         stub.replaceWith(img);
                                     } else {
                                         stub.textContent = `[Asset #${aid} - No preview]`;
@@ -460,14 +488,14 @@ export default {
                     ? `https://danbooru.donmai.us/wiki_pages/${wikiId}`
                     : (isArtist ? `https://danbooru.donmai.us/artists/${artist.value.id}` : `https://danbooru.donmai.us/posts?tags=${query}`),
                 previewPosts: previews,
-                hasPosts: false // Default false, will check next
+                hasPosts: previews.length > 0 // If we found previews, we definitely have posts
             };
 
-            // Check if tag exists and has posts to show the button
+            // Check if tag exists and has posts to show the button (if not already found via previews)
             if (isArtist) {
                 // Artists usually have posts if they exist in the DB
                  currentView.value.hasPosts = true; 
-            } else {
+            } else if (!currentView.value.hasPosts) {
                  try {
                     // Use normalized tag (underscores) for the exact tag check
                     const normalizedQuery = normalizeTag(query);
@@ -1458,5 +1486,32 @@ export default {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+/* Layout fix for inline wiki images */
+.wiki-text :deep(.dtext-gallery-layout) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 10px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+}
+
+.wiki-text :deep(.dtext-post-preview) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.wiki-text :deep(.dtext-post-preview:hover) {
+    transform: scale(1.02);
 }
 </style>
