@@ -65,7 +65,7 @@ export default {
   position: relative; /* Static flow, but relative container */
   background: rgba(20, 20, 28, 0.4);
   margin-bottom: 40px; /* Increased from 24px to prevent collisions */
-  animation: headerSlideDown 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation: headerSlideDown 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
 @keyframes headerSlideDown {
@@ -126,7 +126,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 16px;
-  animation: fadeInRight 0.6s ease 0.4s backwards;
+  animation: fadeInRight 0.5s ease 0.2s backwards;
 }
 
 .logo-container {
@@ -135,7 +135,7 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s backwards;
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s backwards;
 }
 
 .logo-icon {
@@ -223,9 +223,9 @@ export default {
   animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
-.nav-item:nth-child(1) { animation-delay: 0.5s; }
-.nav-item:nth-child(2) { animation-delay: 0.6s; }
-.nav-item:nth-child(3) { animation-delay: 0.7s; }
+.nav-item:nth-child(1) { animation-delay: 0.2s; }
+.nav-item:nth-child(2) { animation-delay: 0.3s; }
+.nav-item:nth-child(3) { animation-delay: 0.4s; }
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.06);

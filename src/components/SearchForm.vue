@@ -97,7 +97,7 @@
               >
                 <i class="lni lni-information"></i>
               </button>
-              <transition name="tooltip-fade">
+              <transition name="limit-tooltip-fade">
                 <div v-if="showLimitTooltip" class="limit-tooltip">
                   Min: 1, Max: 100 posts
                 </div>
@@ -478,7 +478,6 @@ export default {
 </script>
 
 <style scoped>
-/* 4. Ajustar la animación del contenedor para que sea más suave */
 .sidebar-container {
   position: sticky;
   top: 20px;
@@ -489,19 +488,6 @@ export default {
   z-index: 1000;
   overflow: visible;
   min-height: 0;
-  /* Animación de entrada visual */
-  animation: sidebarEntrance 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
-}
-
-@keyframes sidebarEntrance {
-  0% {
-    opacity: 0;
-    transform: translateX(-50px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
 }
 
 
@@ -977,6 +963,17 @@ export default {
   transform: translateX(-50%) translateY(5px);
 }
 
+.limit-tooltip-fade-enter-active,
+.limit-tooltip-fade-leave-active {
+  transition: all 0.2s ease;
+}
+
+.limit-tooltip-fade-enter-from,
+.limit-tooltip-fade-leave-to {
+  opacity: 0;
+  transform: translateY(5px);
+}
+
 .action-btn {
   width: 100%;
   padding: 10px;
@@ -1196,6 +1193,7 @@ export default {
 .tag-character { color: #818cf8; font-weight: 700; }
 .tag-meta { color: #94a3b8; }
 
+/* === ESTILOS MÓVIL - TRANSICIÓN LIMPIA === */
 @media (max-width: 768px) {
   .sidebar-container {
     position: fixed;
@@ -1205,37 +1203,191 @@ export default {
     max-height: 100vh;
     width: 280px;
     z-index: 1000;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .sidebar-container.is-collapsed {
+    /* Estado inicial: fuera de pantalla */
     transform: translateX(-100%);
-    width: 280px; /* Maintain width */
+    /* SÓLO animar transform - el contenido permanece visible */
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    /* Eliminar todas las animaciones de opacidad en móvil */
+    animation: none;
+    opacity: 1 !important;
   }
   
-  /* When NOT collapsed (visible) */
+  /* Estado ABIERTO (visible) */
   .sidebar-container:not(.is-collapsed) {
     transform: translateX(0);
-    box-shadow: 10px 0 30px rgba(0,0,0,0.5); /* Shadow when open */
-  }
-
-  .sidebar { 
-    overflow-y: auto; 
-    border-radius: 0;
-    border-top-right-radius: 16px;
-    border-bottom-right-radius: 16px;
-    border-left: none;
-    height: 100%;
-    background: rgba(20, 20, 28, 0.95); /* More opaque on mobile */
+    box-shadow: 15px 0 40px rgba(0,0,0,0.3);
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                box-shadow 0.3s ease 0.1s;
   }
   
-  /* Toggle button needs to be visible even when collapsed? 
-     The generic mobile toggle in HomeView handles opening. 
-     This internal toggle logic might be redundant or confusing on mobile.
-     We should hide the internal header toggle on mobile if the HomeView toggle controls it.
-  */
+  /* Estado CERRADO (deslizando fuera) */
+  .sidebar-container.is-collapsed {
+    transform: translateX(-100%);
+    box-shadow: none;
+    transition: transform 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53);
+    
+    /* OVERRIDES CRÍTICOS: Mantener tamaño completo durante la animación */
+    width: 280px !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: none !important; 
+    background: transparent !important;
+  }
+  
+  /* Sidebar interno - mantener estilo completo durante animación */
+  .sidebar {
+    width: 100% !important;
+    height: 100% !important; 
+    max-height: none !important;
+    min-height: 0 !important;
+    background: rgba(20, 20, 28, 0.98) !important;
+    backdrop-filter: blur(20px) !important;
+    border: none !important;
+    border-radius: 0 !important;
+    border-top-right-radius: 16px !important;
+    border-bottom-right-radius: 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Header visible durante toda la animación */
+  .sidebar-header {
+    width: auto !important;
+    height: auto !important;
+    display: flex !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    padding: 16px !important;
+    margin: 0 !important;
+    min-height: 60px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  /* === CONTENIDO - ELIMINAR ANIMACIONES DE OPACIDAD EN MÓVIL === */
+  .sidebar-content {
+    /* Contenido SIEMPRE visible durante la animación en móvil */
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: none !important;
+    /* Eliminar todas las transiciones que afecten opacidad/visibilidad */
+    transition: none !important;
+    
+    /* Layout */
+    height: calc(100% - 60px); /* 100% menos el header */
+    max-height: none !important;
+    padding: 20px !important;
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Eliminar clase .faded en móvil */
+  .sidebar-content.faded {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  
+  /* Eliminar estado colapsado del contenido en móvil */
+  .sidebar-container.is-collapsed .sidebar-content {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: none !important; /* Solo desactivar clicks durante animación */
+    max-height: none !important;
+    padding: 20px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    transition: none !important;
+  }
+  
+  /* === ACORDEÓN EXTRA - SIEMPRE ABIERTO EN MÓVIL === */
+  .actions-section {
+    position: relative;
+    flex-shrink: 0;
+    margin-bottom: 20px;
+  }
+  
+  .actions-section .accordion-header {
+    pointer-events: none;
+    cursor: default;
+  }
+  
+  .actions-section .accordion-arrow {
+    display: none;
+  }
+  
+  .actions-section .accordion-content {
+    grid-template-rows: 1fr !important;
+    opacity: 1 !important;
+    margin-top: 10px !important;
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  /* Asegurar que ocupe espacio mínimo necesario */
+  .actions-grid {
+    min-height: 120px;
+  }
+  
+  /* El último elemento empuja hacia abajo */
+  .actions-section:last-child {
+    margin-top: auto;
+    padding-bottom: 10px;
+  }
+  
+  /* === TÍTULO Y BOTÓN === */
+  .title {
+    opacity: 1 !important;
+    transition: none !important;
+  }
+  
+  /* Ocultar botón de toggle interno en móvil */
   .sidebar-header .toggle-btn {
-    display: none; /* Hide the collapse arrow on mobile sidebar header */
+    display: none;
+  }
+  
+  /* === SCROLLBAR EN MÓVIL === */
+  .sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .sidebar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+  }
+  
+  .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+  }
+}
+
+/* Para desktop, podemos mantener una animación sutil PERO sin afectar móvil */
+@media (min-width: 769px) {
+  .sidebar-container {
+    /* Solo en desktop, animación sutil de entrada */
+    animation: sidebarEntranceDesktop 0.5s ease-out;
+  }
+  
+  @keyframes sidebarEntranceDesktop {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
 
