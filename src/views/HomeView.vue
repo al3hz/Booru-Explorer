@@ -34,12 +34,17 @@
         @example-clicked="setExample"
         @toggle-sidebar="sidebarVisible = !sidebarVisible"
         @trigger-action="handleAction"
+        @search-error="handleSearchError"
       />
 
       <main class="main-content" :class="{ 'sidebar-open': sidebarVisible }">
-        <div v-if="error" class="error-message">
-          {{ error }}
-        </div>
+        <transition name="slide-down">
+          <div v-if="error" class="error-banner">
+            <span class="icon">⚠️</span>
+            <span class="error-text">{{ error }}</span>
+            <button class="close-error-btn" @click="error = null" title="Close">✕</button>
+          </div>
+        </transition>
         
         <!-- Search Query Title -->
         <transition name="slide-fade">
@@ -270,6 +275,20 @@ export default {
       // Si overrideQuery es string (viene de click en tag), úsalo. Si es evento o nulo, usa inputQuery.
       const finalQuery = (typeof overrideQuery === 'string') ? overrideQuery : inputQuery.value;
 
+      // Validate tag count (max 2 tags for non-premium users)
+      const tags = finalQuery
+        .split(/[,，\s]+/)
+        .map(t => t.trim())
+        .filter(t => t.length > 0 && !t.startsWith('rating:') && !t.startsWith('order:') && !t.startsWith('status:') && !t.startsWith('age:') && !t.startsWith('-'));
+      
+      if (tags.length > 2) {
+        error.value = `You can only search up to 2 tags at a time. You entered ${tags.length} tags: ${tags.join(', ')}`;
+        setTimeout(() => {
+          error.value = null;
+        }, 5000);
+        return;
+      }
+
       // Auto-close sidebar on mobile
       if (window.innerWidth <= 768) {
         sidebarVisible.value = false;
@@ -301,6 +320,13 @@ export default {
     const setExample = (example) => {
       inputQuery.value = example;
       handleSearch(); // Esto hará commit del example a appliedQuery
+    };
+
+    const handleSearchError = (errorMessage) => {
+      error.value = errorMessage;
+      setTimeout(() => {
+        error.value = null;
+      }, 5000);
     };
 
     // Watch para cambios en ratingFilter o limit
@@ -365,6 +391,23 @@ export default {
     watch(() => route.query.tags, (newTags) => {
       // Update internal states to match URL
       const normalizedTags = newTags || "";
+      
+      // Validate tag count (max 2 tags for non-premium users)
+      const tags = normalizedTags
+        .split(/[,，\s]+/)
+        .map(t => t.trim())
+        .filter(t => t.length > 0 && !t.startsWith('rating:') && !t.startsWith('order:') && !t.startsWith('order:') && !t.startsWith('status:') && !t.startsWith('age:') && !t.startsWith('-'));
+      
+      if (tags.length > 2) {
+        error.value = `You can only search up to 2 tags at a time. You entered ${tags.length} tags: ${tags.join(', ')}`;
+        setTimeout(() => {
+          error.value = null;
+        }, 5000);
+        // Reset to previous valid query
+        inputQuery.value = appliedQuery.value;
+        return;
+      }
+      
       inputQuery.value = normalizedTags;
       appliedQuery.value = normalizedTags;
       isRandomMode.value = false;
@@ -473,6 +516,7 @@ export default {
       handlePageChange,
       loadPage,
       setExample,
+      handleSearchError,
       selectedPost,
       openModal,
       navigatePost,
@@ -553,6 +597,68 @@ export default {
 .clear-mode-btn:hover {
   opacity: 1;
 }
+
+/* Error Banner */
+.error-banner {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+}
+
+.error-banner .icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.error-banner .error-text {
+  flex: 1;
+  color: #fca5a5;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.close-error-btn {
+  background: transparent;
+  border: none;
+  color: #fca5a5;
+  cursor: pointer;
+  font-size: 18px;
+  opacity: 0.7;
+  padding: 4px;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+
+.close-error-btn:hover {
+  opacity: 1;
+}
+
+/* Slide down transition */
+.slide-down-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-down-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.slide-down-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
 
 .info-banner {
     display: flex;

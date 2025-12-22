@@ -209,6 +209,7 @@ export default {
     "example-clicked",
     "toggle-sidebar",
     "trigger-action",
+    "search-error",
   ],
   setup(props, { emit }) {
     const router = useRouter();
@@ -356,8 +357,20 @@ export default {
     };
 
     const handleSearch = async () => {
-      // Update URL and scroll to top when search button is clicked
+      // Validate tag count before search
       const trimmedQuery = props.searchQuery.trim();
+      const tags = trimmedQuery
+        .split(/[,，\s]+/)
+        .map(t => t.trim())
+        .filter(t => t.length > 0 && !t.startsWith('rating:') && !t.startsWith('order:') && !t.startsWith('status:') && !t.startsWith('age:') && !t.startsWith('-'));
+      
+      if (tags.length > 2) {
+        // Emit error to parent
+        emit('search-error', `You can only search up to 2 tags at a time. You entered ${tags.length} tags: ${tags.join(', ')}`);
+        return;
+      }
+      
+      // Update URL and scroll to top when search button is clicked
       if (trimmedQuery) {
         await router.push({ path: '/', query: { tags: trimmedQuery } });
       } else {
