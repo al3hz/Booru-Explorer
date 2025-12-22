@@ -10,6 +10,7 @@
       ref="videoRef"
       :src="src"
       class="video-element"
+      :muted="isMuted"
       @click="togglePlay"
       @timeupdate="onTimeUpdate"
       @loadedmetadata="onLoadedMetadata"
