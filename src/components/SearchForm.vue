@@ -14,9 +14,25 @@
 
       <div class="sidebar-content" :class="{ 'faded': !sidebarVisible }">
         <div class="search-section">
-          <label class="section-label">Search</label>
+          <div class="section-label-wrapper">
+            <label class="section-label" for="search-input">Search</label>
+            <button 
+              class="info-icon-btn-search" 
+              @click.stop="showSearchTooltip = !showSearchTooltip"
+              title="Search info"
+            >
+              <i class="lni lni-information"></i>
+            </button>
+            <transition name="tooltip-fade">
+              <div v-if="showSearchTooltip" class="search-tooltip">
+                You can search up to 2 tags
+              </div>
+            </transition>
+          </div>
           <div class="input-wrapper search-wrapper">
             <input
+              id="search-input"
+              name="search"
               type="text"
               :value="searchQuery"
               @input="handleInput"
@@ -53,18 +69,19 @@
               </li>
             </ul>
           </div>
-          <p class="hint">You can search up to 2 tags</p>
         </div>
 
         <div class="divider"></div>
 
         <div class="options-section">
-          <label class="section-label">Filters</label>
+          <h3 class="section-label">Filters</h3>
           
           <div class="option-row">
-            <span class="opt-text">Results per page</span>
+            <label class="opt-text" for="limit-input">Results per page</label>
             <div class="limit-input-wrapper">
               <input
+                id="limit-input"
+                name="limit"
                 type="number"
                 :value="limit"
                 @input="handleLimitUpdate"
@@ -118,7 +135,7 @@
 
         <div class="popular-section" v-if="trendingTags.length > 0 || loadingTrending">
           <div class="section-header">
-            <label class="section-label">Trending (Top 15)</label>
+            <h3 class="section-label">Trending (Top 15)</h3>
           </div>
           
           <div class="tags-cloud">
@@ -141,7 +158,7 @@
         <div class="divider"></div>
 
         <div class="actions-section">
-          <label class="section-label">Extra</label>
+          <h3 class="section-label">Extra</h3>
           <div class="actions-grid">
             <button class="quick-action-btn" @click="$emit('trigger-action', 'most-liked')" title="Most Liked (Month)">
               <span class="action-icon">❤️</span>
@@ -205,6 +222,7 @@ export default {
     // Rating Dropdown Logic
     const ratingDropdownOpen = ref(false);
     const showLimitTooltip = ref(false);
+    const showSearchTooltip = ref(false);
     const ratingOptions = [
       { value: '', label: 'All' },
       { value: 'general', label: 'General (G)' },
@@ -236,6 +254,9 @@ export default {
         }
         if (!target.closest('.limit-input-wrapper')) {
           showLimitTooltip.value = false;
+        }
+        if (!target.closest('.section-label-wrapper')) {
+          showSearchTooltip.value = false;
         }
       });
     });
@@ -389,6 +410,7 @@ export default {
       // Limit Logic
       handleLimitUpdate,
       showLimitTooltip,
+      showSearchTooltip,
       
       // Rating Logic
       ratingDropdownOpen,
@@ -503,6 +525,62 @@ export default {
   margin-bottom: 10px;
   font-weight: 700;
 }
+
+.section-label-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.section-label-wrapper .section-label {
+  margin-bottom: 0;
+}
+
+.info-icon-btn-search {
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+  margin-top: -1px;
+}
+
+.info-icon-btn-search i {
+  font-size: 10px;
+  color: #a78bfa;
+}
+
+.info-icon-btn-search:hover {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.4);
+  transform: scale(1.1);
+}
+
+.search-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #e2e8f0;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 
 .input-wrapper {
   position: relative;
