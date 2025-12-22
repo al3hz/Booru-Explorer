@@ -32,14 +32,27 @@ export function useRatingCounts() {
     }
     tags = tags.trim().replace(/\s+/g, ' ');
 
-    // 1. Fetch Tag Metadata for more accuracy if it's a single tag
-    const words = tags.replace('-status:deleted', '').trim().split(/\s+/);
+    // 1. Fetch Tag Metadata for total count
+    const words = tags.replace('-status:deleted', '').trim().split(/\s+/).filter(w => w);
+    
+    // For single tags, use Tags API for accurate count
     if (words.length === 1 && words[0] && !words[0].includes(':')) {
        try {
          const res = await fetch(`https://danbooru.donmai.us/tags.json?search[name]=${words[0]}`);
          const data = await res.json();
          if (data && data.length > 0) {
            tagCount.value = data[0].post_count;
+         }
+       } catch (e) {}
+    } else {
+       // For multi-tag searches or homepage, use counts API
+       try {
+         const totalQuery = tags || '-status:deleted';
+         const params = new URLSearchParams({ tags: totalQuery });
+         const res = await fetch(`https://danbooru.donmai.us/counts/posts.json?${params.toString()}`);
+         const data = await res.json();
+         if (data && data.counts && typeof data.counts.posts === 'number') {
+           tagCount.value = data.counts.posts;
          }
        } catch (e) {}
     }

@@ -98,6 +98,7 @@
             <SmartVideo
               v-if="isAnimatedVideo(post)"
               :src="getImageUrl(post)"
+              :poster="getVideoPoster(post)"
               :alt="post.tag_string_general"
               className="card-image"
               @error="handleImageError($event, post)"
@@ -450,6 +451,22 @@ export default {
       );
     },
 
+    getVideoPoster(post) {
+      // Try to get high quality thumbnail from variants
+      if (post.media_asset && post.media_asset.variants) {
+        // Look for 720x720 or 360x360 webp/jpg
+        const variants = post.media_asset.variants;
+        const bestVariant = variants.find(v => v.type === '720x720' && ['webp', 'jpg'].includes(v.file_ext)) ||
+                            variants.find(v => v.type === '360x360' && ['webp', 'jpg'].includes(v.file_ext)) ||
+                            variants.find(v => v.type === 'sample');
+        
+        if (bestVariant) return bestVariant.url;
+      }
+      
+      // Fallback
+      return post.preview_file_url || post.preview_url || "";
+    },
+
     handleImageError(event, post) {
      
       const target = event.target;
@@ -786,7 +803,13 @@ export default {
 }
 
 /* Loading State in Rating Bar */
+/* Loading State in Rating Bar */
 .rating-bar.loading {
+  display: flex !important; /* Override grid */
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+  min-height: 50px;
   gap: 12px;
   background: rgba(139, 92, 246, 0.05);
   border-color: rgba(139, 92, 246, 0.1);

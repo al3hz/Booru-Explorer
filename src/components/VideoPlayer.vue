@@ -388,6 +388,7 @@ export default {
   max-height: 100%;
   width: auto;
   height: auto;
+  object-fit: contain;
 }
 
 /* Center Play Button */

@@ -734,8 +734,9 @@ export default {
         return;
       }
       
-      // Allow fullscreen for all types on mobile
-      if (window.innerWidth <= 768 && !isFlash.value) {
+      // Only allow fullscreen for images and GIFs on mobile, NOT videos
+      // Videos should use their own fullscreen controls
+      if (window.innerWidth <= 768 && !isFlash.value && !isVideo.value) {
         isMobileFullscreen.value = true;
         document.body.style.overflow = 'hidden'; 
         // Reset zoom state on open
@@ -810,6 +811,9 @@ export default {
     
     // Update handleSwipe to work in fullscreen IF not zoomed
     const handleSwipe = () => {
+      // Disable swipe completely for videos in fullscreen
+      if (isMobileFullscreen.value && isVideo.value) return;
+      
       // If fullscreen and zoomed in (> 1.1), don't swipe nav
       if (isMobileFullscreen.value && imageScale.value > 1.1) return;
 
@@ -1649,11 +1653,15 @@ export default {
   }
   
   .image-section {
-    min-height: 40vh;
-    max-height: 60vh;
+    min-height: 30vh; /* Reduced min-height */
+    height: auto;     /* Let it grow/shrink based on content */
+    max-height: 55vh; /* Cap height to leave room for info */
     padding: 10px;
     background: #000;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .info-sidebar {
@@ -1880,11 +1888,16 @@ export default {
 
   .modal-content {
     flex-direction: column;
+    height: 100%;
+    overflow: hidden; /* Prevent scrolling of the whole modal content wrapper */
   }
 
   .main-column {
-    flex: 0 0 auto;
-    max-height: 50vh;
+    flex: 0 0 auto; /* Don't grow, size to content */
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #000;
   }
 
   .info-sidebar {
@@ -1896,6 +1909,19 @@ export default {
 
   .image-section {
     padding: 10px;
+  }
+  
+  /* Fix layout when relationship banner is present */
+  .relationship-banner {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 10px;
+  }
+  
+  .info-header {
+    padding-top: 20px; /* Reduce padding on mobile to prevent overlap */
+    position: relative;
+    z-index: 10; /* Ensure header is above other elements */
   }
 }
 

@@ -8,7 +8,7 @@
     muted
     loop
     playsinline
-    preload="none" 
+    :preload="isMobileDevice ? 'metadata' : 'none'" 
     @error="onError"
     @loadeddata="onLoaded"
   ></video>
@@ -41,15 +41,23 @@ export default {
   setup(props, { emit }) {
     const videoRef = ref(null);
     let observer = null;
+    
+    // Detect if device is mobile
+    const isMobileDevice = window.innerWidth <= 768;
 
     const startObserving = () => {
       if (!videoRef.value) return;
+      
+      // Skip IntersectionObserver entirely on mobile devices
+      // This prevents autoplay after closing modal
+      if (isMobileDevice) {
+        return;
+      }
 
       observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Unmute specifically if needed, but usually kept muted for autoplay policies
-            // videoRef.value.muted = true; 
+            // Only autoplay on desktop
             videoRef.value.play().catch(e => {
                 // Auto-play might be blocked or failed
                 // console.warn('Autoplay prevented', e);
@@ -76,6 +84,18 @@ export default {
 
     onMounted(() => {
       startObserving();
+      
+      // Strict autoplay watchdog for mobile
+      if (videoRef.value && isMobileDevice) {
+        videoRef.value.addEventListener('play', (e) => {
+           // If we are on mobile, and play is triggered, we check if we should allow it.
+           // In card view (which SmartVideo usually is), we generally want NO playback on mobile.
+           // Force pause.
+           e.preventDefault();
+           e.target.pause();
+           // console.log("Blocked autoplay on mobile");
+        });
+      }
     });
 
     onUnmounted(() => {
@@ -94,6 +114,7 @@ export default {
 
     return {
       videoRef,
+      isMobileDevice,
       onError,
       onLoaded
     };
