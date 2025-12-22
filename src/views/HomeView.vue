@@ -41,6 +41,16 @@
           {{ error }}
         </div>
         
+        <!-- Search Query Title -->
+        <transition name="slide-fade">
+          <div v-if="appliedQuery && !appliedQuery.includes('status:deleted') && !appliedQuery.includes('order:score') && !appliedQuery.includes('order:favcount')" class="search-title-container">
+            <h2 class="search-title">
+              <span class="results-text">Results for:</span>
+              <span class="search-query">{{ appliedQuery }}</span>
+            </h2>
+          </div>
+        </transition>
+        
         <div v-if="appliedQuery === 'status:deleted' || appliedQuery.includes('status:deleted age:<1month')" class="info-banner deleted-mode">
           <span class="icon">🗑️</span>
           <span>Showing deleted posts of the month</span>
@@ -341,8 +351,12 @@ export default {
       }
       
       searchPosts(1, true);
-      // Initial fetch of rating counts
-      fetchRatingCounts(appliedQuery.value);
+      // Initial fetch of rating counts - normalize tags first
+      const normalizedQuery = appliedQuery.value
+        .split(/[,，\s]+/)
+        .filter(t => t.trim())
+        .join(' ');
+      fetchRatingCounts(normalizedQuery);
       
       window.addEventListener('keydown', handleKeydown);
     });
@@ -358,8 +372,12 @@ export default {
       
       // Execute the search
       searchPosts(1, true);
-      // Fetch fresh rating counts
-      fetchRatingCounts(normalizedTags);
+      // Fetch fresh rating counts - normalize tags first
+      const normalizedQueryForCounts = normalizedTags
+        .split(/[,，\s]+/)
+        .filter(t => t.trim())
+        .join(' ');
+      fetchRatingCounts(normalizedQueryForCounts);
     });
 
     // Dynamic Title Logic
@@ -650,4 +668,85 @@ export default {
     z-index: 998; /* Below sidebar (1000), above content */
   }
 }
+
+/* Search Title */
+.search-title-container {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 12px 20px;
+  background: rgba(167, 139, 250, 0.05);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.search-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.results-text {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.search-query {
+  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+/* Slide fade transition */
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+@media (max-width: 768px) {
+  .search-title {
+    font-size: 16px;
+    gap: 6px;
+  }
+  
+  .search-title-container {
+    margin-bottom: 16px;
+    padding: 10px 16px;
+  }
+}
+
+
 </style>
