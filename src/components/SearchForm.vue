@@ -105,9 +105,6 @@
         <div class="popular-section" v-if="trendingTags.length > 0 || loadingTrending">
           <div class="section-header">
             <label class="section-label">Trending (Top 15)</label>
-            <button @click="refreshTrending" class="shuffle-btn" title="Refresh" :disabled="loadingTrending">
-               {{ loadingTrending ? '...' : '↻' }}
-            </button>
           </div>
           
           <div class="tags-cloud">
