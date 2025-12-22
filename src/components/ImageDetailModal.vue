@@ -15,7 +15,7 @@
             <VideoPlayer
               v-if="isVideo"
               :key="`fs-vid-${post.id}`"
-              :src="post.file_url || post.large_file_url"
+              :src="mediaSource"
               class="fullscreen-image"
               :autoplay="true"
               :controls="true"
@@ -24,7 +24,7 @@
             <img 
               v-else
               :key="`fs-img-${post.id}`"
-              :src="post.file_url || post.large_file_url" 
+              :src="mediaSource" 
               class="fullscreen-image"
               :style="{ transform: `scale(${imageScale}) translate(${translateX / imageScale}px, ${translateY / imageScale}px)` }"
               alt="Fullscreen view"
@@ -95,7 +95,7 @@
               <VideoPlayer
                 v-else-if="isVideo"
                 :key="`vid-${post.id}`"
-                :src="post.file_url || post.large_file_url"
+                :src="mediaSource"
                 class="detail-image"
                 @loaded="onImageLoad"
                 @error="handleImageError"
@@ -104,7 +104,7 @@
               <img 
                 v-else
                 :key="`img-${post.id}`"
-                :src="post.file_url || post.large_file_url || post.preview_file_url" 
+                :src="mediaSource || post.preview_file_url" 
                 :alt="`Post ${post.id}`"
                 class="detail-image"
                 @load="onImageLoad"
@@ -592,6 +592,17 @@ export default {
     const characterTags = computed(() => splitTags(props.post.tag_string_character));
     const generalTags = computed(() => splitTags(props.post.tag_string_general));
 
+    // Smart media source selection
+    const mediaSource = computed(() => {
+      // For ZIP files (Ugoira animations), browsers can't play the ZIP directly
+      // Use the converted video (large_file_url) instead
+      if (props.post.file_ext === 'zip') {
+        return props.post.large_file_url || props.post.file_url;
+      }
+      // For everything else, prioritize original quality
+      return props.post.file_url || props.post.large_file_url;
+    });
+
     const isVideo = computed(() => {
       const ext = props.post.file_ext;
       if (['mp4', 'webm', 'gifv'].includes(ext)) return true;
@@ -852,6 +863,7 @@ export default {
       copyrightTags,
       characterTags,
       generalTags,
+      mediaSource,
       isVideo,
       comments,
       commentsLoading,
