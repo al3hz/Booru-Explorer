@@ -878,6 +878,8 @@ export default {
   background-clip: text;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
+  overflow-wrap: anywhere; /* Ensure long tags break */
+  word-break: break-word;
 }
 
 @keyframes pulse {
@@ -918,7 +920,20 @@ export default {
   
   .search-title-container {
     margin-bottom: 16px;
-    padding: 10px 16px;
+    padding: 10px 12px; /* Reduced side padding */
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-title {
+    font-size: 14px;
+    gap: 4px;
+  }
+  
+  .search-title-container {
+    padding: 8px 10px;
   }
 }
 

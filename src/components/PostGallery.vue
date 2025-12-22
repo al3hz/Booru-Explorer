@@ -693,6 +693,7 @@ export default {
   justify-content: center;
   align-items: center;
   gap: 20px;
+  flex-wrap: wrap; /* Fix overflow */
 }
 
 .rating-bar-right {
@@ -720,12 +721,28 @@ export default {
 @media (max-width: 1024px) {
   .rating-bar {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 12px;
+    padding: 12px 16px; /* Reduced padding */
     text-align: center;
   }
   
   .rating-bar-left, .rating-bar-center, .rating-bar-right {
     justify-self: center;
+    width: 100%;
+  }
+
+  .rating-bar-center {
+    gap: 12px; /* Smaller gaps for small screens */
+  }
+}
+
+@media (max-width: 480px) {
+  .rating-bar {
+    padding: 10px 8px; /* Extra compact for very small phones */
+  }
+  
+  .rating-bar-center {
+    gap: 8px;
   }
 }
 
@@ -749,6 +766,8 @@ export default {
   gap: 12px;
   font-size: 11px;
   color: #94a3b8;
+  flex-wrap: wrap; /* Fix overflow */
+  justify-content: center;
 }
 
 .rating-legend span {
