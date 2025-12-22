@@ -43,7 +43,7 @@
         <!-- Close Button Moved Inside but better positioned -->
         <button class="close-btn" @click="$emit('close')">×</button>
         
-        <div class="modal-content">
+        <div class="modal-content" ref="modalContent">
           <div class="main-column">
             <!-- Relationship Banner -->
             <transition name="slide-down">
@@ -411,6 +411,16 @@ export default {
     // Ruffle logic
     const ruffleContainer = ref(null);
     let rufflePlayer = null;
+
+    // Scroll container ref
+    const modalContent = ref(null);
+
+    // Reset scroll position when post changes
+    watch(() => props.post?.id, () => {
+      if (modalContent.value) {
+        modalContent.value.scrollTop = 0;
+      }
+    });
 
     // Copy Link Logic
     const linkCopied = ref(false);
@@ -956,6 +966,7 @@ export default {
       getExtensionClass,
       isFlash,
       ruffleContainer,
+      modalContent,
       commentary,
       commentaryLoading,
       familyPosts,
@@ -1981,7 +1992,8 @@ export default {
   .modal-content {
     flex-direction: column;
     height: 100%;
-    overflow: hidden; /* Prevent scrolling of the whole modal content wrapper */
+    overflow-y: auto; /* Allow scrolling of the whole modal content wrapper */
+    -webkit-overflow-scrolling: touch;
   }
 
   .main-column {
@@ -1993,10 +2005,12 @@ export default {
   }
 
   .info-sidebar {
-    flex: 1;
+    flex: none;
+    height: auto;
     max-width: 100%;
     border-left: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: visible;
   }
 
   .image-section {
@@ -2011,7 +2025,7 @@ export default {
   }
   
   .info-header {
-    padding-top: 20px; /* Reduce padding on mobile to prevent overlap */
+    padding-top: 25px; /* Increase padding to prevent family banner overlap */
     position: relative;
     z-index: 10; /* Ensure header is above other elements */
   }
