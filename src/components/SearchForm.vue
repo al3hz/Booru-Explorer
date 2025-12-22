@@ -296,6 +296,7 @@ export default {
     const selectTag = async (tagName) => {
       // Update URL and scroll to top
       await router.push({ path: '/', query: { tags: tagName } });
+      closeSidebarOnMobile();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -362,6 +363,13 @@ export default {
       if(searchInputRef.value) searchInputRef.value.focus();
     };
 
+    const closeSidebarOnMobile = () => {
+      // Check if running in browser environment
+      if (typeof window !== 'undefined' && window.innerWidth <= 768 && isSidebarVisible.value) {
+         toggleSidebar();
+      }
+    };
+
     const handleEnter = async () => {
       if (activeSuggestionIndex.value !== -1 && suggestions.value.length > 0) {
         selectSuggestion(suggestions.value[activeSuggestionIndex.value]);
@@ -370,9 +378,11 @@ export default {
         const trimmedQuery = props.searchQuery.trim();
         if (trimmedQuery) {
           await router.push({ path: '/', query: { tags: trimmedQuery } });
+          closeSidebarOnMobile();
         } else {
           // Navigate to root without tags param when search is empty
           await router.push({ path: '/' });
+          closeSidebarOnMobile();
         }
         window.scrollTo({ top: 0, behavior: 'smooth' });
         clearSuggestions();
@@ -411,6 +421,7 @@ export default {
           } 
         });
       }
+      closeSidebarOnMobile();
       window.scrollTo({ top: 0, behavior: 'smooth' });
       clearSuggestions();
     };
