@@ -57,7 +57,9 @@
           @click="openPost(post)"
         >
           <!-- Image Section -->
-          <div class="card-image-wrapper">
+          <div 
+            class="card-image-wrapper"
+          >
             <!-- Video logic unchanged -->
             <!-- Video logic using SmartVideo -->
             <SmartVideo
@@ -73,8 +75,10 @@
               v-else
               :src="getImageUrl(post)"
               :alt="post.tag_string_general"
+              :width="post.image_width || 500"
+              :height="post.image_height || 500"
               class="card-image"
-              loading="lazy"
+              :loading="posts.indexOf(post) < 6 ? 'eager' : 'lazy'"
               @error="handleImageError($event, post)"
             />
 
@@ -434,6 +438,14 @@ export default {
       return "N/A";
     },
 
+    getAspectRatio(post) {
+      if (post.image_width && post.image_height) {
+        const ratio = post.image_width / post.image_height;
+        return ratio.toFixed(4);
+      }
+      return '1'; // Default to square if dimensions not available
+    },
+
     formatUploadDate(createdAt) {
       if (!createdAt) return "Desconocido";
 
@@ -589,6 +601,8 @@ export default {
   align-items: center;
   justify-content: center;
   min-height: 300px;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Rating Bar */
@@ -707,20 +721,24 @@ export default {
 
 @media (max-width: 640px) {
   .gallery-grid {
-    grid-template-columns: 1fr; /* Force 1 column on mobile */
-    gap: 16px; /* Increase gap slightly for single column */
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .state-container {
+    padding: 40px 16px;
+    border-radius: 12px;
+    min-height: 200px;
   }
 }
 
 /* Art Card Component */
-@keyframes fadeSlideUp {
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -735,7 +753,9 @@ export default {
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  animation: fadeSlideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation: fadeIn 0.3s ease-in backwards;
+  contain: layout style paint;
+  content-visibility: auto;
 }
 
 .art-card:hover {
@@ -760,9 +780,11 @@ export default {
 .card-image-wrapper {
   position: relative;
   width: 100%;
-  aspect-ratio: 1; /* Square by default, works well for mixed content */
+  aspect-ratio: 1;
+  min-height: 250px;
   overflow: hidden;
   background: #111;
+  contain: layout;
 }
 
 .card-image {

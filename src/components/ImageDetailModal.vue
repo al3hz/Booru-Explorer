@@ -1826,4 +1826,77 @@ export default {
 .lni-is-spinning {
   animation: spin 1s infinite linear;
 }
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .modal-backdrop {
+    padding: 0;
+  }
+
+  .modal-container {
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .close-btn {
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+  }
+
+  .nav-arrow {
+    position: fixed;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    font-size: 28px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    margin: 0;
+    transition: none;
+  }
+
+  .nav-arrow:hover {
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .nav-arrow:active {
+    background: rgba(167, 139, 250, 0.5);
+  }
+
+  .nav-arrow.prev {
+    left: 10px;
+  }
+
+  .nav-arrow.next {
+    right: 10px;
+  }
+
+  .modal-content {
+    flex-direction: column;
+  }
+
+  .main-column {
+    flex: 0 0 auto;
+    max-height: 50vh;
+  }
+
+  .info-sidebar {
+    flex: 1;
+    max-width: 100%;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .image-section {
+    padding: 10px;
+  }
+}
+
 </style>
