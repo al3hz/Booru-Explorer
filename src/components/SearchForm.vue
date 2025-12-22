@@ -2,13 +2,13 @@
   <div class="sidebar-container" :class="{ 'is-collapsed': !sidebarVisible }">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h2 v-if="sidebarVisible" class="title">Filters</h2>
+        <h2 class="title">Filters</h2>
         <button 
           class="toggle-btn"
           @click="$emit('toggle-sidebar')"
           :title="sidebarVisible ? 'Collapse menu' : 'Expand menu'"
         >
-          <span class="icon">{{ sidebarVisible ? '◀' : '▶' }}</span>
+          <span class="icon">◀</span>
         </button>
       </div>
 
@@ -478,15 +478,15 @@ export default {
 </script>
 
 <style scoped>
+/* 4. Ajustar la animación del contenedor para que sea más suave */
 .sidebar-container {
   position: sticky;
   top: 20px;
   align-self: flex-start;
   max-height: calc(100vh - 40px);
   width: 300px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
-  /* Añadir estas propiedades para prevenir desbordamiento */
   overflow: visible;
   min-height: 0;
 }
@@ -496,10 +496,9 @@ export default {
   width: 60px;
   height: auto !important;
   min-height: 0 !important;
-  max-height: 60px !important; /* Reducir la altura máxima */
+  max-height: 60px !important;
   padding: 4px;
-  overflow: hidden; /* Cambiar de visible a hidden */
-  /* Asegurar que el contenido no sobresalga */
+  overflow: hidden;
   contain: content;
 }
 
@@ -539,8 +538,36 @@ export default {
   justify-content: center;
 }
 
+/* Enfoque simple - Eliminar complejidad */
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(90deg, #fff, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  white-space: nowrap;
+  /* SÓLO animar opacidad */
+  transition: opacity 0.2s ease;
+  display: block;
+  opacity: 1;
+}
+
+/* Estado colapsado - Ocultar inmediatamente */
 .sidebar-container.is-collapsed .title {
-  display: none;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  /* Ocultar sin animación para evitar bugs */
+  transition: opacity 0.1s ease;
+}
+
+/* Estado abierto - Aparecer con delay */
+.sidebar-container:not(.is-collapsed) .title {
+  opacity: 1;
+  transition: opacity 0.3s ease 0.1s;
 }
 
 .sidebar {
@@ -566,17 +593,9 @@ export default {
   min-height: 60px;
 }
 
-.title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  background: linear-gradient(90deg, #fff, #a78bfa);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  white-space: nowrap;
-}
 
+
+/* 1. Botón de toggle - Sincronizar todo */
 .toggle-btn {
   background: rgba(255, 255, 255, 0.05);
   border: none;
@@ -588,21 +607,64 @@ export default {
   justify-content: center;
   cursor: pointer;
   color: #a78bfa;
-  transition: all 0.2s;
+  /* Animación MÁS RÁPIDA para el botón */
+  transition: all 0.15s ease;
+  /* Asegurar que el contenido no se desborde */
+  overflow: hidden;
+  position: relative;
 }
 
+/* 2. Icono dentro del botón */
+.toggle-btn .icon {
+  font-size: 14px;
+  line-height: 1;
+  display: inline-block;
+  /* Transición instantánea para el icono */
+  transition: transform 0.15s ease;
+  will-change: transform;
+}
+
+/* 3. Cuando el sidebar está COLAPSADO */
+.sidebar-container.is-collapsed .toggle-btn {
+  width: 44px;
+  height: 44px;
+  /* Animación más rápida que el contenedor */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 4. IMPORTANTE: Sincronizar el cambio de icono */
+.sidebar-container.is-collapsed .toggle-btn .icon {
+  /* Rotar el icono existente en lugar de cambiarlo */
+  transform: rotate(180deg);
+  transition: transform 0.2s ease 0.05s; /* Pequeño delay */
+}
+
+/* 5. Estado normal (no colapsado) */
+.sidebar-container:not(.is-collapsed) .toggle-btn .icon {
+  transform: rotate(0deg);
+  transition: transform 0.2s ease;
+}
+
+/* 6. Hover states sincronizados */
 .toggle-btn:hover {
   background: rgba(167, 139, 250, 0.15);
   color: #fff;
+  transform: scale(1.05);
+  transition: all 0.2s ease;
 }
 
+.sidebar-container.is-collapsed .toggle-btn:hover {
+  transform: scale(1.05);
+}
+
+/* 5. Asegurar que el contenido también tenga timing sincronizado */
 .sidebar-content {
   padding: 20px;
   overflow-y: auto;
   overflow-x: hidden;
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex: 1;
   max-height: calc(100vh - 140px);
 }
@@ -612,31 +674,25 @@ export default {
   pointer-events: none;
   visibility: hidden;
   transform: translateY(-10px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Custom Scrollbar */
 .sidebar::-webkit-scrollbar { width: 6px; }
 
-/* Animate content fade out when collapsing */
+/* 6. Estado colapsado - contenido */
 .sidebar-container.is-collapsed .sidebar-content {
-  display: none !important; /* Ocultar completamente el contenido */
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
-  height: 0;
-  padding: 0;
+  max-height: 0;
+  padding: 0 20px;
   margin: 0;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar-container.is-collapsed .toggle-btn {
-  margin: 0;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+
 
 
 .sidebar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
