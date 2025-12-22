@@ -15,7 +15,7 @@
             <VideoPlayer
               v-if="isVideo"
               :key="`fs-vid-${post.id}`"
-              :src="post.large_file_url || post.file_url"
+              :src="post.file_url || post.large_file_url"
               class="fullscreen-image"
               :autoplay="true"
               :controls="true"
@@ -24,7 +24,7 @@
             <img 
               v-else
               :key="`fs-img-${post.id}`"
-              :src="post.large_file_url || post.file_url" 
+              :src="post.file_url || post.large_file_url" 
               class="fullscreen-image"
               :style="{ transform: `scale(${imageScale}) translate(${translateX / imageScale}px, ${translateY / imageScale}px)` }"
               alt="Fullscreen view"
@@ -95,7 +95,7 @@
               <VideoPlayer
                 v-else-if="isVideo"
                 :key="`vid-${post.id}`"
-                :src="post.large_file_url || post.file_url"
+                :src="post.file_url || post.large_file_url"
                 class="detail-image"
                 @loaded="onImageLoad"
                 @error="handleImageError"
@@ -104,7 +104,7 @@
               <img 
                 v-else
                 :key="`img-${post.id}`"
-                :src="post.large_file_url || post.file_url || post.preview_file_url" 
+                :src="post.file_url || post.large_file_url || post.preview_file_url" 
                 :alt="`Post ${post.id}`"
                 class="detail-image"
                 @load="onImageLoad"
