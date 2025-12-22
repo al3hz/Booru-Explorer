@@ -1,20 +1,31 @@
 <template>
   <header class="app-header">
     <div class="header-inner">
-      <div class="brand-section">
-        <div class="logo-container" @click="handleLogoClick">
-          <img 
-            src="https://danbooru.donmai.us/packs/static/danbooru-logo-128x128-ea111b6658173e847734.png" 
-            alt="Danbooru Logo" 
-            class="logo-icon"
-          />
-          <div class="logo-glow"></div>
-        </div>
-        <div class="brand-text">
-          <h1>Booru Explorer</h1>
-          <div class="badge-container">
-            <span class="version-badge">v1.2</span>
-            <span class="author-badge">Made by Overlain</span>
+      <div class="header-left">
+        <!-- Sidebar Toggle Button (Far Left) -->
+        <button 
+          class="toggle-menu-btn" 
+          @click.stop="toggleSidebar"
+          :title="isSidebarVisible ? 'Hide filters' : 'Show filters'"
+        >
+          <i :class="isSidebarVisible ? 'lni lni-chevron-left' : 'lni lni-menu'"></i>
+        </button>
+
+        <div class="brand-section">
+          <div class="logo-container" @click="handleLogoClick">
+            <img 
+              src="https://danbooru.donmai.us/packs/static/danbooru-logo-128x128-ea111b6658173e847734.png" 
+              alt="Danbooru Logo" 
+              class="logo-icon"
+            />
+            <div class="logo-glow"></div>
+          </div>
+          <div class="brand-text">
+            <h1>Booru Explorer</h1>
+            <div class="badge-container">
+              <span class="version-badge">v1.2</span>
+              <span class="author-badge">Made by Overlain</span>
+            </div>
           </div>
         </div>
       </div>
@@ -41,12 +52,14 @@
 
 <script>
 import { useRouter } from 'vue-router';
+import { useLayout } from '../composables/useLayout';
 
 export default {
   name: "SearchHeader",
   emits: ['logo-click'],
   setup(props, { emit }) {
     const router = useRouter();
+    const { isSidebarVisible, toggleSidebar } = useLayout();
 
     const handleLogoClick = () => {
       emit('logo-click');
@@ -54,7 +67,9 @@ export default {
     };
 
     return {
-      handleLogoClick
+      handleLogoClick,
+      isSidebarVisible,
+      toggleSidebar
     };
   }
 };
@@ -122,6 +137,11 @@ export default {
   box-shadow: 0 0 10px rgba(167, 139, 250, 0.3);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
 .brand-section {
   display: flex;
   align-items: center;
@@ -134,8 +154,33 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  gap: 12px;
   animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s backwards;
+}
+
+.toggle-menu-btn {
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  color: #a78bfa;
+  width: 44px; /* Slightly larger for the far-left position */
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 20px;
+  margin-right: 20px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.toggle-menu-btn:hover {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.15);
 }
 
 .logo-icon {
@@ -143,10 +188,14 @@ export default {
   height: 32px;
   z-index: 2;
   object-fit: contain;
+  cursor: pointer;
 }
 
 .logo-glow {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 40px;
   height: 40px;
   background: radial-gradient(circle, rgba(167, 139, 250, 0.4) 0%, transparent 70%);
@@ -258,8 +307,19 @@ export default {
     gap: 16px;
   }
   
-  .brand-section {
+  .header-left {
     width: 100%;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .toggle-menu-btn {
+    margin-right: 8px;
+    width: 40px;
+    height: 40px;
+  }
+  
+  .brand-section {
     justify-content: center;
   }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="post-gallery">
+  <div class="post-gallery" :class="{ 'is-sidebar-collapsed': !isSidebarVisible }">
     <!-- Loading State -->
     <div v-if="loading && posts.length === 0" class="state-container loading">
       <div class="loader-ring"></div>
@@ -245,6 +245,7 @@
 <script>
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { useRatingCounts } from "../composables/useRatingCounts";
+import { useLayout } from '../composables/useLayout';
 
 import SmartVideo from './SmartVideo.vue';
 
@@ -280,6 +281,7 @@ export default {
   emits: ["load-more", "change-page", "post-clicked"],
   setup(props, { emit }) {
     const { isLimited, loadingCounts, tagCount } = useRatingCounts();
+    const { isSidebarVisible } = useLayout();
     const infiniteScrollTrigger = ref(null);
     let observer = null;
 
@@ -399,7 +401,8 @@ export default {
       formatCount,
       isLimited,
       loadingCounts,
-      tagCount
+      tagCount,
+      isSidebarVisible
     };
   },
   methods: {
@@ -665,10 +668,11 @@ export default {
   gap: 20px;
   margin-bottom: 20px;
   background: rgba(20, 20, 25, 0.4);
-  padding: 10px 20px;
+  padding: 10px 24px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   flex-wrap: wrap;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .rating-limit-info {
@@ -695,6 +699,7 @@ export default {
   padding: 0 10px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 12px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .total-badge {

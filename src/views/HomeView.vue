@@ -1,22 +1,15 @@
 <template>
   <div class="home-view">
-    <div class="app-layout">
-      <!-- Mobile Toggle Button -->
-      <button 
-        class="mobile-menu-trigger" 
-        @click="sidebarVisible = !sidebarVisible"
-        v-if="!sidebarVisible"
-        title="Abrir menú"
-      >
-        ☰
-      </button>
+    <div class="app-layout" :class="{ 'no-sidebar-gap': !isSidebarVisible }">
+      <!-- Sidebar Backdrop (Mobile Overlay) -->
+      <transition name="fade">
+        <div 
+          v-if="isSidebarVisible" 
+          class="sidebar-backdrop" 
+          @click="toggleSidebar"
+        ></div>
+      </transition>
 
-      <!-- Mobile Sidebar Backdrop -->
-      <div 
-        class="sidebar-backdrop" 
-        v-if="sidebarVisible"
-        @click="sidebarVisible = false"
-      ></div>
 
       <SearchForm
         :search-query="inputQuery"
@@ -24,7 +17,6 @@
         :limit="limit"
         :rating-filter="ratingFilter"
         :posts="posts"
-        :sidebar-visible="sidebarVisible"
         :infinite-scroll="infiniteScroll"
         @update:search-query="inputQuery = $event"
         @update:limit="limit = $event"
@@ -32,12 +24,11 @@
         @update:infinite-scroll="infiniteScroll = $event"
         @search="handleSearch"
         @example-clicked="setExample"
-        @toggle-sidebar="sidebarVisible = !sidebarVisible"
         @trigger-action="handleAction"
         @search-error="handleSearchError"
       />
 
-      <main class="main-content" :class="{ 'sidebar-open': sidebarVisible }">
+      <main class="main-content" :class="{ 'sidebar-open': isSidebarVisible }">
         <transition name="slide-down">
           <div v-if="error" class="error-banner">
             <span class="icon">⚠️</span>
@@ -158,6 +149,7 @@ import PostGallery from "../components/PostGallery.vue";
 import ImageDetailModal from "../components/ImageDetailModal.vue";
 import { useDanbooruApi } from "../composables/useDanbooruApi";
 import { useRatingCounts } from "../composables/useRatingCounts";
+import { useLayout } from "../composables/useLayout";
 
 export default {
   name: "HomeView",
@@ -178,7 +170,7 @@ export default {
     // Default to All ("") if nothing saved. If saved, use saved value.
     const savedRating = localStorage.getItem('ratingFilter');
     const ratingFilter = ref(savedRating !== null ? savedRating : "general"); 
-    const sidebarVisible = ref(window.innerWidth > 768);
+    const { isSidebarVisible, toggleSidebar, setSidebarVisible } = useLayout();
     const infiniteScroll = ref(false);
     const selectedPost = ref(null);
     const isRandomMode = ref(false);
@@ -304,7 +296,7 @@ export default {
 
       // Auto-close sidebar on mobile
       if (window.innerWidth <= 768) {
-        sidebarVisible.value = false;
+        setSidebarVisible(false);
       }
 
       isRandomMode.value = false;
@@ -517,6 +509,11 @@ export default {
        
        // Scroll to top
        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+       // Auto-close sidebar on mobile
+       if (window.innerWidth <= 768) {
+         setSidebarVisible(false);
+       }
     };
 
     const handleAction = async (action) => {
@@ -546,6 +543,11 @@ export default {
       } else if (action === 'related') {
         console.log("Related action clicked - Placeholder");
       }
+
+      // Auto-close sidebar on mobile after action
+      if (window.innerWidth <= 768) {
+        setSidebarVisible(false);
+      }
     };
 
     return {
@@ -559,7 +561,6 @@ export default {
       currentPage,
       hasNextPage,
       parsedTags,
-      sidebarVisible,
       infiniteScroll,
       handleSearch,
       handleTagSearch,
@@ -570,13 +571,13 @@ export default {
       selectedPost,
       openModal,
       navigatePost,
-      openModal,
-      navigatePost,
       canPrev,
       canNext,
       handleAction,
       showTimeoutInfo,
-      ratingCounts
+      ratingCounts,
+      isSidebarVisible,
+      toggleSidebar
     };
   },
 };
@@ -584,6 +585,15 @@ export default {
 
 <style scoped>
 
+
+/* Page Layout Adjustments */
+.app-layout {
+  transition: gap 0.3s ease;
+}
+
+.app-layout.no-sidebar-gap {
+  gap: 0;
+}
 
 /* Image Slide Transition */
 .slide-fade-enter-active,
@@ -840,6 +850,7 @@ export default {
   border: 1px solid rgba(167, 139, 250, 0.2);
   border-radius: 12px;
   backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .search-title {
@@ -852,6 +863,7 @@ export default {
   justify-content: center;
   gap: 8px;
   flex-wrap: wrap;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .results-text {
@@ -910,5 +922,24 @@ export default {
   }
 }
 
+
+
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-backdrop {
+    display: block;
+  }
+}
 
 </style>

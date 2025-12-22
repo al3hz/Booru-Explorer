@@ -1,23 +1,19 @@
 <template>
-  <div class="sidebar-container" :class="{ 'is-collapsed': !sidebarVisible }">
+  <div class="sidebar-container" :class="{ 'is-collapsed': !isSidebarVisible }">
     <aside class="sidebar">
       <div class="sidebar-header">
         <h2 class="title">Filters</h2>
-        <button 
-          class="toggle-btn"
-          @click="$emit('toggle-sidebar')"
-          :title="sidebarVisible ? 'Collapse menu' : 'Expand menu'"
-        >
-          <span class="icon">◀</span>
+        <button class="mobile-close-btn" @click="toggleSidebar" v-if="isSidebarVisible">
+          <i class="lni lni-close"></i>
         </button>
       </div>
 
-      <div class="sidebar-content" :class="{ 'faded': !sidebarVisible }">
+      <div class="sidebar-content" :class="{ 'faded': !isSidebarVisible }">
         <div class="search-section">
           <div class="section-label-wrapper">
             <label class="section-label" for="search-input">Search</label>
-            <button 
-              class="info-icon-btn-search" 
+            <button
+              class="info-icon-btn-search"
               @click.stop="showSearchTooltip = !showSearchTooltip"
               title="Search info"
             >
@@ -201,6 +197,7 @@ import { ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDanbooruAutocomplete } from "../composables/useDanbooruAutocomplete";
 import { useDanbooruTrending } from "../composables/useDanbooruTrending";
+import { useLayout } from "../composables/useLayout";
 
 export default {
   name: "SearchForm",
@@ -212,7 +209,7 @@ export default {
     limit: { type: Number, default: 20 },
     ratingFilter: { type: String, default: "" },
     posts: { type: Array, default: () => [] },
-    sidebarVisible: { type: Boolean, default: true },
+    infiniteScroll: { type: Boolean, default: false },
   },
   emits: [
     "update:search-query",
@@ -220,7 +217,6 @@ export default {
     "update:rating-filter",
     "search",
     "example-clicked",
-    "toggle-sidebar",
     "trigger-action",
     "search-error",
   ],
@@ -229,6 +225,7 @@ export default {
     const route = useRoute();
     const { suggestions, fetchSuggestions, clearSuggestions, loadingSuggestions } = useDanbooruAutocomplete();
     const { trendingTags, loadingTrending, fetchTrendingTags } = useDanbooruTrending();
+    const { isSidebarVisible, toggleSidebar } = useLayout();
     
     // Accordion state - default to trending
     const activeSection = ref("trending");
@@ -471,7 +468,9 @@ export default {
       ratingOptions,
       toggleRatingDropdown,
       selectRating,
-      getRatingLabel
+      getRatingLabel,
+      isSidebarVisible,
+      toggleSidebar
     };
   },
 };
@@ -492,49 +491,31 @@ export default {
 
 
 .sidebar-container.is-collapsed {
-  width: 60px;
+  width: 0;
+  margin-right: 0;
   height: auto !important;
   min-height: 0 !important;
-  max-height: 60px !important;
-  padding: 4px;
+  max-height: none !important;
+  padding: 0;
   overflow: hidden;
-  contain: content;
+  /* El gap del flex se mantendrá si no lo cambiamos en el padre, 
+     pero desactivamos el tamaño del contenedor */
 }
 
 .sidebar-container.is-collapsed .sidebar {
-  background: rgba(20, 20, 28, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(167, 139, 250, 0.3);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-  width: 100%;
-  height: 52px; /* Altura fija */
-  min-height: 52px; /* Altura mínima fija */
-  max-height: 52px; /* Altura máxima fija */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  /* Prevenir desbordamiento */
-  overflow: hidden;
-}
-
-/* Hover effect for the collapsed box */
-.sidebar-container.is-collapsed:hover .sidebar {
-  border-color: rgba(167, 139, 250, 0.6);
-  box-shadow: 0 0 15px rgba(167, 139, 250, 0.15); /* Soft glow */
-  background: rgba(30, 30, 40, 0.8);
+  opacity: 0;
+  visibility: hidden;
+  border: none;
+  box-shadow: none;
+  pointer-events: none;
 }
 
 .sidebar-container.is-collapsed .sidebar-header {
   border-bottom: none;
   padding: 0;
   margin: 0;
-  height: 52px;
-  width: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 0;
+  overflow: hidden;
 }
 
 /* Enfoque simple - Eliminar complejidad */
@@ -594,67 +575,7 @@ export default {
 
 
 
-/* 1. Botón de toggle - Sincronizar todo */
-.toggle-btn {
-  background: rgba(255, 255, 255, 0.05);
-  border: none;
-  border-radius: 8px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #a78bfa;
-  /* Animación MÁS RÁPIDA para el botón */
-  transition: all 0.15s ease;
-  /* Asegurar que el contenido no se desborde */
-  overflow: hidden;
-  position: relative;
-}
 
-/* 2. Icono dentro del botón */
-.toggle-btn .icon {
-  font-size: 14px;
-  line-height: 1;
-  display: inline-block;
-  /* Transición instantánea para el icono */
-  transition: transform 0.15s ease;
-  will-change: transform;
-}
-
-/* 3. Cuando el sidebar está COLAPSADO */
-.sidebar-container.is-collapsed .toggle-btn {
-  width: 44px;
-  height: 44px;
-  /* Animación más rápida que el contenedor */
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 4. IMPORTANTE: Sincronizar el cambio de icono */
-.sidebar-container.is-collapsed .toggle-btn .icon {
-  /* Rotar el icono existente en lugar de cambiarlo */
-  transform: rotate(180deg);
-  transition: transform 0.2s ease 0.05s; /* Pequeño delay */
-}
-
-/* 5. Estado normal (no colapsado) */
-.sidebar-container:not(.is-collapsed) .toggle-btn .icon {
-  transform: rotate(0deg);
-  transition: transform 0.2s ease;
-}
-
-/* 6. Hover states sincronizados */
-.toggle-btn:hover {
-  background: rgba(167, 139, 250, 0.15);
-  color: #fff;
-  transform: scale(1.05);
-  transition: all 0.2s ease;
-}
-
-.sidebar-container.is-collapsed .toggle-btn:hover {
-  transform: scale(1.05);
-}
 
 /* 5. Asegurar que el contenido también tenga timing sincronizado */
 .sidebar-content {
@@ -1550,5 +1471,48 @@ export default {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-backdrop {
+    display: block;
+  }
+}
+
+
+.mobile-close-btn {
+  display: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.mobile-close-btn:hover {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.4);
+}
+
+@media (max-width: 768px) {
+  .mobile-close-btn {
+    display: flex;
+  }
 }
 </style>
