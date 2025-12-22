@@ -2,8 +2,9 @@
   <header class="app-header" :class="{ 'header-hidden': isHeaderHidden }">
     <div class="header-inner">
       <div class="header-left">
-        <!-- Sidebar Toggle Button (Far Left) -->
+        <!-- Sidebar Toggle Button (Far Left) - Only on home page -->
         <button 
+          v-if="$route.path === '/'"
           class="toggle-menu-btn" 
           @click.stop="toggleSidebar"
           :title="isSidebarVisible ? 'Hide filters' : 'Show filters'"
