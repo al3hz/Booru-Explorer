@@ -63,15 +63,29 @@
           
           <div class="option-row">
             <span class="opt-text">Results per page</span>
-            <input
-              type="number"
-              :value="limit"
-              @input="handleLimitUpdate"
-              min="1"
-              max="100"
-              class="limit-input"
-              title="Number of posts to show per page"
-            />
+            <div class="limit-input-wrapper">
+              <input
+                type="number"
+                :value="limit"
+                @input="handleLimitUpdate"
+                min="1"
+                max="100"
+                class="limit-input"
+                title="Number of posts to show per page"
+              />
+              <button 
+                class="info-icon-btn-limit" 
+                @click.stop="showLimitTooltip = !showLimitTooltip"
+                title="Show limits"
+              >
+                <i class="lni lni-information"></i>
+              </button>
+              <transition name="tooltip-fade">
+                <div v-if="showLimitTooltip" class="limit-tooltip">
+                  Min: 1, Max: 100 posts
+                </div>
+              </transition>
+            </div>
           </div>
 
           <div class="option-row">
@@ -190,6 +204,7 @@ export default {
 
     // Rating Dropdown Logic
     const ratingDropdownOpen = ref(false);
+    const showLimitTooltip = ref(false);
     const ratingOptions = [
       { value: '', label: 'All' },
       { value: 'general', label: 'General (G)' },
@@ -218,6 +233,9 @@ export default {
         const target = e.target;
         if (!target.closest('.custom-select')) {
           ratingDropdownOpen.value = false;
+        }
+        if (!target.closest('.limit-input-wrapper')) {
+          showLimitTooltip.value = false;
         }
       });
     });
@@ -370,6 +388,7 @@ export default {
 
       // Limit Logic
       handleLimitUpdate,
+      showLimitTooltip,
       
       // Rating Logic
       ratingDropdownOpen,
@@ -564,6 +583,66 @@ export default {
   font-size: 10px;
   color: #64748b;
   margin-bottom: 12px;
+}
+
+.limit-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-icon-btn-limit {
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.info-icon-btn-limit i {
+  font-size: 11px;
+  color: #a78bfa;
+}
+
+.info-icon-btn-limit:hover {
+  background: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.4);
+  transform: scale(1.1);
+}
+
+.limit-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: rgba(30, 30, 40, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #e2e8f0;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tooltip-fade-enter-active,
+.tooltip-fade-leave-active {
+  transition: all 0.2s ease;
+}
+
+.tooltip-fade-enter-from,
+.tooltip-fade-leave-to {
+  opacity: 0;
+  transform: translateY(5px);
 }
 
 .action-btn {
