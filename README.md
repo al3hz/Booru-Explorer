@@ -50,6 +50,12 @@ npm run build
 - `src/App.vue`: Root component.
 - `src/main.js`: Application entry point.
 
+## Versioning
+
+This project uses [Semantic Versioning](https://semver.org/). 
+
+📖 **[View Versioning Guide](VERSIONING.md)** - Learn how to update the app version automatically.
+
 ## Credits
 
 - API provided by [Danbooru](https://danbooru.donmai.us/).
