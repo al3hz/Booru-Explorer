@@ -387,10 +387,12 @@ export default {
 
 <style scoped>
 .sidebar-container {
-  height: auto;
-  position: relative;
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+  max-height: calc(100vh - 40px);
   width: 300px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Changed width to all to support transform on mobile */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
 }
 
@@ -404,8 +406,9 @@ export default {
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  height: 100%;
-  overflow: visible; /* Changed to allow dropdown to overflow */
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: visible;
   display: flex;
   flex-direction: column;
   transition: all 0.4s ease;
@@ -466,6 +469,11 @@ export default {
 }
 
 /* Custom Scrollbar */
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
 .sidebar-content::-webkit-scrollbar { width: 4px; }
 .sidebar-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
@@ -786,14 +794,10 @@ export default {
     top: 0;
     left: 0;
     height: 100vh;
+    max-height: 100vh;
     width: 280px;
     z-index: 1000;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    /* By default (sidebarVisible=true in standard logic, but for mobile we might want hidden default? 
-       Actually user logic is: sidebarVisible starts true on desktop, condition setup() sets it based on width.
-       So on mobile sidebarVisible starts false. 
-       When false -> .is-collapsed is applied.
-    */
   }
   
   .sidebar-container.is-collapsed {
