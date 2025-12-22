@@ -806,8 +806,9 @@ export default {
 
 .search-tooltip {
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
   background: rgba(30, 30, 40, 0.95);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(167, 139, 250, 0.3);
@@ -816,8 +817,9 @@ export default {
   font-size: 11px;
   color: #e2e8f0;
   white-space: nowrap;
-  z-index: 100;
+  z-index: 200;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
 }
 
 
@@ -959,7 +961,7 @@ export default {
 .tooltip-fade-enter-from,
 .tooltip-fade-leave-to {
   opacity: 0;
-  transform: translateY(5px);
+  transform: translateX(-50%) translateY(5px);
 }
 
 .action-btn {
