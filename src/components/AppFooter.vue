@@ -33,6 +33,30 @@ export default {
     rgba(20, 20, 28, 0.95) 100%
   );
   backdrop-filter: blur(10px);
+  animation: footerSlideUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation-delay: 0.2s; /* Wait slightly for main content */
+}
+
+@keyframes footerSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes elementPop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .footer-content {
@@ -56,6 +80,7 @@ export default {
   color: #94a3b8;
   font-size: 13px;
   margin: 0;
+  animation: elementPop 0.5s ease 0.4s backwards;
 }
 
 .footer-link {
@@ -76,6 +101,7 @@ export default {
   align-items: center;
   justify-content: center;
   font-size: 24px;
+  animation: elementPop 0.5s ease 0.5s backwards;
 }
 
 .github-link:hover {

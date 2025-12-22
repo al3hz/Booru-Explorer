@@ -489,6 +489,19 @@ export default {
   z-index: 1000;
   overflow: visible;
   min-height: 0;
+  /* Animación de entrada visual */
+  animation: sidebarEntrance 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+@keyframes sidebarEntrance {
+  0% {
+    opacity: 0;
+    transform: translateX(-50px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
 }
 
 

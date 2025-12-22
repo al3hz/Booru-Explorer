@@ -65,6 +65,40 @@ export default {
   position: relative; /* Static flow, but relative container */
   background: rgba(20, 20, 28, 0.4);
   margin-bottom: 40px; /* Increased from 24px to prevent collisions */
+  animation: headerSlideDown 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+@keyframes headerSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .header-inner {
@@ -92,6 +126,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 16px;
+  animation: fadeInRight 0.6s ease 0.4s backwards;
 }
 
 .logo-container {
@@ -100,6 +135,7 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s backwards;
 }
 
 .logo-icon {
@@ -184,7 +220,12 @@ export default {
   color: #cbd5e1;
   font-size: 14px;
   font-weight: 500;
+  animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
+
+.nav-item:nth-child(1) { animation-delay: 0.5s; }
+.nav-item:nth-child(2) { animation-delay: 0.6s; }
+.nav-item:nth-child(3) { animation-delay: 0.7s; }
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.06);
