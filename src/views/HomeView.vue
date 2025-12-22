@@ -99,14 +99,27 @@
           </div>
           <Transition name="expand">
             <div v-if="showTimeoutInfo" class="timeout-explanation">
-              <strong>Search Timeout Explanation</strong>
-              <p>To prevent the "Search took too long" error, we restrict global rankings to the last month.</p>
-              <div class="danbooru-info-box">
-                <p>Members are limited to searches that take up to 3 seconds long. Without this filter, global sorting would fail for everyone.</p>
+               <div class="danbooru-info-box">
+                <p><strong>Danbooru says:</strong> Usually this happens when your search is too complex, or when there aren't many recent posts matching your search.</p>
+                <p>To ensure stability, we automatically apply <code>age:&lt;1month</code>.</p>
               </div>
+              <p><strong>Tips:</strong></p>
+              <ul>
+                <li><code>order:score age:&lt;1week</code> (Best of the week)</li>
+                <li><code>tag_name order:score</code> (Best of a specific tag)</li>
+              </ul>
             </div>
           </Transition>
         </div>
+
+        <div v-if="appliedQuery === 'order:rank'" class="trending-mode-container">
+          <div class="info-banner trending-mode">
+            <span class="icon">🔥</span>
+            <span>Showing trending posts of the day</span>
+            <button class="clear-mode-btn" @click="handleSearch('')" title="Clear filter">✕</button>
+          </div>
+        </div>
+
 
         <PostGallery
           :posts="posts"
@@ -508,6 +521,8 @@ export default {
         handleSearch('order:score');
       } else if (action === 'most-favorited') {
         handleSearch('order:favcount');
+      } else if (action === 'hot') {
+        handleSearch('order:rank');
       } else if (action === 'random') {
         isRandomMode.value = true;
         try {
@@ -611,6 +626,12 @@ export default {
   background: rgba(251, 191, 36, 0.15); /* Amber/Gold */
   border-color: rgba(251, 191, 36, 0.3);
   color: #fde68a;
+}
+
+.info-banner.trending-mode {
+  background: rgba(249, 115, 22, 0.15); /* Orange */
+  border-color: rgba(249, 115, 22, 0.3);
+  color: #fdba74;
 }
 
 .clear-mode-btn {

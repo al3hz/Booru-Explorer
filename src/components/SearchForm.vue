@@ -133,49 +133,62 @@
 
         <div class="divider"></div>
 
-        <div class="popular-section" v-if="trendingTags.length > 0 || loadingTrending">
-          <div class="section-header">
+        <div class="accordion-section popular-section" :class="{ open: activeSection === 'trending' }">
+          <div class="accordion-header" @click="toggleSection('trending')">
             <h3 class="section-label">Trending (Top 15)</h3>
+            <span class="accordion-arrow">▼</span>
           </div>
           
-          <div class="tags-cloud">
-            <div v-if="loadingTrending" class="loading-tags">
-               <span class="tag-skeleton" v-for="i in 5" :key="i"></span>
+          <div class="accordion-content">
+            <div class="tags-cloud">
+              <div v-if="loadingTrending" class="loading-tags">
+                 <span class="tag-skeleton" v-for="i in 5" :key="i"></span>
+              </div>
+              <button
+                v-else
+                v-for="tag in trendingTags"
+                :key="tag.name"
+                @click="selectTag(tag.name)"
+                class="tag-chip"
+                :title="`${tag.count} posts`"
+              >
+                {{ tag.name }}
+              </button>
             </div>
-            <button
-              v-else
-              v-for="tag in trendingTags"
-              :key="tag.name"
-              @click="selectTag(tag.name)"
-              class="tag-chip"
-              :title="`${tag.count} posts`"
-            >
-              {{ tag.name }}
-            </button>
           </div>
         </div>
 
         <div class="divider"></div>
 
-        <div class="actions-section">
-          <h3 class="section-label">Extra</h3>
-          <div class="actions-grid">
-            <button class="quick-action-btn" @click="$emit('trigger-action', 'most-liked')" title="Most Liked (Month)">
-              <span class="action-icon">❤️</span>
-              <span class="action-label">Likes (M)</span>
-            </button>
-            <button class="quick-action-btn" @click="$emit('trigger-action', 'most-favorited')" title="Most Favorited (Month)">
-              <span class="action-icon">⭐</span>
-              <span class="action-label">Favs (M)</span>
-            </button>
-            <button class="quick-action-btn" @click="$emit('trigger-action', 'deleted')" title="Deleted Posts (Month)">
-              <span class="action-icon">🗑️</span>
-              <span class="action-label">Deleted (M)</span>
-            </button>
-            <button class="quick-action-btn" @click="$emit('trigger-action', 'random')" title="Random Post">
-              <span class="action-icon">🎲</span>
-              <span class="action-label">Random</span>
-            </button>
+        <div class="accordion-section actions-section" :class="{ open: activeSection === 'extra' }">
+          <div class="accordion-header" @click="toggleSection('extra')">
+            <h3 class="section-label">Extra</h3>
+            <span class="accordion-arrow">▼</span>
+          </div>
+          
+          <div class="accordion-content">
+            <div class="actions-grid">
+              <button class="quick-action-btn" @click="$emit('trigger-action', 'most-liked')" title="Most Liked (Month)">
+                <span class="action-icon">❤️</span>
+                <span class="action-label">Likes (M)</span>
+              </button>
+              <button class="quick-action-btn" @click="$emit('trigger-action', 'most-favorited')" title="Most Favorited (Month)">
+                <span class="action-icon">⭐</span>
+                <span class="action-label">Favs (M)</span>
+              </button>
+              <button class="quick-action-btn" @click="$emit('trigger-action', 'deleted')" title="Deleted Posts (Month)">
+                <span class="action-icon">🗑️</span>
+                <span class="action-label">Deleted (M)</span>
+              </button>
+              <button class="quick-action-btn" @click="$emit('trigger-action', 'random')" title="Random Post">
+                <span class="action-icon">🎲</span>
+                <span class="action-label">Random</span>
+              </button>
+              <button class="quick-action-btn" @click="$emit('trigger-action', 'hot')" title="Trending Posts (Day)">
+                <span class="action-icon">🔥</span>
+                <span class="action-label">Trending</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -216,6 +229,18 @@ export default {
     const route = useRoute();
     const { suggestions, fetchSuggestions, clearSuggestions, loadingSuggestions } = useDanbooruAutocomplete();
     const { trendingTags, loadingTrending, fetchTrendingTags } = useDanbooruTrending();
+    
+    // Accordion state - default to trending
+    const activeSection = ref("trending");
+    
+    const toggleSection = (section) => {
+      if (activeSection.value === section) {
+        // Optional: allow closing all sections? For now, keep it toggleable or strict accordion
+        activeSection.value = null; 
+      } else {
+        activeSection.value = section;
+      }
+    };
     
     const activeSuggestionIndex = ref(-1);
     const searchInputRef = ref(null);
@@ -436,6 +461,10 @@ export default {
       handleLimitUpdate,
       showLimitTooltip,
       showSearchTooltip,
+
+      // Accordion
+      activeSection,
+      toggleSection,
       
       // Rating Logic
       ratingDropdownOpen,
@@ -462,6 +491,37 @@ export default {
 
 .sidebar-container.is-collapsed {
   width: 60px;
+  max-height: 70px; /* Increased to fit borders nicely */
+  overflow: hidden; /* Hide content during shrink */
+  border-radius: 12px; /* Prevent clipping corners */
+}
+
+.sidebar-container.is-collapsed .sidebar {
+  background: rgba(20, 20, 28, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2); /* More visible border */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  width: 100%; 
+  height: 100%;
+  display: flex; /* Ensure inner content can center */
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-container.is-collapsed .sidebar-header {
+  border-bottom: none;
+  padding: 0;
+  margin: 0; /* Reset margins */
+  height: auto; /* Let flex parent center it */
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-container.is-collapsed .title {
+  display: none;
 }
 
 .sidebar {
@@ -519,9 +579,10 @@ export default {
 
 .sidebar-content {
   padding: 20px;
-  overflow: visible; /* Ensure it is visible */
+  overflow: visible;
   opacity: 1;
-  transition: opacity 0.3s ease;
+  transform: translateY(0);
+  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s; /* Delay fade in */
   flex: 1;
 }
 
@@ -533,6 +594,16 @@ export default {
 
 /* Custom Scrollbar */
 .sidebar::-webkit-scrollbar { width: 6px; }
+
+/* Animate content fade out when collapsing */
+.sidebar-container.is-collapsed .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+
 .sidebar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
 .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
 .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
@@ -549,6 +620,58 @@ export default {
   color: #64748b;
   margin-bottom: 10px;
   font-weight: 700;
+}
+
+/* Accordion Styles */
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 12px 0;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.accordion-header:hover {
+  color: #a78bfa;
+}
+
+.accordion-header:hover .section-label {
+  color: #a78bfa;
+}
+
+.accordion-header .section-label {
+  margin-bottom: 0; /* Align perfectly with arrow */
+}
+
+.accordion-arrow {
+  font-size: 12px;
+  color: #94a3b8;
+  transition: transform 0.3s ease;
+}
+
+.open .accordion-header .accordion-arrow {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden; /* Prevent ghost scrollbars */
+  transition: grid-template-rows 0.3s ease-out, opacity 0.3s ease, margin 0.3s ease;
+  opacity: 0;
+}
+
+.open .accordion-content {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 10px;
+}
+
+.accordion-content > div {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .section-label-wrapper {
@@ -1127,6 +1250,16 @@ export default {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
+}
+
+.actions-grid .quick-action-btn:last-child {
+  grid-column: 1 / -1;
+  background: rgba(167, 139, 250, 0.1); /* Slight highlight */
+  border-color: rgba(167, 139, 250, 0.2);
+}
+
+.actions-grid .quick-action-btn:last-child:hover {
+  background: rgba(167, 139, 250, 0.2);
 }
 
 .quick-action-btn {
