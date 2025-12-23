@@ -35,12 +35,17 @@ export default {
     className: {
       type: String,
       default: ''
+    },
+    shouldPause: {
+      type: Boolean,
+      default: false
     }
   },
   emits: ['error', 'loaded'],
   setup(props, { emit }) {
     const videoRef = ref(null);
     let observer = null;
+    let isVisible = false;
     
     // Detect if device is mobile
     const isMobileDevice = window.innerWidth <= 768;
@@ -56,12 +61,16 @@ export default {
 
       observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
+          isVisible = entry.isIntersecting;
+          
           if (entry.isIntersecting) {
-            // Only autoplay on desktop
-            videoRef.value.play().catch(e => {
-                // Auto-play might be blocked or failed
-                // console.warn('Autoplay prevented', e);
-            });
+            // Only autoplay on desktop AND if not paused externally
+            if (!props.shouldPause) {
+                videoRef.value.play().catch(e => {
+                    // Auto-play might be blocked or failed
+                    // console.warn('Autoplay prevented', e);
+                });
+            }
           } else {
             videoRef.value.pause();
           }
@@ -110,6 +119,20 @@ export default {
            videoRef.value.pause();
            videoRef.value.load();
        }
+    });
+
+    // Watch for external pause signal
+    watch(() => props.shouldPause, (shouldPause) => {
+        if (!videoRef.value) return;
+        
+        if (shouldPause) {
+            videoRef.value.pause();
+        } else {
+            // Resume if visible and not on mobile
+            if (isVisible && !isMobileDevice) {
+                videoRef.value.play().catch(() => {});
+            }
+        }
     });
 
     return {

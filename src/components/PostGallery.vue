@@ -103,6 +103,7 @@
               :alt="post.tag_string_general"
               className="card-image"
               @error="handleImageError($event, post)"
+              :should-pause="pauseAnimations"
             />
             
             <!-- Default Image -->
@@ -288,6 +289,10 @@ export default {
       type: Object,
       default: () => ({ g: 0, s: 0, q: 0, e: 0 }),
     },
+    pauseAnimations: {
+      type: Boolean,
+      default: false,
+    },
   },
   emits: ["load-more", "change-page", "post-clicked"],
   setup(props, { emit }) {
@@ -437,6 +442,10 @@ export default {
         );
       }
       if (post.file_ext === "gif") {
+        if (this.pauseAnimations) {
+            // Return static preview if paused
+            return post.preview_url || post.preview_file_url || ""; 
+        }
         return post.file_url || post.sample_url || post.preview_url || "";
       }
       if (post.file_ext === "swf") {

@@ -664,6 +664,15 @@ export default {
         }
     }, { immediate: true });
 
+    // Stop background videos when modal is open
+    watch(selectedPost, (val) => {
+        const videos = document.querySelectorAll('.wiki-view video');
+        videos.forEach(v => {
+            if (val) v.pause();
+            else v.play().catch(() => {});
+        });
+    });
+
     // Watch for currentView changes to trigger hydration
     watch(currentView, (newVal) => {
         if (newVal) {
