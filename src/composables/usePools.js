@@ -88,8 +88,8 @@ export function usePools() {
       pools.value = poolsWithCovers;
       currentPage.value = page;
       
-      // Check if there are more pages (if we got 20 items, likely more exist)
-      hasNextPage.value = poolsData.length === 20;
+      // Check if there are more pages (if we got full batch of 42 items, likely more exist)
+      hasNextPage.value = poolsData.length === 42;
       
     } catch (e) {
       console.error('Error fetching pools:', e);

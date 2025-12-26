@@ -7,9 +7,19 @@
           v-if="$route.path === '/'"
           class="toggle-menu-btn" 
           @click.stop="toggleSidebar"
-          :title="isSidebarVisible ? 'Hide filters' : 'Show filters'"
+          :title="isSidebarVisible ? 'Hide sidebar' : 'Show sidebar'"
         >
           <i :class="isSidebarVisible ? 'lni lni-chevron-left' : 'lni lni-menu'"></i>
+        </button>
+
+        <!-- Pool Filters Toggle Button (Far Left) - Only on pools page -->
+        <button 
+          v-if="$route.path === '/pools'"
+          class="toggle-menu-btn" 
+          @click.stop="toggleFilters"
+          :title="filtersVisible ? 'Hide filters' : 'Show filters'"
+        >
+          <i :class="filtersVisible ? 'lni lni-chevron-up' : 'lni lni-funnel'"></i>
         </button>
 
         <div class="brand-section">
@@ -59,6 +69,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLayout } from '../composables/useLayout';
+import { usePoolFilters } from '../composables/usePoolFilters';
 import packageJson from '../../package.json';
 
 export default {
@@ -67,6 +78,7 @@ export default {
   setup(props, { emit }) {
     const router = useRouter();
     const { isSidebarVisible, toggleSidebar } = useLayout();
+    const { filtersVisible, toggleFilters } = usePoolFilters();
     const isHeaderHidden = ref(false);
     const appVersion = ref(packageJson.version);
     let lastScrollY = typeof window !== 'undefined' ? window.pageYOffset : 0;
@@ -114,6 +126,8 @@ export default {
       handleLogoClick,
       isSidebarVisible,
       toggleSidebar,
+      filtersVisible,
+      toggleFilters,
       isHeaderHidden,
       appVersion
     };

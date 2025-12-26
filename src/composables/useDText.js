@@ -50,8 +50,9 @@ export function useDText() {
     });
 
     // "Label":URL (Legacy) using &quot; for quotes
-    // Matches: &quot;Label&quot;:http://... OR &quot;Label&quot;:/...
-    formatted = formatted.replace(/&quot;(.*?)&quot;:((?:https?:\/\/|\/)[^\s<]+)/g, (match, label, path) => {
+    // Matches: &quot;Label&quot;:http://... OR &quot;Label&quot;:[http://...]
+    // Added support for optional brackets [] around the URL
+    formatted = formatted.replace(/&quot;(.*?)&quot;:\[?((?:https?:\/\/|\/)[^\s<\]]+)\]?/g, (match, label, path) => {
         let finalUrl = path;
         if (path.startsWith('/')) finalUrl = path.startsWith('/posts') ? '/Booru-Explorer/' : `https://danbooru.donmai.us${path}`;
         return addPlaceholder(`<a href="${finalUrl}" target="_blank" rel="noopener noreferrer" class="dtext-link">${label}</a>`);
@@ -72,12 +73,12 @@ export function useDText() {
         return addPlaceholder(`<a href="#${id}" class="dtext-link dtext-anchor" data-anchor="${id}">${label}</a>`);
     });
 
-    // 4. Raw URLs (Now safe to be greedy because other links are hidden)
+    // 4. Raw URLs
     formatted = formatted.replace(/(https?:\/\/[^\s<"']+)/g, (match) => {
         return addPlaceholder(`<a href="${match}" target="_blank" rel="noopener noreferrer" class="dtext-link">${match}</a>`);
     });
 
-    // 5. Hydration Stubs (convert to placeholders to protect them)
+    // 5. Hydration Stubs
     formatted = formatted.replace(/!post #(\d+)/g, (m, id) => addPlaceholder(`<span class="dtext-post-stub" data-post-id="${id}">Loading post #${id}...</span>`));
     formatted = formatted.replace(/!asset #(\d+)/g, (m, id) => addPlaceholder(`<span class="dtext-asset-stub" data-asset-id="${id}">Loading asset #${id}...</span>`));
     
@@ -87,59 +88,29 @@ export function useDText() {
         return addPlaceholder(`<span class="status-link" data-tag="${fullTag}" style="color: #f87171; cursor: pointer; text-decoration: underline;">${fullTag}</span>`);
     });
 
-    // 6. Formatting that could contain placeholders (like bolding a link)
-    // We let these run *around* placeholders. Placeholders are just weird text now.
-    
-    // [b]...[/b]
-    formatted = formatted.replace(/\[b\](.*?)\[\/b\]/g, '<strong>$1</strong>');
-    // [i]...[/i]
-    formatted = formatted.replace(/\[i\](.*?)\[\/i\]/g, '<em>$1</em>');
-    // [u]...[/u]
-    formatted = formatted.replace(/\[u\](.*?)\[\/u\]/g, '<u>$1</u>');
-    // [s]...[/s]
-    formatted = formatted.replace(/\[s\](.*?)\[\/s\]/g, '<s>$1</s>');
+    // Handle [posts] query [/posts] tags - Just show label or content if present, or strip if complex
+    // Example: "800x600"[/posts] -> just "800x600"
+    formatted = formatted.replace(/"(.*?)"\[\/?posts(?:=[^\]]*)?\]/g, '$1'); 
+    formatted = formatted.replace(/\[\/?posts(?:=[^\]]*)?\]/g, ''); 
 
-    // Headers
-    formatted = formatted.replace(/(?:^|\n)h([1-6])(?:#([\w\-]+))?\.\s*(.*?)(?=\r|\n|$)/g, (match, level, id, content) => {
-        const idAttr = id ? ` id="dtext-${id}"` : '';
-        return `<h${level}${idAttr}>${content}</h${level}>`;
-    });
+    // 6. Formatting
+    formatted = formatted.replace(/\[b\]([\s\S]*?)\[\/b\]/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/\[i\]([\s\S]*?)\[\/i\]/g, '<em>$1</em>');
+    formatted = formatted.replace(/\[u\]([\s\S]*?)\[\/u\]/g, '<u>$1</u>');
+    formatted = formatted.replace(/\[s\]([\s\S]*?)\[\/s\]/g, '<s>$1</s>');
 
-    // Lists
-    formatted = formatted.replace(/(?:^|\n)\*\* (.*?)(?=\r|\n|$)/g, '<div class="dtext-list-item nested"><span>$1</span></div>');
-    formatted = formatted.replace(/(?:^|\n)\* (.*?)(?=\r|\n|$)/g, (match, content) => {
-        // We can't easily check for stubs inside content now because they are placeholders.
-        // But the CSS logic for dtext-preview-item works on structure.
-        // We'll just render generic item and let styles/JS handle specific layout if needed.
-        // Or we can peek: if content includes __PH_... and that placeholder is a stub.
-        // For simplicity, just render standard list item.
-        return `<div class="dtext-list-item"><span>${content}</span></div>`;
-    });
+    // Headers - Simplify for card preview to bold text
+    formatted = formatted.replace(/(?:^|\n)h([1-6])(?:#([\w\-]+))?\.\s*(.*?)(?=\r|\n|$)/g, '<br><strong>$3</strong>');
 
-    // Expand
-    // Note: [expand] might contain placeholders. 
-    formatted = formatted.replace(/\[expand(?:=(.*?))?\]([\s\S]*?)\[\/expand\]/g, (match, title, content) => {
-        const id = 'acc-' + Math.random().toString(36).substr(2, 9);
-        const displayTitle = title || 'Expand';
-        const finalContent = (!content || !content.trim()) ? '<span class="dtext-empty">No results found.</span>' : content;
-        
-        return `<div class="dtext-accordion">
-            <input type="checkbox" id="${id}" class="accordion-checkbox">
-            <label for="${id}" class="accordion-header">${displayTitle}</label>
-            <div class="accordion-content"><div>${finalContent}</div></div>
-        </div>`;
-    });
+    // Lists - Simplify to bullet points
+    formatted = formatted.replace(/(?:^|\n)\*+ (.*?)(?=\r|\n|$)/g, '<br>• $1');
 
-    // Line breaks
-    formatted = formatted.replace(/(\r\n\r\n|\n\n|\r\r)/g, '<br><br>');
-    formatted = formatted.replace(/\n(?!\*|\bh[1-6]\.)/g, ' '); // Single newline -> space
-    formatted = formatted.replace(/[ ]{2,}/g, ' ');
-    formatted = formatted.replace(/\n/g, '<br>'); // Remaining newlines for headers/lists
+    // Expand - Collapse to simple text
+    formatted = formatted.replace(/\[expand(?:=(.*?))?\]([\s\S]*?)\[\/expand\]/g, '<br><em>$1</em><br>$2');
 
-    // Cleanup whitespace around headers/divs
-    formatted = formatted.replace(/(<\/h[1-6]>)<br>/g, '$1');
-    formatted = formatted.replace(/<br>(<h[1-6]>)/g, '$1');
-    formatted = formatted.replace(/(<\/div>)<br>(<div)/g, '$1$2');
+    // Line breaks - Aggressive cleanup for cards
+    formatted = formatted.replace(/(\r\n|\n|\r)/g, ' '); // Flatten for card preview (line-clamp works best on inline text)
+    formatted = formatted.replace(/[ ]{2,}/g, ' '); // Collapse spaces
 
     // 7. Restore Placeholders
     // Loop until no placeholders remain (handle nested if any, though our logic is flat for now)
