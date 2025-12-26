@@ -131,7 +131,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePools } from '../composables/usePools';
 import { useDText } from '../composables/useDText';
@@ -195,8 +195,27 @@ export default {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, { immediate: true });
 
+    const handleKeydown = (e) => {
+       // Ignore if user is typing in input
+       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+       if (e.key === 'a' || e.key === 'A') {
+         if (currentPage.value > 1 && !loading.value) {
+           handlePageChange(currentPage.value - 1);
+         }
+       } else if (e.key === 'd' || e.key === 'D') {
+         if (hasNextPage.value && !loading.value) {
+           handlePageChange(currentPage.value + 1);
+         }
+       }
+    };
+
     onMounted(() => {
-       // Watcher handles fetch now
+       window.addEventListener('keydown', handleKeydown);
+    });
+
+    onUnmounted(() => {
+       window.removeEventListener('keydown', handleKeydown);
     });
 
     const handleSearch = () => {
@@ -309,19 +328,15 @@ export default {
 
 .pools-main-content {
   flex: 1;
-  width: 0;
+  min-width: 0; /* Standard flexbox text overflow fix */
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0;
-  padding-left: 20px; /* Base padding for when sidebar is closed/hidden to not stick to edge */
 }
 
-.pools-main-content.with-sidebar {
-  padding-left: 0;
-}
+
 
 .pools-container {
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
 }
 
 /* Header */
@@ -605,6 +620,7 @@ export default {
   justify-content: center;
   min-height: 300px;
   width: 100%;
+  box-sizing: border-box; /* Ensure padding doesn't affect width */
 }
 
 .loading-state .spinner {
