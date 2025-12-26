@@ -50,19 +50,21 @@
             >
               <!-- Pool Cover -->
               <div class="pool-cover">
-                <SmartVideo
-                  v-if="pool.coverUrl && isAnimatedCover(pool)"
-                  :src="pool.coverUrl"
-                  :alt="pool.name"
-                  className="cover-image"
-                />
-                <img
-                  v-else-if="pool.coverUrl"
-                  :src="pool.coverUrl"
-                  :alt="pool.name"
-                  class="cover-image"
-                  loading="lazy"
-                />
+                <div class="cover-image-container">
+                  <SmartVideo
+                    v-if="pool.coverUrl && isAnimatedCover(pool)"
+                    :src="pool.coverUrl"
+                    :alt="pool.name"
+                    className="cover-image"
+                  />
+                  <img
+                    v-else-if="pool.coverUrl"
+                    :src="pool.coverUrl"
+                    :alt="pool.name"
+                    class="cover-image"
+                    loading="lazy"
+                  />
+                </div>
 
                 <div class="pool-overlay">
                   <span class="post-count">
@@ -417,21 +419,39 @@ export default {
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  position: relative;
   background: rgba(20, 20, 28, 0.6);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   overflow: hidden;
   text-decoration: none;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
   animation: fadeIn 0.3s ease-in backwards;
+  transform: translateZ(0); /* Ya está presente */
+  /* Añade isolation para crear un nuevo stacking context */
+  isolation: isolate;
+}
+
+/* Pseudo-element border to mask sub-pixel gaps */
+.pool-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  z-index: 5;
+  transition: border-color 0.3s;
 }
 
 .pool-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(167, 139, 250, 0.3);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.pool-card:hover::after {
+  border-color: rgba(167, 139, 250, 0.3);
 }
 
 .pool-cover {
@@ -440,18 +460,35 @@ export default {
   height: 240px;
   background: #0f172a;
   overflow: hidden;
+  border-radius: 12px 12px 0 0;
+  /* Solución definitiva: crear un contenedor interno para la imagen */
+  isolation: isolate;
+}
+
+.cover-image-container {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
 }
 
 .cover-image {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Extender ligeramente para cubrir completamente */
+  transform: scale(1.01); /* Pequeño scale inicial */
 }
 
 .pool-card:hover .cover-image {
-  transform: scale(1.05);
+  transform: scale(1.06); /* Un poco más para compensar */
 }
+
 
 .pool-overlay {
   position: absolute;

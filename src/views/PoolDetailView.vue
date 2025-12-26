@@ -556,48 +556,74 @@ export default {
 .pool-description {
   color: #cbd5e1;
   font-size: 15px;
-  line-height: 1.6;
-  margin: 0 0 16px 0;
-  max-width: 800px;
+  line-height: 1.7; /* Improved line spacing */
+  margin: 0 0 24px 0;
+  max-width: 1300px; /* Increased to reduce empty space while keeping readability reasonable */
+  background: rgba(0, 0, 0, 0.2); /* Subtle container */
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* DText formatting in descriptions */
 .pool-description :deep(.wiki-link),
 .pool-description :deep(.pool-link),
 .pool-description :deep(.post-link) {
-  color: #a78bfa;
+  color: #c4b5fd; /* Much brighter purple */
   cursor: pointer;
-  text-decoration: underline;
-  transition: color 0.2s;
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(196, 181, 253, 0.5);
+  transition: all 0.2s;
+  font-weight: 500;
 }
 
 .pool-description :deep(.wiki-link):hover,
 .pool-description :deep(.pool-link):hover,
 .pool-description :deep(.post-link):hover {
-  color: #c084fc;
+  color: #ddd6fe;
+  border-bottom-style: solid;
+  text-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
 }
 
 .pool-description :deep(b),
 .pool-description :deep(strong) {
-  font-weight: 600;
-  color: #e2e8f0;
+  font-weight: 700;
+  color: #f1f5f9;
 }
 
+.pool-description :deep(h1),
+.pool-description :deep(h2),
+.pool-description :deep(h3),
+.pool-description :deep(h4),
 .pool-description :deep(h5),
 .pool-description :deep(h6) {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: #fff;
-  margin: 12px 0 6px 0;
+  margin: 20px 0 10px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.pool-description :deep(ul) {
-  margin: 8px 0;
-  padding-left: 20px;
+.pool-description :deep(ul),
+.pool-description :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
 }
 
 .pool-description :deep(li) {
-  margin: 4px 0;
+  margin: 6px 0;
+  position: relative;
+}
+
+/* Custom bullet for ul */
+.pool-description :deep(ul) > li::marker {
+  color: #a78bfa;
+}
+
+.pool-description :deep(p) {
+  margin-bottom: 12px;
 }
 
 .pool-meta {
