@@ -13,31 +13,96 @@
 
         <!-- Search and Filters -->
         <div class="pools-controls">
-          <div class="search-wrapper">
-            <input
-              type="text"
-              v-model="searchQuery"
-              @keyup.enter="handleSearch"
-              placeholder="Search pools..."
-              class="pool-search-input"
-            />
-            <button class="search-btn" @click="handleSearch" :disabled="loading">
-              <i class="lni lni-search-alt"></i>
-            </button>
+          <!-- Text Filters Row -->
+          <div class="filter-text-row">
+            <!-- Name Search -->
+            <div class="filter-field">
+              <label class="filter-label">Name</label>
+              <input
+                type="text"
+                v-model="filters.name"
+                @keyup.enter="handleSearch"
+                placeholder="Search by pool name..."
+                class="filter-input"
+              />
+            </div>
+
+            <!-- Description Search -->
+            <div class="filter-field">
+              <label class="filter-label">Description</label>
+              <input
+                type="text"
+                v-model="filters.description"
+                @keyup.enter="handleSearch"
+                placeholder="Search in description..."
+                class="filter-input"
+              />
+            </div>
+
           </div>
 
-          <div class="category-filters">
-            <button
-              v-for="cat in categories"
-              :key="cat.value"
-              @click="selectCategory(cat.value)"
-              class="category-btn"
-              :class="{ active: selectedCategory === cat.value }"
-            >
-              <i :class="cat.icon"></i>
-              <span>{{ cat.label }}</span>
-            </button>
+          <!-- Dropdown Filters Row -->
+          <div class="filter-dropdown-row">
+            <!-- Category -->
+            <div class="filter-col">
+              <label class="filter-label">Category</label>
+              <div class="custom-select" :class="{ 'is-open': categoryDropdownOpen }">
+                <button class="select-trigger" @click.stop="toggleCategoryDropdown">
+                  <span class="selected-value">{{ getCategoryLabel(filters.category) }}</span>
+                  <span class="chevron">▼</span>
+                </button>
+                
+                <transition name="dropdown-fade">
+                  <ul v-if="categoryDropdownOpen" class="custom-options">
+                    <li 
+                      v-for="opt in categoryOptions" 
+                      :key="opt.value"
+                      class="custom-option"
+                      :class="{ 'selected': filters.category === opt.value }"
+                      @click="selectCategory(opt.value)"
+                    >
+                      <span class="option-label">{{ opt.label }}</span>
+                      <span v-if="filters.category === opt.value" class="check">✓</span>
+                    </li>
+                  </ul>
+                </transition>
+              </div>
+            </div>
+
+
+
+            <!-- Order -->
+            <div class="filter-col">
+              <label class="filter-label">Order</label>
+              <div class="custom-select" :class="{ 'is-open': orderDropdownOpen }">
+                <button class="select-trigger" @click.stop="toggleOrderDropdown">
+                  <span class="selected-value">{{ getOrderLabel(filters.order) }}</span>
+                  <span class="chevron">▼</span>
+                </button>
+                
+                <transition name="dropdown-fade">
+                  <ul v-if="orderDropdownOpen" class="custom-options">
+                    <li 
+                      v-for="opt in orderOptions" 
+                      :key="opt.value"
+                      class="custom-option"
+                      :class="{ 'selected': filters.order === opt.value }"
+                      @click="selectOrder(opt.value)"
+                    >
+                      <span class="option-label">{{ opt.label }}</span>
+                      <span v-if="filters.order === opt.value" class="check">✓</span>
+                    </li>
+                  </ul>
+                </transition>
+              </div>
+            </div>
           </div>
+
+          <!-- Search Button -->
+          <button class="search-submit-btn" @click="handleSearch" :disabled="loading">
+            <i class="lni lni-search-alt"></i>
+            Search Pools
+          </button>
         </div>
       </div>
 
@@ -57,7 +122,17 @@
       </div>
 
       <!-- Pools Grid -->
-      <div v-else-if="pools.length > 0" class="pools-grid">
+      <div v-else-if="pools.length > 0">
+        <!-- Results Header -->
+        <div class="results-header">
+          <div class="results-info">
+            <i class="lni lni-layers"></i>
+            <h2 class="results-title">Collections</h2>
+          </div>
+          <div class="results-divider"></div>
+        </div>
+
+        <div class="pools-grid">
         <router-link
           v-for="pool in pools"
           :key="pool.id"
@@ -112,9 +187,10 @@
           </div>
         </router-link>
       </div>
+      </div>
 
       <!-- Empty State -->
-      <div v-else class="empty-state">
+      <div v-else-if="!loading && pools.length === 0" class="empty-state">
         <i class="lni lni-inbox"></i>
         <p>No pools found</p>
         <p class="empty-hint">Try a different search or category</p>
@@ -147,7 +223,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePools } from '../composables/usePools';
 import { useDText } from '../composables/useDText';
@@ -164,42 +240,91 @@ export default {
     const { pools, loading, error, currentPage, hasNextPage, fetchPools } = usePools();
     const { parseDText } = useDText();
     
-    const searchQuery = ref('');
-    const selectedCategory = ref('');
-    
-    const categories = [
-      { value: '', label: 'All', icon: 'lni lni-grid-alt' },
-      { value: 'series', label: 'Series', icon: 'lni lni-bookmark' },
-      { value: 'collection', label: 'Collection', icon: 'lni lni-folder' }
+    const filters = ref({
+      name: '',
+      description: '',
+      category: '',
+      order: 'updated_at'
+    });
+
+    // Dropdown states
+    const categoryDropdownOpen = ref(false);
+    const orderDropdownOpen = ref(false);
+
+    // Options for dropdowns
+    const categoryOptions = [
+      { value: '', label: 'All' },
+      { value: 'series', label: 'Series' },
+      { value: 'collection', label: 'Collection' }
     ];
 
-    const handleSearch = () => {
-      fetchPools(1, searchQuery.value, selectedCategory.value);
-      updateURL();
+
+
+    const orderOptions = [
+      { value: 'updated_at', label: 'Last Updated' },
+      { value: 'name', label: 'Name' },
+      { value: 'created_at', label: 'Recently Created' },
+      { value: 'post_count', label: 'Post Count' }
+    ];
+
+    // Dropdown toggle functions
+    const toggleCategoryDropdown = () => {
+      categoryDropdownOpen.value = !categoryDropdownOpen.value;
+      orderDropdownOpen.value = false;
     };
 
-    const selectCategory = (category) => {
-      selectedCategory.value = category;
-      fetchPools(1, searchQuery.value, category);
-      updateURL();
+    const toggleOrderDropdown = () => {
+      orderDropdownOpen.value = !orderDropdownOpen.value;
+      categoryDropdownOpen.value = false;
+    };
+
+    const selectCategory = (value) => {
+      filters.value.category = value;
+      categoryDropdownOpen.value = false;
+    };
+
+    const selectOrder = (value) => {
+      filters.value.order = value;
+      orderDropdownOpen.value = false;
+    };
+
+    // Label getter functions
+    const getCategoryLabel = (value) => {
+      const opt = categoryOptions.find(o => o.value === value);
+      return opt ? opt.label : 'All';
+    };
+
+
+
+    const getOrderLabel = (value) => {
+      const opt = orderOptions.find(o => o.value === value);
+      return opt ? opt.label : 'Last Updated';
+    };
+
+    const handleSearch = () => {
+      currentPage.value = 1;
+      updateURL(1);
+      fetchPools(1, filters.value);
     };
 
     const handlePageChange = (page) => {
       if (page < 1 || loading.value) return;
-      fetchPools(page, searchQuery.value, selectedCategory.value);
-      updateURL();
+      currentPage.value = page;
+      updateURL(page);
+      fetchPools(page, filters.value);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const updateURL = () => {
-      router.push({
-        path: '/pools',
-        query: {
-          q: searchQuery.value || undefined,
-          category: selectedCategory.value || undefined,
-          page: currentPage.value > 1 ? currentPage.value : undefined
-        }
-      });
+    const updateURL = (page = currentPage.value) => {
+      const query = {};
+      
+      if (filters.value.name) query.name = filters.value.name;
+      if (filters.value.description) query.description = filters.value.description;
+      if (filters.value.category) query.category = filters.value.category;
+      if (filters.value.order && filters.value.order !== 'updated_at') query.order = filters.value.order;
+      if (page > 1) query.page = page;
+      
+      router.push({ path: '/pools', query });
     };
 
     const formatCategory = (cat) => {
@@ -219,7 +344,7 @@ export default {
       return name.replace(/_/g, ' ');
     };
 
-    const handleDescriptionClick = (e) => {
+    const handleDescriptionClick = async (e) => {
       const target = e.target;
       
       // Handle wiki links
@@ -239,6 +364,17 @@ export default {
           router.push({ name: 'pool-detail', params: { id: poolId } });
         }
       }
+
+      // Handle post links - navigate to home with that post open
+      if (target.classList.contains('post-link')) {
+        e.preventDefault();
+        const postId = target.dataset.postId;
+        if (postId) {
+          // Navigate to home page with the post ID in query
+          // The home page can then fetch and open it
+          window.open(`https://danbooru.donmai.us/posts/${postId}`, '_blank');
+        }
+      }
     };
 
     const isAnimatedCover = (pool) => {
@@ -247,18 +383,57 @@ export default {
       return pool.coverUrl.match(/\.(mp4|webm)$/i);
     };
 
+    const handleKeydown = (e) => {
+      // Ignore if user is typing in input/textarea
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      
+      // Only handle if no filters are active
+      const hasActiveFilters = filters.value.name || filters.value.description || 
+                               filters.value.postTags || filters.value.category || 
+                               filters.value.deleted;
+      if (hasActiveFilters) return;
+      
+      if (e.key === 'a' || e.key === 'A') {
+        if (currentPage.value > 1 && !loading.value) {
+          e.preventDefault();
+          handlePageChange(currentPage.value - 1);
+        }
+      } else if (e.key === 'd' || e.key === 'D') {
+        if (hasNextPage.value && !loading.value) {
+          e.preventDefault();
+          handlePageChange(currentPage.value + 1);
+        }
+      }
+    };
+
     onMounted(() => {
       // Parse URL params
-      if (route.query.q) {
-        searchQuery.value = route.query.q;
-      }
-      if (route.query.category) {
-        selectedCategory.value = route.query.category;
-      }
+      if (route.query.name) filters.value.name = route.query.name;
+      if (route.query.description) filters.value.description = route.query.description;
+      if (route.query.category) filters.value.category = route.query.category;
+      if (route.query.order) filters.value.order = route.query.order;
+      
       const page = parseInt(route.query.page) || 1;
       
       // Fetch pools
-      fetchPools(page, searchQuery.value, selectedCategory.value);
+      fetchPools(page, filters.value);
+      
+      // Add keyboard listener
+      window.addEventListener('keydown', handleKeydown);
+      
+      // Close dropdowns when clicking outside
+      document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!target.closest('.custom-select')) {
+          categoryDropdownOpen.value = false;
+          orderDropdownOpen.value = false;
+        }
+      });
+    });
+
+    onUnmounted(() => {
+      // Remove keyboard listener
+      window.removeEventListener('keydown', handleKeydown);
     });
 
     return {
@@ -267,11 +442,26 @@ export default {
       error,
       currentPage,
       hasNextPage,
-      searchQuery,
-      selectedCategory,
-      categories,
-      handleSearch,
+      filters,
+      
+      // Dropdown states
+      categoryDropdownOpen,
+      orderDropdownOpen,
+      
+      // Options
+      categoryOptions,
+      orderOptions,
+      
+      // Dropdown functions
+      toggleCategoryDropdown,
+      toggleOrderDropdown,
       selectCategory,
+      selectOrder,
+      getCategoryLabel,
+      getOrderLabel,
+      
+      // Other functions
+      handleSearch,
       handlePageChange,
       formatCategory,
       formatDate,
@@ -298,7 +488,8 @@ export default {
 
 /* Header */
 .pools-header {
-  margin-bottom: 32px;
+  margin-bottom: 64px;
+  text-align: center;
 }
 
 .header-top {
@@ -308,6 +499,7 @@ export default {
 .page-title {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   font-size: 32px;
   font-weight: 700;
@@ -335,11 +527,13 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  align-items: center;
 }
 
 .search-wrapper {
   position: relative;
   max-width: 500px;
+  width: 100%;
 }
 
 .pool-search-input {
@@ -392,6 +586,7 @@ export default {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .category-btn {
@@ -424,6 +619,323 @@ export default {
 .category-btn i {
   font-size: 16px;
   color: #a78bfa;
+}
+
+/* Advanced Filter Styles */
+.pools-controls {
+  max-width: 1000px;
+  margin: 0 auto;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+}
+
+/* Text Filters Row - 2 inputs in one row */
+.filter-text-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Dropdown Filters Row - 2 selects in one row */
+.filter-dropdown-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* Old filter-row (keep for compatibility) */
+.filter-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 9px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #a78bfa;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.1);
+}
+
+.filter-input::placeholder {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.filter-row-group {
+  display: grid;
+  grid-template-columns: 120px repeat(3, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 20px;
+}
+
+.filter-row-group > label:first-child {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+  text-align: right;
+  padding-top: 10px;
+}
+
+.filter-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-col > .filter-label {
+  text-align: center;
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Custom Select Styles */
+.custom-select {
+  position: relative;
+  width: 100%;
+}
+
+.select-trigger {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.select-trigger:hover,
+.custom-select.is-open .select-trigger {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(167, 139, 250, 0.5);
+}
+
+.selected-value {
+  flex: 1;
+}
+
+.chevron {
+  font-size: 10px;
+  opacity: 0.6;
+  transition: transform 0.2s;
+  margin-left: 8px;
+}
+
+.custom-select.is-open .chevron {
+  transform: rotate(180deg);
+}
+
+.custom-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  min-width: 160px;
+  background: #1a1a23;
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 8px;
+  padding: 4px;
+  list-style: none;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.custom-option {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #cbd5e1;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.custom-option:hover {
+  background: rgba(167, 139, 250, 0.15);
+  color: #fff;
+}
+
+.custom-option.selected {
+  background: rgba(167, 139, 250, 0.1);
+  color: #a78bfa;
+  font-weight: 600;
+}
+
+.custom-option .check {
+  font-size: 14px;
+  color: #a78bfa;
+  margin-left: 8px;
+}
+
+/* Dropdown Animation */
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+/* Scrollbar for dropdown */
+.custom-options::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-options::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.custom-options::-webkit-scrollbar-thumb {
+  background: rgba(167, 139, 250, 0.3);
+  border-radius: 4px;
+}
+
+.custom-options::-webkit-scrollbar-thumb:hover {
+  background: rgba(167, 139, 250, 0.5);
+}
+
+.search-submit-btn {
+  padding: 10px 28px;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  margin: 0;
+}
+
+.search-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+  background: linear-gradient(135deg, #9333ea, #7c3aed);
+}
+
+.search-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.search-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1024px) {
+  .filter-text-row,
+  .filter-dropdown-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .search-submit-btn {
+    width: 100%;
+  }
+  
+  .pools-controls {
+    padding: 16px;
+  }
+}
+
+/* Results Header */
+.results-header {
+  margin-bottom: 32px;
+}
+
+.results-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.results-info i {
+  font-size: 24px;
+  color: #a78bfa;
+}
+
+.results-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.results-count {
+  padding: 4px 12px;
+  background: rgba(167, 139, 250, 0.15);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 20px;
+  color: #c084fc;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.results-divider {
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(167, 139, 250, 0.3) 10%, 
+    rgba(167, 139, 250, 0.3) 90%, 
+    transparent 100%
+  );
 }
 
 /* Pools Grid */
@@ -548,7 +1060,8 @@ export default {
 
 /* DText formatting in descriptions */
 .pool-description :deep(.wiki-link),
-.pool-description :deep(.pool-link) {
+.pool-description :deep(.pool-link),
+.pool-description :deep(.post-link) {
   color: #a78bfa;
   cursor: pointer;
   text-decoration: underline;
@@ -556,7 +1069,8 @@ export default {
 }
 
 .pool-description :deep(.wiki-link):hover,
-.pool-description :deep(.pool-link):hover {
+.pool-description :deep(.pool-link):hover,
+.pool-description :deep(.post-link):hover {
   color: #c084fc;
 }
 

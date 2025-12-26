@@ -62,10 +62,9 @@ export function useDText() {
         return addPlaceholder(`<a href="https://danbooru.donmai.us/forum_topics/${id}" target="_blank" rel="noopener noreferrer" class="dtext-link">topic #${id}</a>`);
     });
 
-    // Posts: Post #123 or post #123 -> Convert to Stub to show preview
+    // Posts: Post #123 or post #123 -> Make clickable
     formatted = formatted.replace(/(?:post|post_id)\s*#(\d+)/gi, (m, id) => {
-        // Use stub to trigger hydration (image loading)
-        return addPlaceholder(`<span class="dtext-post-stub" data-post-id="${id}" data-origin="text">Post #${id}</span>`);
+        return addPlaceholder(`<span class="post-link" data-post-id="${id}" style="color: #a78bfa; cursor: pointer; text-decoration: underline;">post #${id}</span>`);
     });
 
     // Internal Anchors: "Label":#id

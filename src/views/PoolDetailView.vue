@@ -3,7 +3,10 @@
     <!-- Loading State -->
     <div v-if="loading" class="loading-container">
       <div class="spinner"></div>
-      <p>Loading pool...</p>
+      <p v-if="loadingProgress.total > 0">
+        Loading {{ loadingProgress.current.toLocaleString() }} of {{ loadingProgress.total.toLocaleString() }} posts...
+      </p>
+      <p v-else>Loading pool...</p>
     </div>
 
     <!-- Error State -->
@@ -84,7 +87,7 @@
             <!-- Static Image or GIF -->
             <img
               v-else
-              :src="post.large_file_url || post.file_url || post.preview_file_url"
+              :src="getThumbnailUrl(post)"
               :alt="`Post ${index + 1}`"
               loading="lazy"
               @error="handleImageError"
@@ -129,7 +132,7 @@
         :has-prev="canGoPrev"
       >
         <!-- Pool Navigation Banner -->
-        <template #pool-nav v-if="pool">
+        <template #pool-nav v-if="pool && currentPostIndex !== -1">
           <div class="pool-nav-banner">
             <div class="pool-nav-info">
               <i class="lni lni-layers"></i>
@@ -162,7 +165,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePoolDetail } from '../composables/usePools';
 import { useDText } from '../composables/useDText';
@@ -178,17 +181,21 @@ export default {
   setup() {
     const route = useRoute();
     const router = useRouter();
-    const { pool, poolPosts, loading, error, fetchPoolDetail } = usePoolDetail();
+    const { pool, poolPosts, loading, loadingProgress, error, fetchPoolDetail } = usePoolDetail();
     const { parseDText } = useDText();
     
     const selectedPost = ref(null);
     const currentPostIndex = ref(-1);
 
     const canGoPrev = computed(() => {
+      // Don't allow navigation if post was opened from external link
+      if (currentPostIndex.value === -1) return false;
       return selectedPost.value && currentPostIndex.value > 0;
     });
 
     const canGoNext = computed(() => {
+      // Don't allow navigation if post was opened from external link
+      if (currentPostIndex.value === -1) return false;
       return selectedPost.value && currentPostIndex.value < poolPosts.value.length - 1;
     });
 
@@ -243,7 +250,7 @@ export default {
       return name.replace(/_/g, ' ');
     };
 
-    const handleDescriptionClick = (e) => {
+    const handleDescriptionClick = async (e) => {
       const target = e.target;
       
       // Handle wiki links
@@ -261,6 +268,26 @@ export default {
         const poolId = target.dataset.poolId;
         if (poolId) {
           router.push({ name: 'pool-detail', params: { id: poolId } });
+        }
+      }
+
+      // Handle post links
+      if (target.classList.contains('post-link')) {
+        e.preventDefault();
+        const postId = target.dataset.postId;
+        if (postId) {
+          try {
+            // Fetch the post from API
+            const res = await fetch(`https://danbooru.donmai.us/posts/${postId}.json`);
+            if (res.ok) {
+              const post = await res.json();
+              // Open the post in the modal
+              selectedPost.value = post;
+              currentPostIndex.value = -1; // Not part of pool navigation
+            }
+          } catch (err) {
+            console.error('Error fetching post:', err);
+          }
         }
       }
     };
@@ -297,6 +324,22 @@ export default {
       return post.preview_file_url || post.preview_url || '';
     };
 
+    const getThumbnailUrl = (post) => {
+      // Use optimized thumbnails for gallery to reduce bandwidth
+      if (post.media_asset && post.media_asset.variants) {
+        const variants = post.media_asset.variants;
+        // Prefer 720x720 webp for best quality/size ratio
+        const thumbnail = variants.find(v => v.type === '720x720' && v.file_ext === 'webp') ||
+                         variants.find(v => v.type === '720x720') ||
+                         variants.find(v => v.type === '360x360');
+        
+        if (thumbnail) return thumbnail.url;
+      }
+      
+      // Fallback to preview URL
+      return post.preview_file_url || post.large_file_url || post.file_url || '';
+    };
+
     const isVideo = (post) => {
       return ['mp4', 'webm', 'gifv'].includes(post.file_ext);
     };
@@ -305,17 +348,42 @@ export default {
       e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj4/PC90ZXh0Pjwvc3ZnPg==';
     };
 
+    const handleKeydown = (e) => {
+      // Only handle if modal is open
+      if (!selectedPost.value) return;
+      
+      // Ignore if user is typing in input/textarea
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        navigatePost(-1);
+      } else if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        navigatePost(1);
+      }
+    };
+
     onMounted(() => {
       const poolId = route.params.id;
       if (poolId) {
         fetchPoolDetail(poolId);
       }
+      
+      // Add keyboard listener
+      window.addEventListener('keydown', handleKeydown);
+    });
+
+    onUnmounted(() => {
+      // Remove keyboard listener
+      window.removeEventListener('keydown', handleKeydown);
     });
 
     return {
       pool,
       poolPosts,
       loading,
+      loadingProgress,
       error,
       selectedPost,
       currentPostIndex,
@@ -333,6 +401,7 @@ export default {
       isAnimatedVideo,
       getVideoUrl,
       getVideoPoster,
+      getThumbnailUrl,
       isVideo,
       handleImageError
     };
@@ -484,7 +553,8 @@ export default {
 
 /* DText formatting in descriptions */
 .pool-description :deep(.wiki-link),
-.pool-description :deep(.pool-link) {
+.pool-description :deep(.pool-link),
+.pool-description :deep(.post-link) {
   color: #a78bfa;
   cursor: pointer;
   text-decoration: underline;
@@ -492,7 +562,8 @@ export default {
 }
 
 .pool-description :deep(.wiki-link):hover,
-.pool-description :deep(.pool-link):hover {
+.pool-description :deep(.pool-link):hover,
+.pool-description :deep(.post-link):hover {
   color: #c084fc;
 }
 
