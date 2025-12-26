@@ -15,7 +15,7 @@ export function usePools() {
     error.value = null;
 
     try {
-      let url = `https://danbooru.donmai.us/pools.json?page=${page}&limit=20`;
+      let url = `https://danbooru.donmai.us/pools.json?page=${page}&limit=42`;
       
       // Add search params
       if (filters.name) {

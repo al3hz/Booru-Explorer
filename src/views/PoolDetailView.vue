@@ -469,7 +469,7 @@ export default {
 
 /* Pool Content */
 .pool-content {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -644,7 +644,7 @@ export default {
 /* Pool Gallery */
 .pool-gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
 

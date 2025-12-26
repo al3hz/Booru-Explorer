@@ -11,8 +11,17 @@
           <p class="page-description">Browse organized collections of posts, comics, and doujinshi</p>
         </div>
 
-        <!-- Search and Filters -->
-        <div class="pools-controls">
+        <!-- Filter Toggle Button -->
+        <div class="filter-toggle-container">
+          <button @click="filtersVisible = !filtersVisible" class="filter-toggle-btn">
+            <i :class="filtersVisible ? 'lni lni-chevron-up' : 'lni lni-funnel'"></i>
+            {{ filtersVisible ? 'Hide Filters' : 'Show Filters' }}
+          </button>
+        </div>
+
+        <!-- Search and Filters (Collapsible) -->
+        <div class="filter-wrapper" :class="{ 'is-collapsed': !filtersVisible }">
+          <div class="pools-controls">
           <!-- Text Filters Row -->
           <div class="filter-text-row">
             <!-- Name Search -->
@@ -103,6 +112,7 @@
             <i class="lni lni-search-alt"></i>
             Search Pools
           </button>
+        </div>
         </div>
       </div>
 
@@ -246,6 +256,9 @@ export default {
       category: '',
       order: 'updated_at'
     });
+
+    // Filters visibility state (collapsed by default)
+    const filtersVisible = ref(false);
 
     // Dropdown states
     const categoryDropdownOpen = ref(false);
@@ -443,6 +456,7 @@ export default {
       currentPage,
       hasNextPage,
       filters,
+      filtersVisible,
       
       // Dropdown states
       categoryDropdownOpen,
@@ -482,7 +496,7 @@ export default {
 }
 
 .pools-container {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -619,6 +633,54 @@ export default {
 .category-btn i {
   font-size: 16px;
   color: #a78bfa;
+}
+
+/* Filter Toggle Button - More Discrete */
+.filter-toggle-container {
+  text-align: center;
+  margin: 12px 0;
+}
+
+.filter-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(167, 139, 250, 0.05);
+  border: 1px solid rgba(167, 139, 250, 0.15);
+  border-radius: 8px;
+  color: #a78bfa;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-toggle-btn:hover {
+  background: rgba(167, 139, 250, 0.15);
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+.filter-toggle-btn i {
+  font-size: 14px;
+  transition: transform 0.3s ease;
+}
+
+/* Filter Wrapper for Smooth Collapse */
+.filter-wrapper {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.4s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+
+.filter-wrapper.is-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.filter-wrapper > .pools-controls {
+  overflow: hidden;
 }
 
 /* Advanced Filter Styles */
@@ -938,11 +1000,11 @@ export default {
   );
 }
 
-/* Pools Grid */
+/* Pools Grid - More columns on large screens */
 .pools-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  gap: 16px;
   margin-bottom: 32px;
 }
 
@@ -967,7 +1029,7 @@ export default {
 .pool-cover {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: 240px;
   background: linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(192, 132, 252, 0.1));
   display: flex;
   align-items: center;
