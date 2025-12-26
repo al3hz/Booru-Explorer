@@ -13,20 +13,20 @@
     <div v-else-if="error" class="error-container">
       <i class="lni lni-warning"></i>
       <p>{{ error }}</p>
-      <router-link to="/pools" class="back-btn">
+      <button @click="goBack" class="back-btn">
         <i class="lni lni-arrow-left"></i>
         Back to Pools
-      </router-link>
+      </button>
     </div>
 
     <!-- Pool Content -->
     <div v-else-if="pool" class="pool-content">
       <!-- Pool Header -->
       <div class="pool-header">
-        <router-link to="/pools" class="back-link">
+        <button @click="goBack" class="back-link">
           <i class="lni lni-arrow-left"></i>
           Back to Pools
-        </router-link>
+        </button>
 
         <div class="pool-title-section">
           <h1 class="pool-title">{{ formatPoolName(pool.name) }}</h1>
@@ -348,6 +348,11 @@ export default {
       e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj4/PC90ZXh0Pjwvc3ZnPg==';
     };
 
+    const goBack = () => {
+      // Use browser back to preserve the previous page state (page number, filters, etc.)
+      router.back();
+    };
+
     const handleKeydown = (e) => {
       // Only handle if modal is open
       if (!selectedPost.value) return;
@@ -403,7 +408,8 @@ export default {
       getVideoPoster,
       getThumbnailUrl,
       isVideo,
-      handleImageError
+      handleImageError,
+      goBack
     };
   }
 };
@@ -477,10 +483,14 @@ export default {
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
+  padding: 0;
+  background: none;
+  border: none;
   color: #a78bfa;
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
