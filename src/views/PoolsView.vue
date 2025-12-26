@@ -702,9 +702,19 @@ export default {
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
-  .pools-main-content.with-sidebar {
-    padding-left: 20px; /* Reset padding on mobile as sidebar overlays */
+@media (max-width: 768px) {
+  .pools-view-layout {
+    flex-direction: column;
+    padding: 0; /* Remove layout padding on mobile */
+  }
+
+  .pools-main-content {
+    width: 100%;
+    padding: 10px 16px; /* Balanced padding for mobile */
+  }
+  
+  .pools-grid {
+    grid-template-columns: 1fr; /* Single column on mobile */
   }
 }
 </style>
