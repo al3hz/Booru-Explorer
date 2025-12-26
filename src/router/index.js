@@ -22,6 +22,18 @@ const router = createRouter({
       name: 'wiki',
       component: () => import('../views/WikiView.vue'),
       meta: { title: 'Wiki | Booru Explorer' }
+    },
+    {
+      path: '/pools',
+      name: 'pools',
+      component: () => import('../views/PoolsView.vue'),
+      meta: { title: 'Pools | Booru Explorer' }
+    },
+    {
+      path: '/pools/:id',
+      name: 'pool-detail',
+      component: () => import('../views/PoolDetailView.vue'),
+      meta: { title: 'Pool | Booru Explorer' }
     }
   ]
 })

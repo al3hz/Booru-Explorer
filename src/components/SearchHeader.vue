@@ -36,6 +36,10 @@
           <i class="lni lni-home"></i>
           <span>Posts</span>
         </router-link>
+        <router-link to="/pools" class="nav-item" active-class="active">
+          <i class="lni lni-layers"></i>
+          <span>Pools</span>
+        </router-link>
         <router-link to="/comments" class="nav-item" active-class="active">
           <i class="lni lni-comments"></i>
           <span>Comments</span>
@@ -353,6 +357,7 @@ export default {
 .nav-item:nth-child(1) { animation-delay: 0.2s; }
 .nav-item:nth-child(2) { animation-delay: 0.3s; }
 .nav-item:nth-child(3) { animation-delay: 0.4s; }
+.nav-item:nth-child(4) { animation-delay: 0.5s; }
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.06);

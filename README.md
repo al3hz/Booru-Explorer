@@ -7,6 +7,9 @@ An image explorer for Danbooru built with Vue 3 and Vite.
 - **Advanced Search**: Search for images using Danbooru tags.
 - **Image Gallery**: Responsive display of posts.
 - **Image Details**: Modal with detailed image information and tags.
+- **Pools**: Browse organized collections of posts, comics, and doujinshi series.
+- **Comments**: View and browse post comments.
+- **Wiki**: Access Danbooru wiki pages with navigation.
 - **Modern Design**: Clean interface with dark mode and visual effects.
 - **Icons**: Integration with Lineicons.
 
