@@ -371,9 +371,13 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
   }
   
   // Limpiar caché cuando cambian parámetros importantes
-  watch([searchQuery, ratingFilter, limit], () => {
-    cache.clear()
-  })
+  // Only watch if values are defined (defensive check for ImageDetailModal usage)
+  const watchSources = [searchQuery, ratingFilter, limit].filter(source => source !== undefined);
+  if (watchSources.length > 0) {
+    watch(watchSources, () => {
+      cache.clear()
+    })
+  }
   
   return {
     posts,
