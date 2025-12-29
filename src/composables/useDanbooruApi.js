@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export function useDanbooruApi(searchQuery, limit, ratingFilter) {
   const posts = ref([])
@@ -6,49 +6,97 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
   const error = ref('')
   const currentPage = ref(1)
   const hasNextPage = ref(false)
-  
   const totalPosts = ref(0)
   
   const apiBaseUrl = 'https://danbooru.donmai.us'
   
-  const buildSearchUrl = (page = 1) => {
+  // Mejoras añadidas
+  const cache = new Map()
+  const CACHE_DURATION = 5 * 60 * 1000 // 5 minutos
+  let abortController = null
+  const performanceMetrics = ref({
+    loadTimes: [],
+    cacheHits: 0,
+    cacheMisses: 0
+  })
+  
+  // Función para comprimir tags para clave de caché
+  const compressTagsForCache = (tags) => {
+    return tags
+      .split(' ')
+      .filter(tag => tag.trim())
+      .sort()
+      .join(' ')
+      .toLowerCase()
+  }
+  
+  // Generar clave de caché
+  const getCacheKey = (page, tags) => {
+    const compressedTags = compressTagsForCache(tags)
+    return `${page}-${compressedTags}-${limit.value}`
+  }
+  
+  // Función de reintento con backoff exponencial
+  const fetchWithRetry = async (url, options = {}, maxRetries = 3) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const response = await fetch(url, options)
+        if (response.ok) return response
+        
+        // Solo reintentar en errores transitorios
+        if ([429, 502, 503, 504].includes(response.status)) {
+          if (i < maxRetries - 1) {
+            const delay = Math.pow(2, i) * 1000
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
+        }
+        return response
+      } catch (error) {
+        if (i === maxRetries - 1) throw error
+        const delay = Math.pow(2, i) * 1000
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+  }
+  
+  // Construir cadena de tags
+  const buildTags = () => {
     let tags = searchQuery.value.trim()
+      .replace(/[,，]+/g, ' ')
+      .replace(/\s+/g, ' ')
     
-    // Convertir comas a espacios para la API
-    tags = tags.replace(/[,，]+/g, ' ')
-    tags = tags.replace(/\s+/g, ' ')
-    
-    // Proactive Filtering: Exclude deleted posts unless specifically requested
-    // Optimization: Skip filtering for heavy sorts (order:score, order:favcount) to prevent 500 timeouts
-    const isHeavySort = tags.includes('order:score') || tags.includes('order:favcount');
-    
-    // Safety Measure: If it's a heavy sort or global deleted search and no specific tags are present, add a time constraint
+    const isHeavySort = tags.includes('order:score') || tags.includes('order:favcount')
     const hasSpecificTags = tags.split(' ').some(t => {
-      const low = t.toLowerCase().trim();
-      return low && !low.startsWith('order:') && !low.startsWith('rating:') && !low.startsWith('status:') && !low.startsWith('age:') && !low.startsWith('-');
-    });
-
-    const isDeletedSearch = tags.includes('status:deleted');
+      const low = t.toLowerCase().trim()
+      return low && !low.startsWith('order:') && 
+             !low.startsWith('rating:') && 
+             !low.startsWith('status:') && 
+             !low.startsWith('age:') && 
+             !low.startsWith('-')
+    })
+    const isDeletedSearch = tags.includes('status:deleted')
+    
     if ((isHeavySort || isDeletedSearch) && !hasSpecificTags && !tags.includes('age:')) {
-        // Tightening to 1 month for global heavy/deleted searches to ensure stability
-        tags = tags ? `${tags} age:<1month` : 'age:<1month';
+      tags = tags ? `${tags} age:<1month` : 'age:<1month'
     }
-
+    
     if (!isHeavySort && !isDeletedSearch && !tags.includes('status:deleted') && !tags.includes('status:any')) {
-        tags = tags ? `${tags} -status:deleted` : '-status:deleted'
+      tags = tags ? `${tags} -status:deleted` : '-status:deleted'
     }
-
-    // Usar siempre el ratingFilter
+    
     if (ratingFilter.value) {
-      // Remove any existing rating in the query string to prioritize the selected filter
-      tags = tags.replace(/\s*rating:[sqge]/gi, '').trim();
-      tags = tags ? `${tags} rating:${ratingFilter.value.toLowerCase()}` : `rating:${ratingFilter.value.toLowerCase()}`;
+      tags = tags.replace(/\s*rating:[sqge]/gi, '').trim()
+      tags = tags ? `${tags} rating:${ratingFilter.value.toLowerCase()}` : 
+                    `rating:${ratingFilter.value.toLowerCase()}`
     }
     
-    // Buffer strategy removed for accurate pagination alignment.
-    // We request exactly the limit. If some posts are filtered out (invalid),
-    // the page will show fewer items coverage, but navigation will remain consistent.
-    
+    return tags
+  }
+  
+  // Construir URL de búsqueda
+  const buildSearchUrl = (page = 1) => {
+    const tags = buildTags()
     const params = new URLSearchParams({
       tags: tags,
       limit: limit.value.toString(),
@@ -57,25 +105,100 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     
     return `${apiBaseUrl}/posts.json?${params.toString()}`
   }
-
+  
+  // Obtener la mejor URL de imagen disponible
+  const getBestImageUrl = (post) => {
+    const urls = [
+      { prop: 'file_url', type: 'original' },
+      { prop: 'large_file_url', type: 'large' },
+      { prop: 'sample_url', type: 'sample' },
+      { prop: 'preview_file_url', type: 'preview' }
+    ]
+    
+    for (const { prop, type } of urls) {
+      if (post[prop] && post[prop].trim()) {
+        return { url: post[prop], type }
+      }
+    }
+    
+    if (post.media_asset?.variants) {
+      const variants = post.media_asset.variants
+      const preferredTypes = ['720x720', 'sample', '360x360', '180x180']
+      
+      for (const type of preferredTypes) {
+        const variant = variants.find(v => v.type === type)
+        if (variant?.url) {
+          return { url: variant.url, type }
+        }
+      }
+    }
+    
+    return null
+  }
+  
+  // Normalizar posts para asegurar URLs válidas
+  const normalizePost = (post) => {
+    const bestImage = getBestImageUrl(post)
+    if (bestImage) {
+      if (!post.file_url) post.file_url = bestImage.url
+      if (!post.preview_file_url && !['180x180', '360x360'].includes(bestImage.type)) {
+        const previewVariant = post.media_asset?.variants?.find(v => 
+          ['180x180', '360x360'].includes(v.type)
+        )
+        if (previewVariant) post.preview_file_url = previewVariant.url
+      }
+    }
+    return post
+  }
+  
+  // Prefetch de la siguiente página en background
+  const prefetchNextPage = async () => {
+    if (!hasNextPage.value || loading.value) return
+    
+    const nextPage = currentPage.value + 1
+    const tags = buildTags()
+    const cacheKey = getCacheKey(nextPage, tags)
+    
+    if (!cache.has(cacheKey)) {
+      try {
+        const url = buildSearchUrl(nextPage)
+        const response = await fetch(url)
+        if (response.ok) {
+          const data = await response.json()
+          const normalized = data.map(normalizePost).filter(post => 
+            getBestImageUrl(post) !== null
+          )
+          
+          cache.set(cacheKey, {
+            timestamp: Date.now(),
+            data: normalized.slice(0, limit.value)
+          })
+        }
+      } catch (error) {
+        console.debug('Prefetch failed:', error)
+      }
+    }
+  }
+  
+  // Función para obtener conteos (MANTENIDA DEL ORIGINAL)
   const fetchCounts = async () => {
-    let rawTags = searchQuery.value.trim().replace(/[,，]+/g, ' ').replace(/\s+/g, ' ');
+    let rawTags = searchQuery.value.trim().replace(/[,，]+/g, ' ').replace(/\s+/g, ' ')
     
     // Broad Query Check: Skip counting if search is too broad (efficiency)
     // A search is broad if it has no specific tags, just a rating, or just a sort.
     const hasSpecificTags = rawTags.split(' ').some(t => {
-      return t && !t.startsWith('order:') && !t.startsWith('rating:') && !t.startsWith('status:') && !t.startsWith('-');
-    });
+      return t && !t.startsWith('order:') && !t.startsWith('rating:') && !t.startsWith('status:') && !t.startsWith('-')
+    })
 
     if (!hasSpecificTags) {
         // Optimization: For very broad searches, don't waste time counting millions of posts
         // This includes global searches, just sorts, or just rating filters.
         // It prevents the "Database Timeout" when doing global order:score searches.
-        return null;
+        return null
     }
 
     try {
-      let tags = rawTags;
+      let tags = rawTags
       if (ratingFilter.value) {
         tags = tags.replace(/\s*rating:\w+/g, '')
         tags = tags.trim()
@@ -83,13 +206,13 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
       }
       // Proactive Filtering for counts
       // Optimization 1: Remove sorting tags for counts as they are irrelevant and can cause timeouts
-      tags = tags.replace(/\s*order:\w+/g, '').trim();
+      tags = tags.replace(/\s*order:\w+/g, '').trim()
 
       // Optimization 2: Add safety age filter for broad searches if needed
       // Tightening to 1 month for consistency and stability
-      const isHeavyQuery = tags.includes('favcount') || tags.includes('score');
+      const isHeavyQuery = tags.includes('favcount') || tags.includes('score')
       if (isHeavyQuery && !hasSpecificTags && !tags.includes('age:')) {
-         tags = tags ? `${tags} age:<1month` : 'age:<1month';
+         tags = tags ? `${tags} age:<1month` : 'age:<1month'
       }
 
       if (!tags.includes('status:deleted') && !tags.includes('status:any')) {
@@ -97,9 +220,9 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
       }
 
       // Final check: if after removing order we are basically doing a global count, skip it.
-      const cleanedTags = tags.replace(/\s*order:\w+/g, '').replace(/\s*rating:\w+/g, '').replace(/\s*-status:deleted/g, '').trim();
+      const cleanedTags = tags.replace(/\s*order:\w+/g, '').replace(/\s*rating:\w+/g, '').replace(/\s*-status:deleted/g, '').trim()
       if (!cleanedTags && !tags.includes('age:')) {
-          return null;
+          return null
       }
 
       const params = new URLSearchParams({ tags: tags })
@@ -114,137 +237,143 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     return null
   }
   
+  // Función principal de búsqueda
   const searchPosts = async (page = 1, isNewSearch = false) => {
-    // Validation removed to allow "Recent Posts" (empty search)
-    // if (!searchQuery.value.trim() && !ratingFilter.value) { ... }
+    const startTime = performance.now()
+    
+    // Cancelar solicitud anterior
+    if (abortController) {
+      abortController.abort()
+    }
+    
+    abortController = new AbortController()
     
     loading.value = true
     error.value = ''
     
     try {
+      const tags = buildTags()
+      const cacheKey = getCacheKey(page, tags)
+      
+      // Verificar caché
+      const cached = cache.get(cacheKey)
+      if (cached && (Date.now() - cached.timestamp < CACHE_DURATION) && !isNewSearch) {
+        performanceMetrics.value.cacheHits++
+        posts.value = cached.data
+        currentPage.value = page
+        loading.value = false
+        
+        // Calcular hasNextPage basado en caché
+        hasNextPage.value = cached.data.length >= limit.value
+        
+        // Prefetch siguiente página en background
+        setTimeout(prefetchNextPage, 100)
+        return
+      }
+      
+      performanceMetrics.value.cacheMisses++
+      
       const url = buildSearchUrl(page)
       
-      // Parallel Execution: Don't let the count block the main results
-      let countPromise = Promise.resolve(null);
+      let countPromise = Promise.resolve(null)
       if (page === 1 || isNewSearch) {
-        countPromise = fetchCounts();
-      }
-
-      const postsPromise = fetch(url);
-
-      // We await both, but they are running in parallel now
-      const [countResult, response] = await Promise.all([countPromise, postsPromise]);
-
-      if (countResult !== null) {
-        totalPosts.value = countResult;
-      } else if (page === 1 || isNewSearch) {
-        totalPosts.value = -1; // Unknown
+        countPromise = fetchCounts()
       }
       
-  
+      const postsPromise = fetchWithRetry(url, { 
+        signal: abortController.signal 
+      })
+      
+      const [countResult, response] = await Promise.all([countPromise, postsPromise])
+      
+      if (countResult !== null) {
+        totalPosts.value = countResult
+      } else if (page === 1 || isNewSearch) {
+        totalPosts.value = -1
+      }
       
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('❌ Error completo:', errorText)
         
-        // Intentar parsear JSON de error propio de Danbooru
         try {
-          const errorJson = JSON.parse(errorText);
+          const errorJson = JSON.parse(errorText)
           if (errorJson.error === 'PostQuery::TagLimitError') {
-             throw new Error("errors.tag_limit");
+            throw new Error("errors.tag_limit")
           }
         } catch (e) {
-          // Si falla el parseo o no es el error específico, seguimos con el error genérico
-          if (e.message.includes("errors.")) throw e;
+          if (!e.message.includes("errors.")) {
+            throw new Error(`Error HTTP ${response.status}: ${response.statusText}`)
+          } else {
+            throw e
+          }
         }
-
-        throw new Error(`Error HTTP ${response.status}: ${response.statusText}`)
       }
       
       const data = await response.json()
-   
+      const normalizedData = data.map(normalizePost).filter(post => 
+        getBestImageUrl(post) !== null
+      )
       
+      const finalPosts = normalizedData.slice(0, limit.value)
       
-      // Normalize posts to ensure URLs exist (using media_asset variants if needed)
-      const normalizePost = (post) => {
-        if (!post.file_url || !post.preview_file_url) {
-          if (post.media_asset && post.media_asset.variants) {
-             const variants = post.media_asset.variants;
-             
-             const findUrl = (type) => {
-                const v = variants.find(v => v.type === type);
-                return v ? v.url : null;
-             };
-             
-             if (!post.preview_file_url) {
-                // Try 180x180 or 360x360 for preview
-                post.preview_file_url = findUrl('180x180') || findUrl('360x360');
-             }
-             
-             if (!post.large_file_url) {
-                post.large_file_url = findUrl('sample') || findUrl('720x720');
-             }
-             
-             if (!post.file_url) {
-                post.file_url = findUrl('original');
-             }
-          }
-        }
-        return post;
-      };
-
-      const normalizedData = data.map(normalizePost).filter(post => {
-        // Filter out posts that still don't have any image URL after normalization
-        return post.file_url || post.preview_file_url || post.large_file_url;
-      });
-
-      // Slice to exactly the requested limit to maintain grid consistency
-      // This fills the "holes" but effectively drops the overflow valid posts
-      const finalPosts = normalizedData.slice(0, limit.value);
-
+      // Guardar en caché
+      if (finalPosts.length > 0) {
+        cache.set(cacheKey, {
+          timestamp: Date.now(),
+          data: finalPosts
+        })
+      }
+      
       if (page === 1 || isNewSearch) {
         posts.value = finalPosts
       } else {
         posts.value = [...posts.value, ...finalPosts]
       }
       
-      // Strict Pagination Logic
+      // Calcular hasNextPage
       if (totalPosts.value !== -1) {
-         // If we know the total, use strict math
-         hasNextPage.value = (page * limit.value) < totalPosts.value;
+        hasNextPage.value = (page * limit.value) < totalPosts.value
       } else {
-         // Fallback: Check if we likely have a next page based on if we got enough raw data
-         hasNextPage.value = data.length >= limit.value;
+        hasNextPage.value = data.length >= limit.value
       }
-
+      
       currentPage.value = page
       
-      if (data.length === 0) {
-        // error.value = 'No se encontraron resultados para la búsqueda' 
-        // Better to handle "No results" in UI via posts.length === 0 check, which we already do in Gallery.
-        // But if we want an error state:
-        // error.value = 'gallery.no_results_title'; 
-        // Actually, let's keep error empty if just no results, as Gallery displays empty state nicely.
-      }
+      // Prefetch siguiente página en background
+      setTimeout(prefetchNextPage, 500)
       
     } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('Request cancelled')
+        return
+      }
+      
       console.error('Error fetching posts:', err)
-      // Si es nuestro error custom, lo mostramos limpio
-      const msg = err.message || '';
+      const msg = err.message || ''
+      
       if (msg.startsWith("errors.")) {
-         error.value = msg;
+        error.value = msg
       } else {
-         error.value = `errors.generic`; // Or pass the raw message if network error
-         // For now let's simplify to generic if unknown, or maybe check for network
-         if (msg.includes("Failed to fetch")) error.value = "errors.network";
-         else if (msg.includes("HTTP")) error.value = msg; // HTTP errors usually technical
-         else error.value = msg;
+        if (msg.includes("Failed to fetch")) error.value = "errors.network"
+        else if (msg.includes("HTTP")) error.value = msg
+        else error.value = msg
       }
       posts.value = []
     } finally {
       loading.value = false
+      
+      const endTime = performance.now()
+      performanceMetrics.value.loadTimes.push(endTime - startTime)
+      if (performanceMetrics.value.loadTimes.length > 100) {
+        performanceMetrics.value.loadTimes.shift()
+      }
     }
   }
+  
+  // Limpiar caché cuando cambian parámetros importantes
+  watch([searchQuery, ratingFilter, limit], () => {
+    cache.clear()
+  })
   
   return {
     posts,
@@ -253,5 +382,7 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     currentPage,
     hasNextPage,
     searchPosts,
+    performanceMetrics,
+    clearCache: () => cache.clear()
   }
 }
