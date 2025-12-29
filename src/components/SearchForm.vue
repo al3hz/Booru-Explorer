@@ -60,8 +60,8 @@
                 :class="{ 'active': index === activeSuggestionIndex }"
                 @mousedown.prevent="selectSuggestion(tag)"
               >
-                <span class="suggestion-name" :class="tag.class">{{ tag.name }}</span>
-                <span class="suggestion-count">{{ formatCount(tag.post_count) }}</span>
+                <span class="suggestion-name" :class="tag.class" v-html="tag.highlight"></span>
+                <span class="suggestion-count">{{ tag.formatted_count }}</span>
               </li>
             </ul>
           </div>
@@ -223,7 +223,7 @@ export default {
   setup(props, { emit }) {
     const router = useRouter();
     const route = useRoute();
-    const { suggestions, fetchSuggestions, clearSuggestions, loadingSuggestions } = useDanbooruAutocomplete();
+    const { suggestions, fetchSuggestions, clearSuggestions, loadingSuggestions, insertSuggestion } = useDanbooruAutocomplete();
     const { trendingTags, loadingTrending, fetchTrendingTags } = useDanbooruTrending();
     const { isSidebarVisible, toggleSidebar } = useLayout();
     
@@ -241,7 +241,6 @@ export default {
     
     const activeSuggestionIndex = ref(-1);
     const searchInputRef = ref(null);
-    let debounceTimeout = null;
 
     // Rating Dropdown Logic
     const ratingDropdownOpen = ref(false);
@@ -305,18 +304,9 @@ export default {
       const value = e.target.value;
       emit("update:search-query", value);
       
-      if (debounceTimeout) clearTimeout(debounceTimeout);
-      
-      debounceTimeout = setTimeout(() => {
-        fetchSuggestions(value);
-        activeSuggestionIndex.value = -1;
-      }, 300);
-    };
-
-    const formatCount = (count) => {
-      if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-      if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
-      return count;
+      // Composable handles debounce internally
+      fetchSuggestions(value);
+      activeSuggestionIndex.value = -1;
     };
 
     const navigateSuggestions = (direction) => {
@@ -332,31 +322,8 @@ export default {
     };
 
     const selectSuggestion = (tag) => {
-      // Reemplazar el último término con el tag seleccionado
-      const terms = props.searchQuery.split(/([,，\s]+)/);
-      // Encontrar el último término significativo y reemplazarlo
-      // Esta lógica es simple, para un manejo robusto de cursores se requeriría más código
-      // Por ahora, asumimos que siempre reemplazamos lo que se está escribiendo al final
+      const newQuery = insertSuggestion(props.searchQuery, tag.name);
       
-      // Simplemente añadimos el tag si es el comienzo, o reemplazamos el ultimo
-      const currentQuery = props.searchQuery;
-      // Buscamos el último separador. Si no hay, reemplazamos todo.
-      // Pero ojo, si escribimos "blue_hair, 1girl", queremos reemplazar "1girl".
-      
-      // Una forma más segura: reemplazar lo que coincide con el término de búsqueda actual
-      // Pero como fetchSuggestions usa lastTerm, podemos reconstruir
-      
-      const lastTermMatch = currentQuery.match(/([^\s,，]+)$/);
-      let newQuery = "";
-      
-      if (lastTermMatch) {
-         // Reemplazar el final del string
-         newQuery = currentQuery.substring(0, lastTermMatch.index) + tag.name + " ";
-      } else {
-         // Fallback por si acaso
-         newQuery = currentQuery + " " + tag.name + " ";
-      }
-
       emit("update:search-query", newQuery);
       clearSuggestions();
       // Keep focus
@@ -463,7 +430,6 @@ export default {
       handleEnter,
       handleSearch,
       handleBlur,
-      formatCount,
 
       // Limit Logic
       handleLimitUpdate,
