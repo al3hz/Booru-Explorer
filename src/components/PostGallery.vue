@@ -1,17 +1,17 @@
 <template>
   <div class="post-gallery" :class="{ 'is-sidebar-collapsed': !isSidebarVisible }">
-    <!-- Loading State -->
-    <div v-if="loading && posts.length === 0" class="state-container loading">
+    <!-- Estados de carga mejorados -->
+    <div v-if="loading && posts.length === 0" class="state-container loading" role="status">
       <div class="loader-ring"></div>
       <p>Loading content...</p>
     </div>
 
-    <!-- No Posts State -->
     <div
       v-else-if="posts.length === 0 && !loading"
       class="state-container no-posts"
+      role="status"
     >
-      <div class="icon-large">🔍</div>
+      <i class="lni lni-search-alt icon-large"></i>
       <h3>No results found</h3>
       <p>Try adjusting your search filters.</p>
     </div>
@@ -71,7 +71,6 @@
                 <div class="rating-legend">
                   <span title="Exact count">Exact</span>
                   <span title="Includes deleted posts">~ Approx</span>
-                  <span title="API Limit reached">? Limited</span>
                 </div>
               </div>
             </div>
@@ -79,114 +78,113 @@
         </Transition>
       </div>
 
-      <div v-if="loading" class="grid-loading-overlay">
+      <!-- Overlay de carga para grid existente -->
+      <div v-if="loading && posts.length > 0" class="grid-loading-overlay">
         <div class="loader-ring small"></div>
+        <span>Loading more...</span>
       </div>
+      <!-- Grid optimizado -->
       <div class="gallery-grid" :class="{ 'is-dimmed': loading }">
-        <div
-          v-for="post in posts"
-          :key="post.id"
+        <article
+          v-for="(post, index) in posts"
+          :key="`post-${post.id}-${index}`"
           class="art-card"
-          :class="{ 'has-family': post.parent_id || post.has_children }"
+          :class="{
+            'has-family': post.parent_id || post.has_children,
+            'priority-loading': index < 8
+          }"
           @click="openPost(post)"
+          @keydown.enter="openPost(post)"
+          tabindex="0"
+          role="button"
+          :aria-label="`View post ${post.id} - ${post.tag_string_general}`"
         >
-          <!-- Image Section -->
-          <div 
-            class="card-image-wrapper"
-          >
-            <!-- Video logic unchanged -->
-            <!-- Video logic using SmartVideo -->
-            <SmartVideo
-              v-if="isAnimatedVideo(post)"
-              :src="getImageUrl(post)"
-              :poster="getVideoPoster(post)"
-              :alt="post.tag_string_general"
-              className="card-image"
-              @error="handleImageError($event, post)"
-              :should-pause="pauseAnimations"
-            />
+          <!-- Imagen con lazy loading inteligente -->
+          <div class="card-image-wrapper">
+            <template v-if="isAnimatedVideo(post)">
+              <SmartVideo
+                :src="getImageUrl(post)"
+                :poster="getVideoPoster(post)"
+                :alt="post.tag_string_general"
+                className="card-image"
+                @error="handleImageError($event, post)"
+                :should-pause="pauseAnimations"
+                loading="lazy"
+                :aria-label="`Video: ${post.tag_string_general}`"
+              />
+            </template>
             
-            <!-- Default Image -->
-            <img
-              v-else
-              :src="getImageUrl(post)"
-              :alt="post.tag_string_general"
-              :width="post.image_width || 500"
-              :height="post.image_height || 500"
-              class="card-image"
-              :loading="posts.indexOf(post) < 6 ? 'eager' : 'lazy'"
-              @error="handleImageError($event, post)"
-            />
+            <template v-else>
+              <img
+                :src="getImageUrl(post)"
+                :alt="post.tag_string_general"
+                :width="post.image_width"
+                :height="post.image_height"
+                class="card-image"
+                :loading="index < 4 ? 'eager' : 'lazy'"
+                :decoding="index < 4 ? 'auto' : 'async'"
+                @error="handleImageError($event, post)"
+                :data-index="index"
+              />
+            </template>
 
             <!-- Overlays -->
             <div class="card-overlay">
               <div class="top-badges">
                 <span class="id-badge">#{{ post.id }}</span>
-                <span class="rating-badge" :class="getRatingClass(post.rating)">
+                <span 
+                  class="rating-badge" 
+                  :class="getRatingClass(post.rating)"
+                  :title="`Rating: ${getRatingText(post.rating)}`"
+                >
                   {{ getRatingText(post.rating) }}
                 </span>
               </div>
 
-              <!-- Status Label -->
               <div class="status-indicators">
-                <span
-                  v-if="post.is_pending"
-                  class="status-badge pending"
-                >PENDING</span>
-                <span
-                  v-if="post.is_deleted"
-                  class="status-badge deleted"
-                >DELETED</span>
-                <span
-                  v-if="post.is_flagged"
-                  class="status-badge flagged"
-                >FLAGGED</span>
+                <span v-if="post.is_pending" class="status-badge pending">PENDING</span>
+                <span v-if="post.is_deleted" class="status-badge deleted">DELETED</span>
+                <span v-if="post.is_flagged" class="status-badge flagged">FLAGGED</span>
               </div>
             </div>
           </div>
 
           <!-- Content Section -->
           <div class="card-content">
-            <!-- Tech Specs Row -->
             <div class="tech-specs">
-              <div class="spec-pill" title="Resolution">
-                <span class="spec-icon">📐</span>
+              <div class="spec-pill" :title="`Resolution: ${getDimensions(post)}`">
+                <i class="lni lni-frame-expand spec-icon"></i>
                 {{ getDimensions(post) }}
               </div>
-              <div class="spec-pill" title="File Size">
-                <span class="spec-icon">💾</span>
+              <div class="spec-pill" :title="`File size: ${formatFileSize(post.file_size)}`">
+                <i class="lni lni-files spec-icon"></i>
                 {{ formatFileSize(post.file_size) }}
               </div>
-              <div
-                class="spec-pill format"
-                :class="getExtensionClass(post.file_ext)"
-              >
-                {{ post.file_ext?.toUpperCase() }}
+              <div class="spec-pill format" :class="getExtensionClass(post.file_ext)">
+                {{ (post.file_ext || '').toUpperCase() }}
               </div>
             </div>
 
-            <!-- Stats Row -->
             <div class="stats-row">
-              <div class="stat" :class="getScoreClass(post.score)">
-                <span class="stat-icon">❤️</span>
+              <div class="stat" :class="getScoreClass(post.score)" :title="`Score: ${post.score || 0}`">
+                <i class="lni lni-heart stat-icon"></i>
                 <span class="stat-value">{{ post.score || 0 }}</span>
               </div>
-              <div class="stat favs">
-                <span class="stat-icon">⭐</span>
+              <div class="stat favs" :title="`Favorites: ${post.fav_count || 0}`">
+                <i class="lni lni-star-fill stat-icon"></i>
                 <span class="stat-value">{{ post.fav_count || 0 }}</span>
               </div>
-              <div class="stat comments" v-if="post.comment_count">
-                <span class="stat-icon">💬</span>
+              <div v-if="post.comment_count" class="stat comments" :title="`Comments: ${post.comment_count}`">
+                <i class="lni lni-comments stat-icon"></i>
                 <span class="stat-value">{{ post.comment_count }}</span>
               </div>
             </div>
 
             <div class="divider"></div>
 
-            <!-- Footer Info -->
             <div class="card-footer">
-              <div class="time-info">
-                <span class="icon">🕒</span>
+              <div class="time-info" :title="formatUploadDate(post.created_at)">
+                <i class="lni lni-timer icon"></i>
                 {{ formatTimeAgo(post.created_at) }}
               </div>
               
@@ -194,59 +192,71 @@
                 v-if="post.source"
                 class="source-link"
                 @click.stop="openSource(post.source)"
-                title="Source"
+                @keydown.enter.stop="openSource(post.source)"
+                :title="`Source: ${post.source}`"
+                tabindex="0"
+                role="link"
               >
                 <span class="trunc-source">{{ truncateSource(post.source) }}</span>
-                <span class="icon-external">↗</span>
+                <i class="lni lni-link icon-external"></i>
               </div>
             </div>
           </div>
-        </div>
+        </article>
       </div>
 
-      <!-- Pagination -->
-      <div v-if="!infiniteScroll && (currentPage > 1 || hasNextPage)" class="pagination-wrapper">
+      <!-- Paginación accesible -->
+      <nav v-if="!infiniteScroll && (currentPage > 1 || hasNextPage)" 
+           class="pagination-wrapper" 
+           aria-label="Pagination">
         <button
-          @click="$emit('change-page', currentPage - 1)"
+          @click="goToPage(currentPage - 1)"
           :disabled="currentPage === 1 || loading"
           class="nav-btn"
+          :aria-label="`Go to previous page ${currentPage - 1}`"
         >
-          <span class="arrow">←</span> <span class="nav-text">Previous</span>
+          <i class="lni lni-chevron-left arrow"></i>
+          <span class="nav-text">Previous</span>
         </button>
         
         <div class="page-numbers">
-            <button
+          <button
             v-for="page in getPageNumbers()"
             :key="page"
-            @click="$emit('change-page', page)"
+            @click="goToPage(page)"
             :disabled="loading"
             :class="['num-btn', { active: page === currentPage }]"
-            >
+            :aria-label="`Go to page ${page}`"
+            :aria-current="page === currentPage ? 'page' : null"
+          >
             {{ page }}
-            </button>
+          </button>
         </div>
 
         <button
-          @click="$emit('change-page', currentPage + 1)"
+          @click="goToPage(currentPage + 1)"
           :disabled="!hasNextPage || loading"
           class="nav-btn"
+          :aria-label="`Go to next page ${currentPage + 1}`"
         >
-          <span class="nav-text">Next</span> <span class="arrow">→</span>
+          <span class="nav-text">Next</span>
+          <i class="lni lni-chevron-right arrow"></i>
         </button>
-      </div>
+      </nav>
 
-      <!-- Infinite Scroll Loader -->
+      <!-- Infinite scroll optimizado -->
       <div
         v-if="infiniteScroll && hasNextPage"
         ref="infiniteScrollTrigger"
         class="infinite-loader"
+        :aria-busy="loading"
       >
         <div v-if="loading" class="spinner-dots">
           <span></span><span></span><span></span>
         </div>
       </div>
 
-      <div class="results-meta">
+      <div class="results-meta" role="status">
         <span v-if="!infiniteScroll">Page {{ currentPage }} • </span>
         {{ posts.length }} results shown
       </div>
@@ -255,7 +265,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { useRatingCounts } from "../composables/useRatingCounts";
 import { useLayout } from '../composables/useLayout';
 
@@ -304,20 +314,18 @@ export default {
     const setupIntersectionObserver = () => {
       if (!props.infiniteScroll || !props.hasNextPage || props.loading) return;
 
-      if (observer) {
-        observer.disconnect();
-      }
+      // Limpiar observer existente
+      if (observer) observer.disconnect();
 
       observer = new IntersectionObserver(
         (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting && props.hasNextPage && !props.loading) {
-              emit("load-more");
-            }
-          });
+          if (entries[0]?.isIntersecting && props.hasNextPage && !props.loading) {
+            emit("load-more");
+          }
         },
         {
-          rootMargin: "200px",
+          rootMargin: "300px", // Carga más temprano
+          threshold: 0.1
         }
       );
 
@@ -328,13 +336,14 @@ export default {
 
     onMounted(() => {
       if (props.infiniteScroll) {
-        setupIntersectionObserver();
+        nextTick(setupIntersectionObserver);
       }
     });
 
     onUnmounted(() => {
       if (observer) {
         observer.disconnect();
+        observer = null;
       }
     });
 
@@ -344,41 +353,48 @@ export default {
         () => props.hasNextPage,
         () => props.loading,
       ],
-      () => {
-        if (props.infiniteScroll) {
-          setupIntersectionObserver();
-        } else if (observer) {
-          observer.disconnect();
-        }
-      }
+      setupIntersectionObserver
     );
 
     watch(
       () => props.posts.length,
       () => {
         if (props.infiniteScroll) {
-          setTimeout(() => {
-            setupIntersectionObserver();
-          }, 100);
+          nextTick(setupIntersectionObserver);
         }
       }
     );
 
     const getPageNumbers = () => {
       const pages = [];
-      // Show up to 3 previous pages
-      const start = Math.max(1, props.currentPage - 3); 
+      const maxVisible = 5;
       
-      for (let i = start; i <= props.currentPage; i++) {
-        pages.push(i);
+      if (props.currentPage <= maxVisible) {
+        // Mostrar primeras páginas
+        for (let i = 1; i <= Math.min(maxVisible, props.currentPage + 2); i++) {
+          pages.push(i);
+        }
+      } else {
+        // Mostrar páginas alrededor de la actual
+        pages.push(1, '...');
+        for (let i = props.currentPage - 2; i <= props.currentPage + 2; i++) {
+          if (i > 1 && i <= props.currentPage + 2) {
+            pages.push(i);
+          }
+        }
       }
       
-      // Only show NEXT page if we know it exists
-      if (props.hasNextPage) {
+      if (props.hasNextPage && !pages.includes(props.currentPage + 1)) {
         pages.push(props.currentPage + 1);
       }
       
       return pages;
+    };
+
+    const goToPage = (page) => {
+      if (page !== '...') {
+        emit("change-page", page);
+      }
     };
 
     const formatCount = (countData) => {
@@ -414,6 +430,7 @@ export default {
     return {
       infiniteScrollTrigger,
       getPageNumbers,
+      goToPage,
       formatCount,
       isLimited,
       loadingCounts,
@@ -478,34 +495,38 @@ export default {
     },
 
     handleImageError(event, post) {
-     
       const target = event.target;
+      const container = target.closest('.card-image-wrapper');
+      
+      // Intentar diferentes calidades en orden
+      const fallbackSources = [
+        post.sample_url,
+        post.preview_file_url,
+        post.preview_url,
+        "/placeholder-image.png" // Fallback local
+      ];
 
-      if (target.tagName === "VIDEO") {
-        target.style.display = "none";
-        const container = target.parentElement;
-        container.innerHTML = `
-          <div class="image-error">
-            <div class="error-icon">⚠️</div>
-            <div class="error-text">Error loading video</div>
-          </div>
-        `;
+      const currentSrc = target.src;
+      const nextSource = fallbackSources.find(src => 
+        src && src !== currentSrc && !currentSrc.includes(src)
+      );
+
+      if (nextSource && target.tagName === "IMG") {
+        target.src = nextSource;
         return;
       }
 
-      // Intentar cargar versiones de menor calidad
-      if (post.preview_url && target.src !== post.preview_url) {
-        target.src = post.preview_url;
-      } else {
-        target.style.display = "none";
-        const container = target.parentElement;
+      // Mostrar placeholder de error
+      target.style.opacity = "0";
+      setTimeout(() => {
         container.innerHTML = `
           <div class="image-error">
             <div class="error-icon">⚠️</div>
-            <div class="error-text">Error loading image</div>
+            <div class="error-text">Failed to load</div>
+            <small>ID: ${post.id}</small>
           </div>
         `;
-      }
+      }, 300);
     },
 
     getScoreClass(score) {
@@ -913,21 +934,31 @@ export default {
 }
 
 .grid-loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 100px;
-  background: rgba(15, 23, 42, 0.2);
-  backdrop-filter: blur(2px);
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  padding: 24px;
   border-radius: 16px;
-  opacity: 0;
-  animation: fadeIn 0.3s forwards;
+  backdrop-filter: blur(10px);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
 }
 
 .gallery-grid.is-dimmed {
@@ -949,31 +980,66 @@ export default {
 /* Grid Layout */
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Slightly smaller base for desktop */
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: clamp(12px, 2vw, 24px);
   padding-bottom: 40px;
+  
+  /* Optimizaciones de rendimiento */
+  will-change: transform;
+  contain: layout style paint;
+  content-visibility: auto;
 }
 
-@media (max-width: 640px) {
+/* Tablets medianas - 3 columnas */
+@media (max-width: 1024px) {
   .gallery-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}
+
+/* Tablets pequeñas - 2 columnas */
+@media (max-width: 768px) {
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 columnas fijas */
     gap: 16px;
   }
+}
 
-  .state-container {
-    padding: 40px 16px;
-    border-radius: 12px;
-    min-height: 200px;
+/* MÓVILES - 1 SOLA COLUMNA */
+@media (max-width: 640px) {
+  .gallery-grid {
+    grid-template-columns: 1fr !important; /* Fuerza una columna */
+    gap: 20px; /* Más espacio entre tarjetas */
+  }
+  
+  /* Asegura que cada tarjeta ocupe todo el ancho */
+  .art-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0; /* Evita desbordamientos */
+  }
+}
+
+/* Móviles muy pequeños - ajustes finos */
+@media (max-width: 480px) {
+  .gallery-grid {
+    gap: 16px;
+  }
+  
+  .art-card {
+    border-radius: 12px; /* Bordes ligeramente más pequeños */
   }
 }
 
 /* Art Card Component */
-@keyframes fadeIn {
+@keyframes fadeInUp {
   from {
     opacity: 0;
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -988,16 +1054,17 @@ export default {
   display: flex;
   flex-direction: column;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  animation: fadeIn 0.3s ease-in backwards;
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   contain: layout style paint;
-  content-visibility: auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .art-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  border-color: rgba(167, 139, 250, 0.3);
-  background: rgba(35, 35, 45, 0.8);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border-color: rgba(167, 139, 250, 0.4);
+  background: rgba(35, 35, 45, 0.9);
 }
 
 /* Family indicator - subtle colored border */
@@ -1054,12 +1121,18 @@ export default {
   top: 0;
   left: 0;
   width: 100%;
-  padding: 12px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 40%);
+  padding: 16px;
+  background: linear-gradient(
+    180deg, 
+    rgba(0, 0, 0, 0.8) 0%, 
+    rgba(0, 0, 0, 0.4) 40%, 
+    transparent 100%
+  );
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
 .top-badges {
@@ -1102,16 +1175,16 @@ export default {
 }
 
 .status-badge {
-  padding: 4px 6px;
+  font-size: 9px;
+  padding: 2px 6px;
   border-radius: 4px;
-  font-size: 10px;
-  font-weight: 800;
-  color: white;
-  text-transform: uppercase;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-weight: 700;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+  color: white;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
@@ -1319,5 +1392,182 @@ export default {
 .fade-slide-leave-to {
   opacity: 0;
   transform: translateY(10px);
+}
+
+/* Placeholder y error states mejorados */
+.image-error {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 30, 40, 0.9);
+  color: #94a3b8;
+  gap: 8px;
+}
+
+.error-icon {
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+.error-text {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Mejoras en el grid loading overlay */
+.grid-loading-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  padding: 24px;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Accesibilidad: focus states */
+.art-card:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+
+.nav-btn:focus-visible,
+.num-btn:focus-visible,
+.source-link:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+
+/* Mejoras en la paginación */
+.page-numbers {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.num-btn {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.num-btn.active {
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+  color: white;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+/* Performance: reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .art-card,
+  .card-image,
+  .loader-ring {
+    animation-duration: 0.001s !important;
+    transition-duration: 0.001s !important;
+  }
+  
+  .art-card:hover {
+    transform: none;
+  }
+}
+
+/* Mejoras en el rating bar para móviles */
+@media (max-width: 640px) {
+  .rating-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .rating-bar-center {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .rating-stat {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+  }
+
+  .state-container {
+    padding: 40px 16px;
+    border-radius: 12px;
+    min-height: 200px;
+  }
+
+  .gallery-grid {
+    gap: 10px;
+  }
+}
+
+/* Responsive mejorado */
+@media (hover: none) and (pointer: coarse) {
+  .art-card:hover {
+    transform: none;
+  }
+  
+  .art-card:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Optimización de fuentes y texto */
+.card-footer,
+.tech-specs,
+.stats-row {
+  font-size: clamp(11px, 1.5vw, 13px);
+}
+
+/* LineIcons styling */
+.spec-icon,
+.stat-icon,
+.icon {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.icon-large {
+  font-size: 48px;
+  opacity: 0.8;
+}
+
+.icon-external {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Arrow icons */
+.arrow {
+  font-size: 14px;
 }
 </style>

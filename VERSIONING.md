@@ -25,9 +25,9 @@ npm run version:major
 ### Option 2: Direct NPM command
 
 ```bash
-npm version patch   # 1.2.0 → 1.2.1
-npm version minor   # 1.2.0 → 1.3.0
-npm version major   # 1.2.0 → 2.0.0
+npm version patch
+npm version minor
+npm version major
 ```
 
 ### Option 3: Manual
