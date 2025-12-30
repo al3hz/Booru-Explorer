@@ -322,8 +322,21 @@ export default {
     };
 
     const handlePageChange = async (page) => {
-      if (loading.value) return; 
+      if (loading.value) return;
+      
+      // Update URL if needed
+      const currentRoutePage = parseInt(route.query.page) || 1;
+      if (currentRoutePage !== page) {
+        await router.push({ 
+          query: { 
+            ...route.query, 
+            page: page.toString() 
+          } 
+        });
+      }
+      
       await loadPage(page);
+      
       if (!selectedPost.value) {
          window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -407,8 +420,11 @@ export default {
         .filter(t => t.trim())
         .join(' ');
 
+      // Initialize page from URL
+      const initialPage = parseInt(route.query.page) || 1;
+
       Promise.all([
-        searchPosts(1, true),
+        searchPosts(initialPage, true),
         fetchRatingCounts(normalizedQuery)
       ]);
       
@@ -418,7 +434,8 @@ export default {
           path: '/', 
           query: { 
             tags: route.query.tags || undefined,
-            rating: ratingFilter.value
+            rating: ratingFilter.value,
+            page: route.query.page || undefined
           } 
         });
       }
@@ -462,6 +479,16 @@ export default {
         searchPosts(1, true),
         fetchRatingCounts(normalizedQueryForCounts)
       ]);
+    });
+
+    // Watch for page changes in URL (e.g. Back Button)
+    watch(() => route.query.page, (newPage) => {
+      const p = parseInt(newPage) || 1;
+      // Fetch only if we aren't already on this page and not currently loading specific page interactions
+      // We check if 'loading' is true to avoid conflict with handlePageChange which sets loading then pushes URL.
+      if (p !== currentPage.value && !loading.value) {
+         handlePageChange(p);
+      }
     });
 
     // Dynamic Title Logic
