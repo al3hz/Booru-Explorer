@@ -12,7 +12,7 @@
     :aria-label="`View post ${post.id} - ${post.tag_string_general}`"
   >
     <!-- Imagen con lazy loading inteligente -->
-    <div class="card-image-wrapper">
+    <div class="card-image-wrapper" :class="{ 'masonry-mode': masonry }">
       <template v-if="isAnimatedVideo(post)">
         <SmartVideo
           :src="currentSrc"
@@ -139,6 +139,10 @@ const props = defineProps({
     default: false
   },
   pauseAnimations: {
+    type: Boolean,
+    default: false
+  },
+  masonry: {
     type: Boolean,
     default: false
   }
@@ -412,6 +416,11 @@ const openSource = (source) => {
   overflow: hidden;
   background: #111;
   contain: layout;
+}
+
+.card-image-wrapper.masonry-mode {
+  aspect-ratio: auto; /* Allow natural height */
+  min-height: 100px;
 }
 
 .card-image {

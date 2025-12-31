@@ -84,8 +84,23 @@
         <span>Loading more...</span>
       </div>
       
-      <!-- Grid optimizado -->
-      <div class="gallery-grid" :class="{ 'is-dimmed': loading }">
+      <!-- Masonry Grid -->
+      <div v-if="masonry" class="masonry-grid" :class="{ 'is-dimmed': loading && posts.length > 0 }">
+        <div v-for="(col, colIndex) in columns" :key="colIndex" class="masonry-column">
+          <PostCard
+            v-for="(post, index) in col"
+            :key="post.id"
+            :post="post"
+            :priority="index < 4"
+            :pause-animations="pauseAnimations"
+            :masonry="true"
+            @click="$emit('post-clicked', post)"
+          />
+        </div>
+      </div>
+
+      <!-- Grid optimizado (Normal Mode) -->
+      <div v-else class="gallery-grid" :class="{ 'is-dimmed': loading }">
         <PostCard
           v-for="(post, index) in posts"
           :key="post.id"
@@ -96,8 +111,8 @@
         />
       </div>
 
-      <!-- Paginación accesible -->
-      <nav v-if="!infiniteScroll && (currentPage > 1 || hasNextPage)" 
+      <!-- Paginación accesible (Hidden in Masonry) -->
+      <nav v-if="!infiniteScroll && !masonry && (currentPage > 1 || hasNextPage)" 
            class="pagination-wrapper" 
            aria-label="Pagination">
         <button
@@ -156,7 +171,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from "vue";
 import { useRatingCounts } from "../composables/useRatingCounts";
 import { useLayout } from '../composables/useLayout';
 import PostCard from './PostCard.vue';
@@ -190,6 +205,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  masonry: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["load-more", "change-page", "post-clicked"]);
@@ -198,6 +217,31 @@ const { isLimited, loadingCounts, tagCount } = useRatingCounts();
 const { isSidebarVisible } = useLayout();
 const infiniteScrollTrigger = ref(null);
 let observer = null;
+
+// Masonry Logic
+const masonryColumns = ref(4);
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+const updateColumns = () => {
+   if (typeof window === 'undefined') return;
+   windowWidth.value = window.innerWidth;
+   
+   if (windowWidth.value <= 640) masonryColumns.value = 1;
+   else if (windowWidth.value <= 768) masonryColumns.value = 2;
+   else if (windowWidth.value <= 1024) masonryColumns.value = 3;
+   else masonryColumns.value = 4;
+};
+
+// Distribute posts into columns for Masonry layout
+const columns = computed(() => {
+  if (!props.masonry) return [];
+  
+  const cols = Array.from({ length: masonryColumns.value }, () => []);
+  props.posts.forEach((post, index) => {
+    cols[index % masonryColumns.value].push(post);
+  });
+  return cols;
+});
 
 const setupIntersectionObserver = () => {
   if (!props.infiniteScroll || !props.hasNextPage || props.loading) return;
@@ -212,7 +256,7 @@ const setupIntersectionObserver = () => {
       }
     },
     {
-      rootMargin: "300px",
+      rootMargin: "1200px", // Trigger much earlier to prevent empty space
       threshold: 0.1
     }
   );
@@ -226,6 +270,11 @@ onMounted(() => {
   if (props.infiniteScroll) {
     nextTick(setupIntersectionObserver);
   }
+  window.addEventListener('resize', updateColumns);
+  // Defer initial calculation to avoid "forced layout" warning during mount
+  nextTick(() => {
+    updateColumns();
+  });
 });
 
 onUnmounted(() => {
@@ -233,6 +282,7 @@ onUnmounted(() => {
     observer.disconnect();
     observer = null;
   }
+  window.removeEventListener('resize', updateColumns);
 });
 
 watch(
@@ -607,6 +657,25 @@ const formatCount = (countData) => {
 
 @media (max-width: 480px) {
   .gallery-grid { gap: 16px; }
+}
+
+/* Masonry Layout */
+.masonry-grid {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+}
+
+.masonry-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0; /* Fix flex overflow issues */
+}
+
+@media (max-width: 768px) {
+  .masonry-grid, .masonry-column { gap: 16px; }
 }
 
 .pagination-wrapper {

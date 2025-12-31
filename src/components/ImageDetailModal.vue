@@ -119,7 +119,7 @@
           <!-- Info Sidebar -->
           <div class="info-sidebar">
             <div class="info-header">
-              <div class="header-left">
+              <div class="header-top-row">
                 <h2 class="post-id">Post #{{ post.id }}</h2>
                 <!-- Status Labels -->
                 <div class="status-indicators-modal">
@@ -127,68 +127,69 @@
                     <span v-if="post.is_deleted" class="status-badge deleted">DELETED</span>
                     <span v-if="post.is_flagged" class="status-badge flagged">FLAGGED</span>
                 </div>
-                <div class="header-actions">
-                  <a 
-                    :href="post.file_url || post.large_file_url" 
-                    target="_blank" 
-                    download 
-                    class="action-btn"
-                    :class="{ 'disabled': downloading }"
-                    title="Download original image"
-                    @click.prevent="!downloading && downloadImage()"
-                  >
-                    <i v-if="downloading" class="lni lni-spinner lni-is-spinning"></i>
-                    <i v-else class="lni lni-download"></i>
-                  </a>
+              </div>
+
+              <div class="header-actions">
+                <a 
+                  :href="post.file_url || post.large_file_url" 
+                  target="_blank" 
+                  download 
+                  class="action-btn"
+                  :class="{ 'disabled': downloading }"
+                  title="Download original image"
+                  @click.prevent="!downloading && downloadImage()"
+                >
+                  <i v-if="downloading" class="lni lni-spinner lni-is-spinning"></i>
+                  <i v-else class="lni lni-download"></i>
+                </a>
+                <button 
+                  @click="copyImageLink" 
+                  class="action-btn"
+                  :class="{ 'copied': linkCopied }"
+                  title="Copy image link"
+                >
+                  <i class="lni" :class="linkCopied ? 'lni-checkmark' : 'lni-link'"></i>
+                </button>
+                
+                <!-- Reverse Image Search Dropdown -->
+                <div class="reverse-search-dropdown">
                   <button 
-                    @click="copyImageLink" 
-                    class="action-btn"
-                    :class="{ 'copied': linkCopied }"
-                    title="Copy image link"
+                    @click="toggleSearchDropdown" 
+                    class="action-btn search-trigger"
+                    :class="{ 'active': searchDropdownOpen }"
+                    title="Find Source"
                   >
-                    <i class="lni" :class="linkCopied ? 'lni-checkmark' : 'lni-link'"></i>
+                    <i class="lni lni-search-alt"></i>
                   </button>
                   
-                  <!-- Reverse Image Search Dropdown -->
-                  <div class="reverse-search-dropdown">
-                    <button 
-                      @click="toggleSearchDropdown" 
-                      class="action-btn search-trigger"
-                      :class="{ 'active': searchDropdownOpen }"
-                      title="Find Source"
-                    >
-                      <i class="lni lni-search-alt"></i>
-                    </button>
-                    
-                    <transition name="dropdown-fade">
-                      <div v-if="searchDropdownOpen" class="search-dropdown-menu">
-                        <button 
-                          @click="searchSauceNAO" 
-                          class="search-option"
-                          title="Search on SauceNAO"
-                        >
-                          <img src="https://saucenao.com/favicon.ico" alt="SauceNAO" class="service-icon">
-                          <span>SauceNAO</span>
-                        </button>
-                        <button 
-                          @click="searchIQDB" 
-                          class="search-option"
-                          title="Search on IQDB"
-                        >
-                          <img src="https://iqdb.org/favicon.ico" alt="IQDB" class="service-icon">
-                          <span>IQDB</span>
-                        </button>
-                        <button 
-                          @click="searchGoogle" 
-                          class="search-option"
-                          title="Search on Google Lens"
-                        >
-                          <img src="https://www.google.com/favicon.ico" alt="Google" class="service-icon">
-                          <span>Google Lens</span>
-                        </button>
-                      </div>
-                    </transition>
-                  </div>
+                  <transition name="dropdown-fade">
+                    <div v-if="searchDropdownOpen" class="search-dropdown-menu">
+                      <button 
+                        @click="searchSauceNAO" 
+                        class="search-option"
+                        title="Search on SauceNAO"
+                      >
+                        <img src="https://saucenao.com/favicon.ico" alt="SauceNAO" class="service-icon">
+                        <span>SauceNAO</span>
+                      </button>
+                      <button 
+                        @click="searchIQDB" 
+                        class="search-option"
+                        title="Search on IQDB"
+                      >
+                        <img src="https://iqdb.org/favicon.ico" alt="IQDB" class="service-icon">
+                        <span>IQDB</span>
+                      </button>
+                      <button 
+                        @click="searchGoogle" 
+                        class="search-option"
+                        title="Search on Google Lens"
+                      >
+                        <img src="https://www.google.com/favicon.ico" alt="Google" class="service-icon">
+                        <span>Google Lens</span>
+                      </button>
+                    </div>
+                  </transition>
                 </div>
               </div>
             </div>
@@ -1369,17 +1370,19 @@ export default {
 }
 
 .info-header {
-  padding: 20px;
+  padding: 24px 20px 20px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-top: 50px; /* Keep space for close button visual separation */
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* Space between Title Row and Actions Row */
 }
 
-.header-left {
+.header-top-row {
   display: flex;
   align-items: center;
-  gap: 5px;
-  flex: 1;
-  flex-wrap: wrap; /* Allow wrapping for badges */
+  gap: 12px;
+  /* Reserve space for close button which is top:20 right:20 */
+  padding-right: 40px; 
 }
 
 .post-id {

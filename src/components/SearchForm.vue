@@ -72,7 +72,7 @@
         <div class="options-section">
           <h3 class="section-label">Filters</h3>
           
-          <div class="option-row">
+          <div class="option-row" v-if="!masonryMode">
             <label class="opt-text" for="limit-input">Results per page</label>
             <div class="limit-input-wrapper">
               <input
@@ -99,6 +99,18 @@
                 </div>
               </transition>
             </div>
+          </div>
+
+          <div class="option-row">
+            <span class="opt-text">Masonry Mode</span>
+            <label class="switch" title="Variable height layout with infinite scroll">
+              <input 
+                type="checkbox" 
+                :checked="masonryMode"
+                @change="$emit('update:masonry-mode', $event.target.checked)"
+              >
+              <span class="slider round"></span>
+            </label>
           </div>
 
           <div class="option-row">
@@ -210,11 +222,13 @@ export default {
     ratingFilter: { type: String, default: "" },
     posts: { type: Array, default: () => [] },
     infiniteScroll: { type: Boolean, default: false },
+    masonryMode: { type: Boolean, default: false },
   },
   emits: [
     "update:search-query",
     "update:limit",
     "update:rating-filter",
+    "update:masonry-mode",
     "search",
     "example-clicked",
     "trigger-action",
@@ -1493,3 +1507,63 @@ export default {
   }
 }
 </style>
+
+/* Switch Toggle Styles */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+}
+
+.switch input { 
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: .4s;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #cbd5e1;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: rgba(167, 139, 250, 0.3);
+  border-color: #a78bfa;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #a78bfa;
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+  background-color: #fff;
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 22px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}

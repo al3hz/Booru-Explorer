@@ -18,10 +18,12 @@
         :rating-filter="ratingFilter"
         :posts="posts"
         :infinite-scroll="infiniteScroll"
+        :masonry-mode="isMasonryMode"
         @update:search-query="inputQuery = $event"
         @update:limit="limit = $event"
         @update:rating-filter="ratingFilter = $event"
         @update:infinite-scroll="infiniteScroll = $event"
+        @update:masonry-mode="isMasonryMode = $event"
         @search="handleSearch"
         @example-clicked="setExample"
         @trigger-action="handleAction"
@@ -120,7 +122,9 @@
           :infinite-scroll="infiniteScroll"
           :rating-counts="ratingCounts"
           :pause-animations="!!selectedPost"
+          :masonry="isMasonryMode"
           @change-page="handlePageChange"
+          @load-more="handleLoadMore"
           @post-clicked="openModal"
         />
       </main>
@@ -143,7 +147,7 @@
 </template>
 
 <script>
-import { ref, watch, computed, onMounted, onUnmounted } from "vue";
+import { ref, watch, computed, onMounted, onUnmounted, nextTick, onUpdated } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import SearchForm from "../components/SearchForm.vue";
 import PostGallery from "../components/PostGallery.vue";
@@ -182,10 +186,73 @@ export default {
        localStorage.setItem('ratingFilter', newVal);
     });
 
-    // Persist posts per page limit
+    // State for user preferences (to restore when exiting Masonry)
+    const storedLimit = localStorage.getItem('postsPerPage');
+    const userLimit = ref(storedLimit ? parseInt(storedLimit) : 20);
+    
+    // Masonry Mode Logic - Define EARLY to use in initial limit calculation
+    const savedMasonry = localStorage.getItem('masonryMode');
+    const isMasonryMode = ref(savedMasonry === 'true'); // Default false
+
+    // Initialize limit: 75 if Masonry, else user preference
+    const initialLimit = savedMasonry === 'true' ? 75 : userLimit.value;
+    // We can't easily change the `limit` ref definition above since it's passed to useDanbooruApi, 
+    // but we can update its value here immediately if needed, or better yet, manage the logic before passing it.
+    // However, `useDanbooruApi` is called below. Valid point. 
+    // Let's rely on the watcher update for now or manually set it.
+    if (savedMasonry === 'true') {
+        limit.value = 75;
+    }
+
+    // Persist posts per page limit ONLY if not in Masonry mode
     watch(limit, (newVal) => {
-       localStorage.setItem('postsPerPage', newVal);
+       if (!isMasonryMode.value) {
+           userLimit.value = newVal;
+           localStorage.setItem('postsPerPage', newVal);
+       }
     });
+
+    // Flag to control scroll on update
+    const shouldScrollToTop = ref(false);
+
+    watch(isMasonryMode, async (newVal) => {
+      localStorage.setItem('masonryMode', newVal);
+      
+      if (newVal) {
+        // Entering Masonry Mode
+        infiniteScroll.value = true; 
+        if (limit.value < 75) {
+            limit.value = 75;
+        }
+      } else {
+        // Exiting Masonry Mode -> Restore User Preferences
+        infiniteScroll.value = false; // Restore pagination
+        limit.value = userLimit.value; // Restore user limit
+      }
+      
+      // Mark that we should scroll after the update is complete
+      shouldScrollToTop.value = true;
+      await handleSearch();
+    });
+
+    // Handle scroll in onUpdated to ensure DOM is ready
+    onUpdated(() => {
+      if (shouldScrollToTop.value) {
+        shouldScrollToTop.value = false;
+        // Immediate/Auto scroll as requested
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        
+        // Redundancy for different browsers/containers
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }
+    });
+
+    // Initial setup for Masonry props
+    if (isMasonryMode.value) {
+      infiniteScroll.value = true;
+      // limit already set above
+    }
     
     // useDanbooruApi usa appliedQuery (el valor confirmado)
     const { posts, loading, error, currentPage, hasNextPage, searchPosts } =
@@ -340,6 +407,13 @@ export default {
       if (!selectedPost.value) {
          window.scrollTo({ top: 0, behavior: "smooth" });
       }
+    };
+
+    const handleLoadMore = async () => {
+      if (loading.value || !hasNextPage.value) return;
+      const nextPage = currentPage.value + 1;
+      // Pass false to append posts instead of replacing
+      await searchPosts(nextPage, false);
     };
 
     const setExample = (example) => {
@@ -583,6 +657,8 @@ export default {
       setExample,
       handleSearchError,
       selectedPost,
+      isMasonryMode,
+      handleLoadMore,
       openModal,
       navigatePost,
       canPrev,
