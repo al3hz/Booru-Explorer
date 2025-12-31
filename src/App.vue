@@ -29,7 +29,7 @@ export default {
   },
   computed: {
     viewKey() {
-      return this.$route.fullPath + '-' + this.refreshKey;
+      return this.$route.path + '-' + this.refreshKey;
     }
   },
   methods: {
