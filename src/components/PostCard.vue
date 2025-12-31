@@ -3,7 +3,8 @@
     class="art-card"
     :class="{
       'has-family': post.parent_id || post.has_children,
-      'loading': !isLoaded && !hasError
+      'loading': !isLoaded && !hasError,
+      'masonry-optimized': masonry && isMobile
     }"
     @click="handleClick"
     @keydown.enter="handleClick"
@@ -126,7 +127,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import SmartVideo from './SmartVideo.vue';
 
 const props = defineProps({
@@ -149,6 +150,17 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['click']);
+
+const isMobile = ref(false);
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    isMobile.value = window.innerWidth <= 640;
+    window.addEventListener('resize', () => {
+      isMobile.value = window.innerWidth <= 640;
+    });
+  }
+});
 
 // State
 const hasError = ref(false);
@@ -603,6 +615,27 @@ const openSource = (source) => {
 
 .error-icon { font-size: 24px; opacity: 0.7; }
 .error-text { font-size: 12px; font-weight: 500; }
+
+/* Mobile Masonry Optimization */
+.masonry-optimized .card-content {
+  display: none !important;
+}
+
+.masonry-optimized .card-overlay {
+  display: none !important;
+}
+
+.masonry-optimized.art-card {
+  border-radius: 8px; /* Slightly smaller radius for tighter fit */
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Ensure images touch or have minimal gap */
+.masonry-optimized .card-image-wrapper {
+  min-height: 50px;
+}
 
 @media (max-width: 640px) {
   .art-card {

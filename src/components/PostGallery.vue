@@ -226,7 +226,7 @@ const updateColumns = () => {
    if (typeof window === 'undefined') return;
    windowWidth.value = window.innerWidth;
    
-   if (windowWidth.value <= 640) masonryColumns.value = 1;
+   if (windowWidth.value <= 640) masonryColumns.value = 2; // Mobile 2 cols
    else if (windowWidth.value <= 768) masonryColumns.value = 2;
    else if (windowWidth.value <= 1024) masonryColumns.value = 3;
    else masonryColumns.value = 4;
