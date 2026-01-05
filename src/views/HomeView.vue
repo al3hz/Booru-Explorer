@@ -141,6 +141,7 @@
         @update-post="selectedPost = $event"
         :has-next="canNext"
         :has-prev="canPrev"
+        :is-loading-next-page="isLoadingNextPage"
       />
     </Transition>
   </div>
@@ -180,6 +181,7 @@ export default {
     const selectedPost = ref(null);
     const isRandomMode = ref(false);
     const showTimeoutInfo = ref(false);
+    const isLoadingNextPage = ref(false);
 
     // Persist rating filter selection
     watch(ratingFilter, (newVal) => {
@@ -324,10 +326,15 @@ export default {
       // Caso 2: Siguiente página (Infinite Next)
       if (newIndex >= posts.value.length) {
         if (hasNextPage.value && !loading.value) {
+          isLoadingNextPage.value = true;
           const nextPage = currentPage.value + 1;
-          await handlePageChange(nextPage);
-          if (posts.value.length > 0) {
-            selectedPost.value = posts.value[0];
+          try {
+            await handlePageChange(nextPage);
+            if (posts.value.length > 0) {
+              selectedPost.value = posts.value[0];
+            }
+          } finally {
+            isLoadingNextPage.value = false;
           }
         }
         return;
@@ -336,10 +343,15 @@ export default {
       // Caso 3: Página anterior (Infinite Prev)
       if (newIndex < 0) {
         if (currentPage.value > 1 && !loading.value) {
+          isLoadingNextPage.value = true;
           const prevPage = currentPage.value - 1;
-          await handlePageChange(prevPage);
-          if (posts.value.length > 0) {
-            selectedPost.value = posts.value[posts.value.length - 1];
+          try {
+            await handlePageChange(prevPage);
+            if (posts.value.length > 0) {
+              selectedPost.value = posts.value[posts.value.length - 1];
+            }
+          } finally {
+            isLoadingNextPage.value = false;
           }
         }
         return;
@@ -681,7 +693,8 @@ export default {
       showTimeoutInfo,
       ratingCounts,
       isSidebarVisible,
-      toggleSidebar
+      toggleSidebar,
+      isLoadingNextPage
     };
   },
 };

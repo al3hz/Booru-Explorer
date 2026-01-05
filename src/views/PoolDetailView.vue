@@ -130,6 +130,7 @@
         @update-post="selectedPost = $event"
         :has-next="canGoNext"
         :has-prev="canGoPrev"
+        :is-loading-next-page="false"
       >
         <!-- Pool Navigation Banner -->
         <template #pool-nav v-if="pool && currentPostIndex !== -1">

@@ -43,6 +43,16 @@
         <!-- Close Button Moved Inside but better positioned -->
         <button class="close-btn" @click="$emit('close')">×</button>
         
+        <!-- Loading Next Page Overlay -->
+        <transition name="fade">
+          <div v-if="isLoadingNextPage" class="loading-page-overlay">
+            <div class="loading-content">
+              <div class="loader-spinner-large"></div>
+              <p class="loading-text">Loading next page...</p>
+            </div>
+          </div>
+        </transition>
+        
         <div class="modal-content" ref="modalContent">
           <div class="main-column">
             <!-- Relationship Banner -->
@@ -389,6 +399,10 @@ export default {
       default: false
     },
     hasNext: {
+      type: Boolean,
+      default: false
+    },
+    isLoadingNextPage: {
       type: Boolean,
       default: false
     }
@@ -771,6 +785,9 @@ export default {
 
     const triggerNext = () => {
         if (props.hasNext) {
+            loading.value = true;
+            imageReady.value = false;
+            familyReady.value = false;
             transitionName.value = 'fade';
             emit('next');
         }
@@ -778,6 +795,9 @@ export default {
 
     const triggerPrev = () => {
         if (props.hasPrev) {
+            loading.value = true;
+            imageReady.value = false;
+            familyReady.value = false;
             transitionName.value = 'fade';
             emit('prev');
         }
@@ -1928,6 +1948,47 @@ export default {
   animation: spin 1s linear infinite;
   display: inline-block;
 }
+
+/* Loading Page Overlay */
+.loading-page-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1005;
+  border-radius: inherit;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loader-spinner-large {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(167, 139, 250, 0.2);
+  border-radius: 50%;
+  border-top-color: #a78bfa;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  color: #e2e8f0;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  text-align: center;
+}
+
 
 @keyframes spin {
   from { transform: rotate(0deg); }

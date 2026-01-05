@@ -173,6 +173,7 @@
           :post="selectedPost" 
           :has-next="canGoNext"
           :has-prev="canGoPrev"
+          :is-loading-next-page="false"
           @close="selectedPost = null"
           @search-tag="handleSearchTag"
           @next="handleNext"
