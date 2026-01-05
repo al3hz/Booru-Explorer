@@ -4,14 +4,15 @@ An image explorer for Danbooru built with Vue 3 and Vite.
 
 ## Features
 
-- **Advanced Search**: Search for images using Danbooru tags.
-- **Image Gallery**: Responsive display of posts.
-- **Image Details**: Modal with detailed image information and tags.
-- **Pools**: Browse organized collections of posts, comics, and doujinshi series.
-- **Comments**: View and browse post comments.
-- **Wiki**: Access Danbooru wiki pages with navigation.
-- **Modern Design**: Clean interface with dark mode and visual effects.
-- **Icons**: Integration with Lineicons.
+- **Advanced Search**: Search for images using Danbooru tags with autocomplete and smart filters.
+- **Responsive Gallery**: Masonry layout with Infinite Scroll, progressive image loading, and Masonry mode toggle.
+- **Immersive Details**: Enhanced modal with zoom/pan support (mobile), swipe navigation, and keyboard shortcuts.
+- **Pools & Collections**: Browse organized collections of posts, comics, and doujinshi series with improved UI.
+- **Community Integration**: View post comments and artist commentary.
+- **Wiki System**: Integrated Danbooru wiki browsing with internal navigation.
+- **Performance**: Optimized rendering, lazy loading, and intelligent background video handling.
+- **Code Quality**: Robust ESLint configuration for Vue 3 and Node.js.
+- **Modern Design**: Clean interface with dark mode, glassmorphism, and smooth transitions.
 
 ## Technologies Used
 
@@ -44,6 +45,14 @@ To build for production:
 
 ```bash
 npm run build
+```
+
+### Linting
+
+To run the linter (ESLint) and check for code quality issues:
+
+```bash
+npm run lint
 ```
 
 ## Project Structure
