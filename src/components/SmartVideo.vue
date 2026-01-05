@@ -66,7 +66,7 @@ export default {
           if (entry.isIntersecting) {
             // Only autoplay on desktop AND if not paused externally
             if (!props.shouldPause) {
-                videoRef.value.play().catch(e => {
+                videoRef.value.play().catch(() => {
                     // Auto-play might be blocked or failed
                     // console.warn('Autoplay prevented', e);
                 });

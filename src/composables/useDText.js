@@ -69,7 +69,7 @@ export function useDText() {
     });
 
     // Internal Anchors: "Label":#id
-    formatted = formatted.replace(/&quot;(.*?)&quot;:#([\w\-]+)/g, (m, label, id) => {
+    formatted = formatted.replace(/&quot;(.*?)&quot;:#([\w-]+)/g, (m, label, id) => {
         return addPlaceholder(`<a href="#${id}" class="dtext-link dtext-anchor" data-anchor="${id}">${label}</a>`);
     });
 
@@ -100,7 +100,7 @@ export function useDText() {
     formatted = formatted.replace(/\[s\]([\s\S]*?)\[\/s\]/g, '<s>$1</s>');
 
     // Headers - Simplify for card preview to bold text
-    formatted = formatted.replace(/(?:^|\n)h([1-6])(?:#([\w\-]+))?\.\s*(.*?)(?=\r|\n|$)/g, '<br><strong>$3</strong>');
+    formatted = formatted.replace(/(?:^|\n)h([1-6])(?:#([\w-]+))?\.\s*(.*?)(?=\r|\n|$)/g, '<br><strong>$3</strong>');
 
     // Lists - Simplify to bullet points
     formatted = formatted.replace(/(?:^|\n)\*+ (.*?)(?=\r|\n|$)/g, '<br>• $1');

@@ -147,7 +147,7 @@
 </template>
 
 <script>
-import { ref, watch, computed, onMounted, onUnmounted, nextTick, onUpdated } from "vue";
+import { ref, watch, computed, onMounted, onUnmounted, onUpdated } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import SearchForm from "../components/SearchForm.vue";
 import PostGallery from "../components/PostGallery.vue";
@@ -195,7 +195,7 @@ export default {
     const isMasonryMode = ref(savedMasonry === 'true'); // Default false
 
     // Initialize limit: 75 if Masonry, else user preference
-    const initialLimit = savedMasonry === 'true' ? 75 : userLimit.value;
+    // Initialize limit: 75 if Masonry, else user preference
     // We can't easily change the `limit` ref definition above since it's passed to useDanbooruApi, 
     // but we can update its value here immediately if needed, or better yet, manage the logic before passing it.
     // However, `useDanbooruApi` is called below. Valid point. 
@@ -214,6 +214,9 @@ export default {
 
     // Flag to control scroll on update
     const shouldScrollToTop = ref(false);
+    
+    // Flag to prevent race condition between manual navigation and route watcher
+    const isManualNavigation = ref(false);
 
     watch(isMasonryMode, async (newVal) => {
       localStorage.setItem('masonryMode', newVal);
@@ -381,31 +384,43 @@ export default {
     };
 
     // Integrate Rating Counts
-    const { ratingCounts, loadingCounts, fetchRatingCounts } = useRatingCounts();
+    const { ratingCounts, fetchRatingCounts } = useRatingCounts();
 
     const loadPage = async (page) => {
       // searchPosts usa internamente appliedQuery, que no ha cambiado si solo escribimos en el input
+      // Force new search (isNewSearch=true) to bypass cache and ensure fresh content
       await searchPosts(page, true);
     };
 
     const handlePageChange = async (page) => {
       if (loading.value) return;
       
-      // Update URL if needed
-      const currentRoutePage = parseInt(route.query.page) || 1;
-      if (currentRoutePage !== page) {
-        await router.push({ 
-          query: { 
-            ...route.query, 
-            page: page.toString() 
-          } 
-        });
-      }
+      // Set flag to prevent race condition with route watcher
+      isManualNavigation.value = true;
       
-      await loadPage(page);
-      
-      if (!selectedPost.value) {
-         window.scrollTo({ top: 0, behavior: "smooth" });
+      try {
+        // Update URL if needed
+        const currentRoutePage = parseInt(route.query.page) || 1;
+        if (currentRoutePage !== page) {
+          await router.push({ 
+            query: { 
+              ...route.query, 
+              page: page.toString() 
+            } 
+          });
+        }
+        
+        await loadPage(page);
+        
+        if (!selectedPost.value) {
+           window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      } finally {
+        // Reset flag after navigation is complete
+        // Small delay to ensure watcher fired and was ignored
+        setTimeout(() => {
+          isManualNavigation.value = false;
+        }, 100);
       }
     };
 
@@ -558,9 +573,8 @@ export default {
     // Watch for page changes in URL (e.g. Back Button)
     watch(() => route.query.page, (newPage) => {
       const p = parseInt(newPage) || 1;
-      // Fetch only if we aren't already on this page and not currently loading specific page interactions
-      // We check if 'loading' is true to avoid conflict with handlePageChange which sets loading then pushes URL.
-      if (p !== currentPage.value && !loading.value) {
+      // Fetch only if we aren't already on this page AND not manually navigating
+      if (p !== currentPage.value && !isManualNavigation.value) {
          handlePageChange(p);
       }
     });

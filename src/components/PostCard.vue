@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import SmartVideo from './SmartVideo.vue';
 
 const props = defineProps({
@@ -227,7 +227,7 @@ watch(() => props.post, (newPost) => {
 }, { immediate: true });
 
 // React to pauseAnimations
-watch(() => props.pauseAnimations, (shouldPause) => {
+watch(() => props.pauseAnimations, () => {
   if (props.post.file_ext === 'gif') {
     currentSrc.value = getInitialImageUrl(props.post);
   }

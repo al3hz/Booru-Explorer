@@ -226,7 +226,7 @@ export default {
       formatted = formatted.replace(/\n/g, '<br>');
         
       formatted = formatted.replace(/post #(\d+)/gi, '<a href="https://danbooru.donmai.us/posts/$1" target="_blank" class="text-link">post #$1</a>');
-      formatted = formatted.replace(/"(.*?)"\:\[(.*?)\]/g, '<a href="$2" target="_blank" class="text-link">$1</a>');
+      formatted = formatted.replace(/"(.*?)"\[(.*?)\]/g, '<a href="$2" target="_blank" class="text-link">$1</a>');
       
       // Handle {{tag}} - use data attribute for internal navigation
       formatted = formatted.replace(/\{\{(.*?)\}\}/g, '<span class="tag-link" data-tag="$1" style="cursor: pointer; color: #a78bfa; text-decoration: underline;">$1</span>');
@@ -277,7 +277,7 @@ export default {
         } else {
           try {
             video.play();
-          } catch (e) {
+          } catch {
             // Ignore auto-play errors
           }
         }

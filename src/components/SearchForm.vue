@@ -105,6 +105,8 @@
             <span class="opt-text">Masonry Mode</span>
             <label class="switch" title="Variable height layout with infinite scroll">
               <input 
+                id="masonry-input"
+                name="masonry"
                 type="checkbox" 
                 :checked="masonryMode"
                 @change="$emit('update:masonry-mode', $event.target.checked)"

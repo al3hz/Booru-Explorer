@@ -7,8 +7,7 @@ export function usePools() {
   const currentPage = ref(1);
   const hasNextPage = ref(true);
   
-  // Progress tracking for large pools
-  const loadingProgress = ref({ current: 0, total: 0 });
+
 
   const fetchPools = async (page = 1, filters = {}) => {
     loading.value = true;
@@ -61,7 +60,7 @@ export function usePools() {
             } else {
               pool.coverUrl = null;
             }
-          } catch (e) {
+          } catch {
             pool.coverUrl = null;
           }
         } else {

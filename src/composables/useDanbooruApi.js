@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 export function useDanbooruApi(searchQuery, limit, ratingFilter) {
   const posts = ref([])
@@ -242,7 +242,7 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
   }
 
   // Función principal de búsqueda
-  const searchPosts = async (page = 1, isNewSearch = false) => {
+  const searchPosts = async (page = 1, isNewSearch = false, append = true) => {
     const startTime = performance.now()
 
     // Cancelar solicitud anterior
@@ -265,7 +265,8 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
         performanceMetrics.value.cacheHits++
 
         // Fix: Align cache behavior with network behavior (append if page > 1)
-        if (page === 1) {
+        // Fix: Replace posts if it's page 1 OR if explicit replace (append=false)
+        if (page === 1 || !append) {
           posts.value = cached.data;
         } else {
           // Filter duplicates to be safe, though usually handled by page logic
@@ -349,7 +350,7 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
         })
       }
 
-      if (page === 1 || isNewSearch) {
+      if (page === 1 || isNewSearch || !append) {
         posts.value = finalPosts
       } else {
         posts.value = [...posts.value, ...finalPosts]

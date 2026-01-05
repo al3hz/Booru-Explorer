@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+
 
 export function useWikiSearch() {
   const apiBaseUrl = 'https://danbooru.donmai.us';

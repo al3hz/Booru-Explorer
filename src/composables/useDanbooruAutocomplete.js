@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 
 export function useDanbooruAutocomplete() {
   const suggestions = ref([]);
@@ -108,7 +108,7 @@ export function useDanbooruAutocomplete() {
 
   // Generar sugerencias especiales
   const generateSpecialSuggestions = (typeInfo) => {
-    const { type, value, suggestions = [] } = typeInfo;
+    const { value, suggestions = [] } = typeInfo;
     
     return suggestions.map(suggestion => ({
       name: suggestion,

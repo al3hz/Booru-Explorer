@@ -396,7 +396,7 @@ export default {
   emits: ['close', 'next', 'prev', 'search-tag', 'update-post'],
   setup(props, { emit }) {
     const router = useRouter();
-    const { getPost, getTooglePostConfig, getPostComments, getArtist } = useDanbooruApi();
+    const { getPost, getTooglePostConfig, getPostComments, getArtist } = useDanbooruApi(); // eslint-disable-line no-unused-vars
     const { parseDText } = useDText();
     
     // Pending Overlay Logic
@@ -984,15 +984,12 @@ export default {
       showPendingOverlay,
       parseDText,
       onTouchStart,
-      parseDText,
-      onTouchStart,
       onTouchEnd,
-      isMobileFullscreen,
       toggleMobileFullscreen,
+      isMobileFullscreen,
       imageScale,
       onZoomTouchStart,
       onZoomTouchMove,
-      onZoomTouchEnd,
       onZoomTouchEnd,
       resetZoom,
       translateX,

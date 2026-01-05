@@ -84,7 +84,7 @@ async function fetchTotalCount(tags) {
 /**
  * Fetch rating count with fallback strategies
  */
-async function fetchRatingCount(query, rating) {
+async function fetchRatingCount(query) {
   // Try precise query first
   try {
     const params = new URLSearchParams({ tags: query });
@@ -98,7 +98,7 @@ async function fetchRatingCount(query, rating) {
     if (typeof count === 'number') {
       return { count, isApproximate: false };
     }
-  } catch (error) {
+  } catch {
     // Continue to fallback
   }
   

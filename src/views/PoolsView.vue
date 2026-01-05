@@ -303,7 +303,6 @@ export default {
       formatPoolName,
       formatDate,
       isAnimatedCover,
-      isAnimatedCover,
       handleDescriptionClick,
       handleCardClick: (id) => router.push(`/pools/${id}`)
     };
@@ -560,13 +559,9 @@ export default {
   /* Limit to 2 lines */
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-/* Fix CSS warning workaround */
-.pool-name {
-  line-clamp: 2;
 }
 
 .pool-description {
@@ -577,6 +572,7 @@ export default {
   /* Limit to 3 lines */
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   flex-grow: 1;
