@@ -144,6 +144,18 @@
         :is-loading-next-page="isLoadingNextPage"
       />
     </Transition>
+
+    <!-- Scroll to Top Button (Masonry Mode) -->
+    <Transition name="fade">
+      <button
+        v-if="showScrollToTop && isMasonryMode"
+        @click="scrollToTop"
+        class="scroll-to-top-btn"
+        title="Scroll to top"
+      >
+        <i class="lni lni-arrow-up"></i>
+      </button>
+    </Transition>
   </div>
 </template>
 
@@ -182,6 +194,7 @@ export default {
     const isRandomMode = ref(false);
     const showTimeoutInfo = ref(false);
     const isLoadingNextPage = ref(false);
+    const showScrollToTop = ref(false);
 
     // Persist rating filter selection
     watch(ratingFilter, (newVal) => {
@@ -502,6 +515,17 @@ export default {
       }
     };
 
+    // Scroll handler for scroll-to-top button
+    const handleScroll = () => {
+      // Show button when scrolled down more than 300px
+      showScrollToTop.value = window.scrollY > 300;
+    };
+
+    // Scroll to top function
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     // Cargar datos al montar el componente
     onMounted(() => {
       // Check for query params
@@ -542,6 +566,7 @@ export default {
       }
       
       window.addEventListener('keydown', handleKeydown);
+      window.addEventListener('scroll', handleScroll);
     });
 
     // Watch for route query changes (navigation from other views or same view)
@@ -604,6 +629,7 @@ export default {
 
     onUnmounted(() => {
       window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('scroll', handleScroll);
     });
 
     // Optimize background videos when modal is open
@@ -694,7 +720,9 @@ export default {
       ratingCounts,
       isSidebarVisible,
       toggleSidebar,
-      isLoadingNextPage
+      isLoadingNextPage,
+      showScrollToTop,
+      scrollToTop
     };
   },
 };
@@ -1071,6 +1099,66 @@ export default {
 @media (max-width: 768px) {
   .sidebar-backdrop {
     display: block;
+  }
+}
+
+/* Scroll to Top Button */
+.scroll-to-top-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(20, 20, 28, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  color: #a78bfa;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+              0 0 0 1px rgba(167, 139, 250, 0.1);
+}
+
+.scroll-to-top-btn:hover {
+  background: rgba(167, 139, 250, 0.15);
+  border-color: rgba(167, 139, 250, 0.4);
+  color: #c084fc;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4),
+              0 0 20px rgba(167, 139, 250, 0.2);
+}
+
+.scroll-to-top-btn:active {
+  transform: translateY(-2px);
+  background: rgba(167, 139, 250, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+              0 0 0 1px rgba(167, 139, 250, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .scroll-to-top-btn {
+    bottom: 24px;
+    right: 24px;
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .scroll-to-top-btn {
+    bottom: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
   }
 }
 
