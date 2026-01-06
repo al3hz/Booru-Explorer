@@ -715,7 +715,7 @@ export default {
   display: flex; /* Added for layout */
   width: 100%;
   max-width: 1600px;
-  background: rgba(30, 32, 40, 0.6);
+  background: rgba(30, 32, 40, 0.5); /* Slightly reduced opacity */
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   padding: 0; /* Remove padding to allow sidebar to touch edges */
@@ -797,9 +797,15 @@ export default {
   padding: 80px 20px;
   color: #94a3b8;
   width: 100%;
-  min-height: 400px;
+  flex: 1; /* Match content height */
   gap: 20px;
-  margin: 0 auto; /* Extra safety */
+  margin: 0 auto; 
+  background: transparent; /* Remove background flash */
+}
+
+@keyframes pulseOpacity {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
 }
 
 .loader-ring {
@@ -1196,12 +1202,13 @@ export default {
 .wiki-content {
     padding: 50px;
     flex: 1;
-    overflow-y: auto; /* Scroll INSIDE the content area if needed, or let page scroll */
-    /* Remove previous box styles */
+    overflow-y: auto;
     background: transparent;
     box-shadow: none;
     border-radius: 0;
-    min-height: auto;
+    min-height: 80vh; /* Match container height better */
+    display: flex;
+    flex-direction: column;
 }
 
 /* Responsive */
@@ -1508,13 +1515,6 @@ export default {
     transform: scale(1.1);
 }
 
-.wiki-content {
-    /* Background handled by .glass-heavy */
-    border-radius: 16px;
-    padding: 40px;
-    min-height: 600px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-}
 
 .wiki-header {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -1584,12 +1584,13 @@ export default {
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+  transform: translateY(10px);
 }
 /* Layout fix for inline wiki images */
 /* Layout fix for inline wiki images */
