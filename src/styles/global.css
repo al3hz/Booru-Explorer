@@ -36,9 +36,11 @@ body::before {
   0% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
+
   100% {
     background-position: 0% 50%;
   }
@@ -52,33 +54,30 @@ body::after {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: radial-gradient(
-      circle at 20% 50%,
+  background-image: radial-gradient(circle at 20% 50%,
       rgba(167, 139, 250, 0.15) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 80% 80%,
+      transparent 50%),
+    radial-gradient(circle at 80% 80%,
       rgba(192, 132, 252, 0.15) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 40% 20%,
+      transparent 50%),
+    radial-gradient(circle at 40% 20%,
       rgba(139, 92, 246, 0.15) 0%,
-      transparent 50%
-    );
+      transparent 50%);
   z-index: -1;
   animation: float 20s ease-in-out infinite;
 }
 
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0) translateX(0);
   }
+
   33% {
     transform: translateY(-20px) translateX(10px);
   }
+
   66% {
     transform: translateY(10px) translateX(-10px);
   }
@@ -102,7 +101,8 @@ div {
 .app-container {
   max-width: 100%;
   margin: 0 auto;
-  padding: 0; /* padding removed to fix header top gap */
+  padding: 0;
+  /* padding removed to fix header top gap */
   position: relative;
   z-index: 1;
 }
@@ -113,12 +113,14 @@ div {
   align-items: flex-start;
   position: relative;
   padding: 10px 20px 20px 20px;
-  width: 100%; /* Ensure full width */
+  width: 100%;
+  /* Ensure full width */
 }
 
 @media (max-width: 640px) {
   .app-layout {
-    padding: 10px; /* Reduced specific padding for mobile */
+    padding: 10px;
+    /* Reduced specific padding for mobile */
     gap: 0;
   }
 }
@@ -126,14 +128,16 @@ div {
 .main-content {
   flex: 1;
   min-width: 0;
-  width: 100%; /* Important for stretching */
+  width: 100%;
+  /* Important for stretching */
   transition: all 0.3s ease;
 }
 
 @media (max-width: 1024px) {
   .app-layout {
     flex-direction: column;
-    align-items: stretch; /* Stretch children horizontally */
+    align-items: stretch;
+    /* Stretch children horizontally */
   }
 }
 
@@ -148,7 +152,8 @@ div {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 20px; /* Added spacing */
+  margin-bottom: 20px;
+  /* Added spacing */
 }
 
 .error-message:before {
@@ -218,4 +223,45 @@ div {
 .modal-leave-to .modal-container {
   transform: scale(0.9) translateY(20px);
   opacity: 0;
+}
+
+/* -------------------------------------------
+   GLASSMORPHISM DESIGN SYSTEM
+   ------------------------------------------- */
+
+/* Standard Glass Effect (Cards, Panels) */
+.glass {
+  background: rgba(30, 30, 30, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* Heavy Glass (Modals, Bottom Sheets - High Contrast) */
+.glass-heavy {
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Glass Interactive (Buttons, Inputs) */
+.glass-button {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.glass-button:active {
+  transform: translateY(0);
 }
