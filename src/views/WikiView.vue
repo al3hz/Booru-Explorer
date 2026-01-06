@@ -1,8 +1,6 @@
 <template>
   <div class="wiki-view">
     <div class="wiki-container">
-      <div class="wiki-layout">
-        <!-- Sidebar -->
         <aside class="wiki-sidebar">
             <div class="sidebar-search">
                 <h3>Wiki Search</h3>
@@ -163,7 +161,7 @@
         </div>
       </transition>
       </main> <!-- End Main Column -->
-     </div> <!-- End Wiki Layout -->
+     
 
     <!-- Post Detail Modal -->
     <Teleport to="body">
@@ -714,13 +712,19 @@ export default {
 }
 
 .wiki-container {
+  display: flex; /* Added for layout */
   width: 100%;
   max-width: 1600px;
-  background: rgba(20, 20, 28, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  padding: 30px 40px;
-  backdrop-filter: blur(10px);
+  background: rgba(30, 32, 40, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  padding: 0; /* Remove padding to allow sidebar to touch edges */
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  overflow: hidden; 
+  min-height: 80vh;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  background-image: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
 }
 
 .wiki-header {
@@ -1166,20 +1170,66 @@ export default {
 .wiki-text :deep(h5) { font-size: 1em; }
 .wiki-text :deep(h6) { font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.05em; }
 
-.wiki-layout {
-    display: flex;
-    gap: 30px;
-    align-items: flex-start;
-}
 
+/* Sidebar */
 .wiki-sidebar {
-    width: 250px;
+    width: 320px;
     flex-shrink: 0;
+    /* Transparent background, inherits glass from parent */
+    border-right: 1px solid rgba(255, 255, 255, 0.08); /* Subtle divider */
     display: flex;
     flex-direction: column;
+    padding: 30px;
     gap: 30px;
-    border-right: 1px solid rgba(255,255,255,0.05);
-    padding-right: 20px;
+    background: rgba(0, 0, 0, 0.2); /* Slight tint for sidebar distinction */
+}
+
+/* Main Column */
+.wiki-main-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    /* Transparent background */
+}
+
+.wiki-content {
+    padding: 50px;
+    flex: 1;
+    overflow-y: auto; /* Scroll INSIDE the content area if needed, or let page scroll */
+    /* Remove previous box styles */
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+    min-height: auto;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .wiki-container {
+        flex-direction: column;
+        border-radius: 16px;
+        min-height: auto;
+    }
+    
+    .wiki-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 20px;
+    }
+    
+    .sidebar-search {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .sidebar-recent {
+        flex: 1;
+    }
 }
 
 .wiki-main-column {
@@ -1188,34 +1238,34 @@ export default {
 }
 
 .sidebar-search h3 {
-    font-size: 0.9em;
-    text-transform: uppercase;
-    color: #94a3b8;
-    margin-bottom: 15px;
-    letter-spacing: 0.05em;
-    padding-left: 5px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: rgba(255, 255, 255, 0.9);
+    letter-spacing: 0.5px;
 }
 
 .search-input-wrapper {
     position: relative;
+    width: 100%;
 }
 
 .search-input-wrapper input {
     width: 100%;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: #fff;
-    padding: 8px 35px 8px 12px;
-    border-radius: 6px;
+    padding: 12px 40px 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    color: white;
+    font-size: 0.95rem;
     outline: none;
-    transition: all 0.2s;
-    font-size: 0.9em;
+    transition: all 0.2s ease;
 }
 
 .search-input-wrapper input:focus {
-    border-color: #a78bfa;
-    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
-    background: rgba(0,0,0,0.4);
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
 }
 
 .wiki-search-btn {
@@ -1444,7 +1494,7 @@ export default {
     border: 1px solid rgba(255,255,255,0.1);
     opacity: 0;
     animation: fadeInUp 0.4s ease forwards;
-    background: #000;
+    background: rgba(0, 0, 0, 0.3); /* Glass-like background */
 }
 
 .mini-preview {
@@ -1456,6 +1506,20 @@ export default {
 
 .preview-item:hover .mini-preview {
     transform: scale(1.1);
+}
+
+.wiki-content {
+    /* Background handled by .glass-heavy */
+    border-radius: 16px;
+    padding: 40px;
+    min-height: 600px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+}
+
+.wiki-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 30px;
+    margin-bottom: 30px;
 }
 
 .actions {
@@ -1586,6 +1650,47 @@ export default {
     /* Remove indentation from list items in gallery mode if present */
     .wiki-text :deep(.dtext-list-item.gallery-grid-item) {
         padding-left: 0;
+    }
+}
+
+/* Mobile Optimization */
+@media (max-width: 768px) {
+    .wiki-view {
+        padding: 10px;
+    }
+
+    .wiki-container {
+        flex-direction: column;
+        border-radius: 16px;
+        padding: 0;
+        min-height: auto;
+    }
+
+    .wiki-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        gap: 15px;
+        /* Revert to column for cleaner vertical stacking on mobile */
+        flex-direction: column; 
+    }
+
+    .sidebar-search, .sidebar-recent {
+        width: 100%;
+    }
+
+    .wiki-content {
+        padding: 20px; /* Reduced from 50px */
+    }
+
+    .wiki-header {
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+    }
+
+    .wiki-header h2 {
+        font-size: 1.5rem; /* Smaller title */
     }
 }
 </style>

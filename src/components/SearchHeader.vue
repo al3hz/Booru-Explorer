@@ -456,10 +456,11 @@ export default {
 
   .header-nav {
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
     overflow-x: auto;
-    padding-bottom: 4px; /* Space for scrollbar if needed */
+    padding: 0 4px 4px 4px; /* Added horizontal padding to prevent clipping */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   }
 
   .nav-item {
