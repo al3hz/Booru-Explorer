@@ -599,6 +599,9 @@ export default {
     const hasMoreComments = ref(false);
     const COMMENTS_LIMIT = 20;
     
+    // Safety timeout for loading
+    let loadingTimeout = null;
+    
     // Ruffle logic
     const ruffleContainer = ref(null);
     let rufflePlayer = null;
@@ -912,6 +915,17 @@ export default {
     watch(() => props.post.id, async (newId) => {
        // Reset UI State IMMEDIATELY
        showPendingOverlay.value = true;
+       
+       // Safety Timeout: Force stop loading after 5s if metadata hangs
+       if (loadingTimeout) clearTimeout(loadingTimeout);
+       loading.value = true; 
+       loadingTimeout = setTimeout(() => {
+          if (loading.value) {
+             console.warn("Content loading timed out - forcing display");
+             loading.value = false;
+          }
+       }, 5000);
+
        imageReady.value = false;
        familyReady.value = false;
        notes.value = []; // Clear notes immediately
@@ -1161,6 +1175,7 @@ export default {
     };
 
     onUnmounted(() => {
+      if (loadingTimeout) clearTimeout(loadingTimeout);
       window.removeEventListener('keydown', handleKeydown);
       document.body.style.overflow = '';
     });
