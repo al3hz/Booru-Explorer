@@ -136,6 +136,9 @@
                   :style="getNoteStyle(note)"
                   @mouseenter="hoveredNote = note"
                   @mouseleave="hoveredNote = null"
+                  @touchstart.stop.prevent="toggleNote(note)"
+                  @touchend.stop
+                  @touchmove.stop
                 >
                   <transition name="fade">
                     <div 
@@ -143,14 +146,27 @@
                       class="note-tooltip" 
                       :class="{ 
                         'bottom': note.isTopNote,
-                        'left': note.isLeftNote,
-                        'right': note.isRightNote
+                        'left': note.isLeftNote && !note.isVertical,
+                        'right': note.isRightNote && !note.isVertical,
+                        'vertical-left': note.isVertical && note.isLeftNote,
+                        'vertical-right': note.isVertical && !note.isLeftNote 
                       }"
                       v-html="note.body"
                     ></div>
                   </transition>
                 </div>
               </div>
+
+             <!-- Mobile Bottom Sheet (Reader Mode) -->
+             <transition name="slide-up">
+               <div v-if="hoveredNote" class="note-bottom-sheet" @click.stop>
+                 <div class="sheet-header">
+                   <span class="sheet-title">Translation</span>
+                   <button class="sheet-close" @click="hoveredNote = null">×</button>
+                 </div>
+                 <div class="sheet-content" v-html="hoveredNote.body"></div>
+               </div>
+             </transition>
             </div>
             
           </div>
@@ -506,7 +522,7 @@ export default {
         return [];
       }
 
-      const { displayWidth, displayHeight, offsetX, offsetY, containerWidth } = getImageDisplayDimensions();
+      const { displayWidth, displayHeight, offsetX, offsetY, containerWidth, containerHeight } = getImageDisplayDimensions();
       
       if (displayWidth === 0 || displayHeight === 0) return [];
 
@@ -519,16 +535,39 @@ export default {
         const sW = note.width * scaleX;
         const sH = note.height * scaleY;
         
+        // Detect Vertical Note (common in manga)
+        const isVertical = sH > (sW * 2) && sH > 100;
+        
+        // Dynamic thresholds based on container width
+        // On mobile (small width), be more aggressive with side alignment
+        const isMobile = containerWidth < 768;
+        const sideThreshold = isMobile ? 120 : 180; // Tooltip min-width is ~150px
+        
+        // For Vertical Notes: Prefer Left/Right if space permits
+        let isLeft = sX < sideThreshold;
+        let isRight = (containerWidth - (sX + sW)) < sideThreshold;
+        
+           if (isVertical) {
+              // If vertical, force side unless completely blocked
+              // Prefer the side with MORE space
+              const spaceRight = containerWidth - (sX + sW);
+              
+              if (spaceRight > 160) {
+                 isRight = false; 
+              }
+           }
+
         return {
           ...note,
           scaledX: sX,
           scaledY: sY,
           scaledWidth: sW,
           scaledHeight: sH,
-          isTopNote: sY < 150,
-          isBottomNote: false, // Reserved for future if needed
-          isLeftNote: sX < 100, // Tooltip ~200-300px wide, half is 100-150. If closer than 100px to left, align left.
-          isRightNote: (containerWidth - (sX + sW)) < 100
+          isVertical,
+          isTopNote: sY < 150 && !isVertical, // Don't force bottom if it's a huge vertical strip
+          isBottomNote: ((sY + sH) > (containerHeight - 100)), 
+          isLeftNote: isLeft, 
+          isRightNote: isRight
         };
       });
     });
@@ -542,6 +581,15 @@ export default {
 
     const toggleNotes = () => {
       notesEnabled.value = !notesEnabled.value;
+    };
+
+    const toggleNote = (note) => {
+      // Toggle note selection for mobile tap
+      if (hoveredNote.value?.id === note.id) {
+        hoveredNote.value = null; // Close if tapping same note
+      } else {
+        hoveredNote.value = note; // Open new note
+      }
     };
 
     const loading = ref(true);
@@ -1178,6 +1226,7 @@ export default {
       scaledNotes,
       getNoteStyle,
       toggleNotes,
+      toggleNote,
       notesEnabled,
       imageElement,
       imageContainer
@@ -2380,6 +2429,43 @@ export default {
   height: 100%;
 }
 
+/* Vertical Note Logic: Center the tooltip vertically relative to the note */
+.note-tooltip.vertical-left {
+   top: 50%;
+   bottom: auto;
+   right: 100%; /* Place to the left of the note */
+   left: auto;
+   transform: translateY(-50%) translateX(-10px);
+}
+
+.note-tooltip.vertical-left::after {
+   top: 50%;
+   left: 100%; /* Arrow points right (to the note) */
+   right: auto;
+   bottom: auto;
+   transform: translateY(-50%);
+   border-color: transparent;
+   border-left-color: rgba(0, 0, 0, 0.95);
+}
+
+.note-tooltip.vertical-right {
+   top: 50%;
+   bottom: auto;
+   left: 100%; /* Place to the right of the note */
+   right: auto;
+   transform: translateY(-50%) translateX(10px);
+}
+
+.note-tooltip.vertical-right::after {
+   top: 50%;
+   right: 100%; /* Arrow points left (to the note) */
+   left: auto;
+   bottom: auto;
+   transform: translateY(-50%);
+   border-color: transparent;
+   border-right-color: rgba(0, 0, 0, 0.95);
+}
+
 .notes-overlay {
   position: absolute;
   top: 0;
@@ -2436,18 +2522,156 @@ export default {
   border-top-color: rgba(0, 0, 0, 0.95);
 }
 
+
 /* Handle HTML content in notes */
 .note-tooltip :deep(*) {
   max-width: 100%;
   box-sizing: border-box;
   white-space: normal !important; /* Force wrap even if style says nowrap */
+  font-size: 14px !important; /* Override inline font sizes (e.g. 55px) */
+  line-height: 1.4 !important;
 }
 
-/* Fix visibility for notes with white/light backgrounds */
+/* Fix properties */
 .note-tooltip :deep([style*="background"]) {
   color: black;
   border-radius: 4px;
 }
+
+/* -------------------------------------------
+   UNIFIED READER MODE (Mobile Sheet + Desktop Card)
+   ------------------------------------------- */
+.note-bottom-sheet {
+  position: fixed;
+  z-index: 2000;
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+.sheet-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.sheet-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0.7;
+}
+
+.sheet-close:hover { opacity: 1; }
+
+.sheet-content {
+  overflow-y: auto;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #eee;
+  padding-right: 5px; 
+}
+
+/* Force content styling */
+.sheet-content :deep(*) {
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  color: #eee !important;
+  background: transparent !important;
+  white-space: normal !important;
+  text-shadow: none !important; /* Remove legacy note outlines */
+  font-family: inherit !important; /* Remove 'comic' fonts */
+  font-weight: 400 !important; /* Reset bold if needed */
+  transform: none !important; /* Remove scaling/rotation */
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: auto !important;
+  width: auto !important;
+}
+
+/* Transitions */
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.slide-up-enter-to,
+.slide-up-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- MOBILE STYLES (Bottom Sheet) --- */
+@media (max-width: 768px) {
+  .note-bottom-sheet {
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    max-height: 40vh;
+  }
+  
+  .slide-up-enter-from,
+  .slide-up-leave-to {
+    transform: translateY(100%);
+  }
+}
+
+/* --- DESKTOP STYLES (Floating Card) --- */
+@media (min-width: 769px) {
+  .note-bottom-sheet {
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%); /* Center horizontally */
+    width: 600px; /* Fixed comfortable reading width */
+    max-width: 90%;
+    border-radius: 12px;
+    padding: 20px;
+    max-height: 200px; /* Limit height so it doesn't cover too much */
+  }
+  
+  /* Override slide transition for desktop fade/slide-up */
+  .slide-up-enter-from,
+  .slide-up-leave-to {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  
+  .slide-up-enter-to,
+  .slide-up-leave-from {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* GLOBAL: Hide old tooltips everywhere */
+.note-tooltip {
+  display: none !important;
+}
+
+
 
 
 .note-tooltip.bottom {
