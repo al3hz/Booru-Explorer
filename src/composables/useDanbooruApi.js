@@ -404,8 +404,93 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     error,
     currentPage,
     hasNextPage,
+    totalPosts,
     searchPosts,
+    loadMore: searchPosts,
     performanceMetrics,
     clearCache: () => cache.clear()
+  }
+}
+
+// Utility functions exported separately for ImageDetailModal
+const apiBaseUrl = 'https://danbooru.donmai.us'
+
+const fetchWithRetry = async (url, options = {}, maxRetries = 3) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options)
+      if (response.ok) return response
+
+      if ([429, 502, 503, 504].includes(response.status)) {
+        if (i < maxRetries - 1) {
+          const delay = Math.pow(2, i) * 1000
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+      }
+      return response
+    } catch (error) {
+      if (i === maxRetries - 1) throw error
+      const delay = Math.pow(2, i) * 1000
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+}
+
+export const getPost = async (id) => {
+  try {
+    const response = await fetchWithRetry(`${apiBaseUrl}/posts/${id}.json`)
+    if (response.ok) {
+      return await response.json()
+    }
+    throw new Error('Failed to fetch post')
+  } catch (error) {
+    console.error('Error fetching post:', error)
+    return null
+  }
+}
+
+export const getTooglePostConfig = () => {
+  return {}
+}
+
+export const getPostComments = async (postId, page = 1, limit = 20) => {
+  try {
+    const response = await fetchWithRetry(
+      `${apiBaseUrl}/comments.json?search[post_id]=${postId}&group_by=comment&limit=${limit}&page=${page}`
+    )
+    if (response.ok) {
+      return await response.json()
+    }
+    return []
+  } catch (error) {
+    console.error('Error fetching comments:', error)
+    return []
+  }
+}
+
+export const getArtist = async (id) => {
+  try {
+    const response = await fetchWithRetry(`${apiBaseUrl}/artists/${id}.json`)
+    if (response.ok) {
+      return await response.json()
+    }
+    throw new Error('Failed to fetch artist')
+  } catch (error) {
+    console.error('Error fetching artist:', error)
+    return null
+  }
+}
+
+export const getNotes = async (postId) => {
+  try {
+    const response = await fetchWithRetry(`${apiBaseUrl}/notes.json?search[post_id]=${postId}&search[is_active]=true`)
+    if (response.ok) {
+      return await response.json()
+    }
+    return []
+  } catch (error) {
+    console.error('Error fetching notes:', error)
+    return []
   }
 }

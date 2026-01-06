@@ -100,28 +100,58 @@
             <div v-if="loading" class="image-loader">
               <div class="loader-spinner"></div>
             </div>
-            <transition :name="transitionName" mode="out-in">
-              <div v-if="isFlash" class="ruffle-container" ref="ruffleContainer"></div>
-              <VideoPlayer
-                v-else-if="isVideo"
-                :key="`vid-${post.id}`"
-                :src="mediaSource"
-                class="detail-image"
-                @loaded="onImageLoad"
-                @error="handleImageError"
-                @click="toggleMobileFullscreen"
-              />
-              <img 
-                v-else
-                :key="`img-${post.id}`"
-                :src="mediaSource || post.preview_file_url" 
-                :alt="`Post ${post.id}`"
-                class="detail-image"
-                @load="onImageLoad"
-                @error="handleImageError"
-                @click="toggleMobileFullscreen"
-              />
-            </transition>
+            
+            <!-- Image Container with Notes -->
+            <div class="image-wrapper" ref="imageContainer">
+              <transition :name="transitionName" mode="out-in">
+                <div v-if="isFlash" class="ruffle-container" ref="ruffleContainer"></div>
+                <VideoPlayer
+                  v-else-if="isVideo"
+                  :key="`vid-${post.id}`"
+                  :src="mediaSource"
+                  class="detail-image"
+                  @loaded="onImageLoad"
+                  @error="handleImageError"
+                  @click="toggleMobileFullscreen"
+                />
+                <img 
+                  v-else
+                  :key="`img-${post.id}`"
+                  :src="mediaSource || post.preview_file_url" 
+                  :alt="`Post ${post.id}`"
+                  class="detail-image"
+                  ref="imageElement"
+                  @load="onImageLoad"
+                  @error="handleImageError"
+                  @click="toggleMobileFullscreen"
+                />
+              </transition>
+              
+              <!-- Interactive Notes Overlay -->
+              <div v-if="notesEnabled && scaledNotes.length > 0 && !isVideo && !isFlash" class="notes-overlay">
+                <div 
+                  v-for="note in scaledNotes" 
+                  :key="note.id" 
+                  class="note-box"
+                  :style="getNoteStyle(note)"
+                  @mouseenter="hoveredNote = note"
+                  @mouseleave="hoveredNote = null"
+                >
+                  <transition name="fade">
+                    <div 
+                      v-if="hoveredNote?.id === note.id" 
+                      class="note-tooltip" 
+                      :class="{ 
+                        'bottom': note.isTopNote,
+                        'left': note.isLeftNote,
+                        'right': note.isRightNote
+                      }"
+                      v-html="note.body"
+                    ></div>
+                  </transition>
+                </div>
+              </div>
+            </div>
             
           </div>
 
@@ -381,7 +411,7 @@
 <script>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { useDanbooruApi } from '../composables/useDanbooruApi';
+import { getNotes } from '../composables/useDanbooruApi';
 import { useDText } from '../composables/useDText';
 import VideoPlayer from './VideoPlayer.vue';
 
@@ -410,11 +440,109 @@ export default {
   emits: ['close', 'next', 'prev', 'search-tag', 'update-post'],
   setup(props, { emit }) {
     const router = useRouter();
-    const { getPost, getTooglePostConfig, getPostComments, getArtist } = useDanbooruApi(); // eslint-disable-line no-unused-vars
     const { parseDText } = useDText();
+    
+    onUnmounted(() => {
+       if (resizeObserver) resizeObserver.disconnect();
+    });
     
     // Pending Overlay Logic
     const showPendingOverlay = ref(true);
+    
+    // Notes Logic
+    const notes = ref([]);
+    const hoveredNote = ref(null);
+    const imageElement = ref(null);
+    const imageContainer = ref(null);
+    const notesEnabled = ref(true);
+
+    // Fetch notes when post changes
+
+
+    // Reactive dimensions to track container resize (e.g. when banner appears)
+    const containerDimensions = ref({ width: 0, height: 0 });
+    let resizeObserver = null;
+
+    // Calculate displayed image dimensions (accounting for object-fit: contain)
+    const getImageDisplayDimensions = () => {
+      const img = imageElement.value;
+      const container = imageContainer.value;
+      
+      // Use reactive dimensions to trigger re-calc
+      const cWidth = containerDimensions.value.width;
+      const cHeight = containerDimensions.value.height;
+
+      if (!img || !container || !props.post.image_width || !props.post.image_height || cWidth === 0 || cHeight === 0) {
+        return { displayWidth: 0, displayHeight: 0, offsetX: 0, offsetY: 0, containerWidth: 0, containerHeight: 0 };
+      }
+
+      // Use the actual container dimensions from observer, fallback to DOM if needed (e.g. initial)
+      const containerWidth = cWidth;
+      const containerHeight = cHeight;
+      
+      const imgRatio = props.post.image_width / props.post.image_height;
+      const containerRatio = containerWidth / containerHeight;
+
+      let displayWidth, displayHeight, offsetX = 0, offsetY = 0;
+
+      if (imgRatio > containerRatio) {
+        // Image is wider - limited by width
+        displayWidth = containerWidth;
+        displayHeight = displayWidth / imgRatio;
+        offsetY = (containerHeight - displayHeight) / 2;
+      } else {
+        // Image is taller - limited by height
+        displayHeight = containerHeight;
+        displayWidth = displayHeight * imgRatio;
+        offsetX = (containerWidth - displayWidth) / 2;
+      }
+
+      return { displayWidth, displayHeight, offsetX, offsetY, containerWidth, containerHeight };
+    };
+
+    // Scale notes to match displayed image
+    const scaledNotes = computed(() => {
+      if (!notes.value.length || !imageReady.value || !props.post.image_width) {
+        return [];
+      }
+
+      const { displayWidth, displayHeight, offsetX, offsetY, containerWidth } = getImageDisplayDimensions();
+      
+      if (displayWidth === 0 || displayHeight === 0) return [];
+
+      const scaleX = displayWidth / props.post.image_width;
+      const scaleY = displayHeight / props.post.image_height;
+
+      return notes.value.map(note => {
+        const sX = note.x * scaleX + offsetX;
+        const sY = note.y * scaleY + offsetY;
+        const sW = note.width * scaleX;
+        const sH = note.height * scaleY;
+        
+        return {
+          ...note,
+          scaledX: sX,
+          scaledY: sY,
+          scaledWidth: sW,
+          scaledHeight: sH,
+          isTopNote: sY < 150,
+          isBottomNote: false, // Reserved for future if needed
+          isLeftNote: sX < 100, // Tooltip ~200-300px wide, half is 100-150. If closer than 100px to left, align left.
+          isRightNote: (containerWidth - (sX + sW)) < 100
+        };
+      });
+    });
+
+    const getNoteStyle = (note) => ({
+      left: `${note.scaledX}px`,
+      top: `${note.scaledY}px`,
+      width: `${note.scaledWidth}px`,
+      height: `${note.scaledHeight}px`
+    });
+
+    const toggleNotes = () => {
+      notesEnabled.value = !notesEnabled.value;
+    };
 
     const loading = ref(true);
     const comments = ref([]);
@@ -731,10 +859,19 @@ export default {
       });
     };
 
-    watch(() => props.post.id, async () => {
-       showPendingOverlay.value = true; // Reset overlay visibility
+    let debounceTimer = null;
+
+    watch(() => props.post.id, async (newId) => {
+       // Reset UI State IMMEDIATELY
+       showPendingOverlay.value = true;
        imageReady.value = false;
        familyReady.value = false;
+       notes.value = []; // Clear notes immediately
+       comments.value = [];
+       hasMoreComments.value = false;
+       commentsPage.value = 1;
+       commentary.value = null;
+       familyPosts.value = [];
        
        if (isFlash.value) {
           imageReady.value = true;
@@ -743,9 +880,17 @@ export default {
          if (ruffleContainer.value) ruffleContainer.value.innerHTML = '';
        }
 
-       fetchComments(false);
-       fetchCommentary();
-       fetchFamily();
+       // Debounce API calls (wait 300ms for navigation to settle)
+       if (debounceTimer) clearTimeout(debounceTimer);
+       
+       if (newId) {
+         debounceTimer = setTimeout(() => {
+            getNotes(newId).then(n => notes.value = n);
+            fetchComments(false);
+            fetchCommentary();
+            fetchFamily();
+         }, 300);
+       }
     }, { immediate: true });
 
     onMounted(() => {
@@ -753,6 +898,19 @@ export default {
           setTimeout(() => loadRuffle(), 100);
        }
        window.addEventListener('keydown', handleKeydown);
+       
+       // Observe container checks
+       if (imageContainer.value) {
+          resizeObserver = new ResizeObserver(entries => {
+            for (const entry of entries) {
+               containerDimensions.value = {
+                 width: entry.contentRect.width,
+                 height: entry.contentRect.height
+               };
+            }
+          });
+          resizeObserver.observe(imageContainer.value);
+       }
        
        // Close dropdown when clicking outside
        document.addEventListener('click', (e) => {
@@ -1013,7 +1171,16 @@ export default {
       onZoomTouchEnd,
       resetZoom,
       translateX,
-      translateY
+      translateY,
+      // Notes
+      notes,
+      hoveredNote,
+      scaledNotes,
+      getNoteStyle,
+      toggleNotes,
+      notesEnabled,
+      imageElement,
+      imageContainer
     };
   }
 }
@@ -2076,6 +2243,8 @@ export default {
 
   .image-section {
     padding: 10px;
+    position: relative;
+    z-index: 5;
   }
   
   /* Fix layout when relationship banner is present */
@@ -2199,6 +2368,127 @@ export default {
     width: 14px;
     height: 14px;
   }
+}
+
+/* Interactive Notes System */
+.image-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.notes-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.note-box {
+  position: absolute;
+  border: 2px solid rgba(255, 200, 0, 0.8);
+  background: rgba(255, 200, 0, 0.15);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  pointer-events: all;
+}
+
+.note-box:hover {
+  background: rgba(255, 200, 0, 0.3);
+  border-color: rgba(255, 200, 0, 1);
+  z-index: 10;
+}
+
+.note-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.95);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  max-width: 300px;
+  min-width: 150px;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  white-space: pre-wrap;
+  z-index: 100;
+  pointer-events: none;
+  word-wrap: break-word; /* Ensure long words break */
+  overflow-wrap: break-word;
+}
+
+.note-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.95);
+}
+
+/* Handle HTML content in notes */
+.note-tooltip :deep(*) {
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal !important; /* Force wrap even if style says nowrap */
+}
+
+/* Fix visibility for notes with white/light backgrounds */
+.note-tooltip :deep([style*="background"]) {
+  color: black;
+  border-radius: 4px;
+}
+
+
+.note-tooltip.bottom {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+
+.note-tooltip.bottom::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: rgba(0, 0, 0, 0.95);
+}
+
+.note-tooltip.left {
+  left: 0;
+  transform: translateX(0);
+}
+
+.note-tooltip.left::after {
+  left: 20px; /* Shift arrow to left side */
+  transform: translateX(0);
+}
+
+.note-tooltip.right {
+  left: auto;
+  right: 0;
+  transform: translateX(0);
+}
+
+.note-tooltip.right::after {
+  left: auto;
+  right: 20px; /* Shift arrow to right side */
+  transform: translateX(0);
+}
+
+/* Ensure detail-image uses contain */
+.detail-image {
+  object-fit: contain !important;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 </style>

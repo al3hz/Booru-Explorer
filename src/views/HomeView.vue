@@ -148,7 +148,7 @@
     <!-- Scroll to Top Button (Masonry Mode) -->
     <Transition name="fade">
       <button
-        v-if="showScrollToTop && isMasonryMode"
+        v-if="showScrollToTop && isMasonryMode && !selectedPost"
         @click="scrollToTop"
         class="scroll-to-top-btn"
         title="Scroll to top"
@@ -342,9 +342,23 @@ export default {
           isLoadingNextPage.value = true;
           const nextPage = currentPage.value + 1;
           try {
-            await handlePageChange(nextPage);
-            if (posts.value.length > 0) {
-              selectedPost.value = posts.value[0];
+            if (isMasonryMode.value) {
+              // Masonry Override: Append posts directly without triggering route change/reset
+              await searchPosts(nextPage, false); // false = append
+              
+              // Select the first post of the new batch (which is at the previous length index)
+              if (posts.value.length > index + 1) {
+                const nextPost = posts.value[index + 1];
+                selectedPost.value = nextPost;
+                lastListPost.value = nextPost;
+              }
+            } else {
+              // Pagination behavior: Replace page
+              await handlePageChange(nextPage);
+              if (posts.value.length > 0) {
+                selectedPost.value = posts.value[0];
+                lastListPost.value = posts.value[0];
+              }
             }
           } finally {
             isLoadingNextPage.value = false;
@@ -484,12 +498,19 @@ export default {
     });
 
     // Keyboard navigation
+    let lastKeyTime = 0;
     const handleKeydown = (e) => {
+      // Throttle key events (max 1 every 150ms)
+      const now = Date.now();
+      if (now - lastKeyTime < 150) return;
+      
       // Ignore if typing in an input or textarea
       const target = e.target;
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable) {
         return;
       }
+      
+      lastKeyTime = now;
 
       const key = e.key.toLowerCase();
 
