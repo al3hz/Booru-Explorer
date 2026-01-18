@@ -225,10 +225,6 @@ div {
   opacity: 0;
 }
 
-/* -------------------------------------------
-   GLASSMORPHISM DESIGN SYSTEM
-   ------------------------------------------- */
-
 /* Standard Glass Effect (Cards, Panels) */
 .glass {
   background: rgba(30, 30, 30, 0.65);
