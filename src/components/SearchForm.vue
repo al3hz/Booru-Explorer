@@ -177,24 +177,39 @@
           </div>
           
           <div class="accordion-content">
+            <div class="time-range-selector">
+              <span class="range-label">Time Range:</span>
+              <div class="range-options">
+                <button 
+                  v-for="range in ['day', 'week', 'month', 'year', 'all']" 
+                  :key="range"
+                  class="range-btn"
+                  :class="{ active: selectedTimeRange === range }"
+                  @click="selectedTimeRange = range"
+                >
+                  {{ range.charAt(0).toUpperCase() + range.slice(1) }}
+                </button>
+              </div>
+            </div>
+
             <div class="actions-grid">
-              <button class="quick-action-btn" @click="$emit('trigger-action', 'most-liked')" title="Most Liked (Month)">
+              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'most-liked' }" @click="onExtraAction('most-liked')" title="Most Liked">
                 <span class="action-icon">❤️</span>
-                <span class="action-label">Likes (M)</span>
+                <span class="action-label">Likes</span>
               </button>
-              <button class="quick-action-btn" @click="$emit('trigger-action', 'most-favorited')" title="Most Favorited (Month)">
+              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'most-favorited' }" @click="onExtraAction('most-favorited')" title="Most Favorited">
                 <span class="action-icon">⭐</span>
-                <span class="action-label">Favs (M)</span>
+                <span class="action-label">Favs</span>
               </button>
-              <button class="quick-action-btn" @click="$emit('trigger-action', 'deleted')" title="Deleted Posts (Month)">
+              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'deleted' }" @click="onExtraAction('deleted')" title="Deleted Posts">
                 <span class="action-icon">🗑️</span>
-                <span class="action-label">Deleted (M)</span>
+                <span class="action-label">Deleted</span>
               </button>
-              <button class="quick-action-btn" @click="$emit('trigger-action', 'random')" title="Random Post">
+              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'random' }" @click="$emit('trigger-action', 'random')" title="Random Post">
                 <span class="action-icon">🎲</span>
                 <span class="action-label">Random</span>
               </button>
-              <button class="quick-action-btn" @click="$emit('trigger-action', 'hot')" title="Trending Posts (Day)">
+              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'hot' }" @click="onExtraAction('hot')" title="Trending Posts (Pulse)">
                 <span class="action-icon">🔥</span>
                 <span class="action-label">Trending</span>
               </button>
@@ -207,7 +222,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDanbooruAutocomplete } from "../composables/useDanbooruAutocomplete";
 import { useDanbooruTrending } from "../composables/useDanbooruTrending";
@@ -225,6 +240,7 @@ export default {
     posts: { type: Array, default: () => [] },
     infiniteScroll: { type: Boolean, default: false },
     masonryMode: { type: Boolean, default: false },
+    activeExtraAction: { type: String, default: null },
   },
   emits: [
     "update:search-query",
@@ -245,6 +261,50 @@ export default {
     
     // Accordion state - default to trending
     const activeSection = ref("trending");
+    const selectedTimeRange = ref("month"); // Default to month
+
+    const syncStateFromRoute = () => {
+      const tags = route.query.tags || "";
+      
+      // Sync Time Range
+      if (tags.includes('age:<1d')) selectedTimeRange.value = 'day';
+      else if (tags.includes('age:<1w')) selectedTimeRange.value = 'week';
+      else if (tags.includes('age:<1month') || tags.includes('age:<1m')) selectedTimeRange.value = 'month';
+      else if (tags.includes('age:<1y')) selectedTimeRange.value = 'year';
+      else if (tags.includes('age:<')) { /* fallback for unknown age */ }
+      else {
+        // Only set to 'all' if we are actually in an "Extra" search
+        if (tags.includes('order:score') || tags.includes('order:favcount') || tags.includes('status:deleted') || tags.includes('order:rank')) {
+          selectedTimeRange.value = 'all';
+        } else {
+          // Reset to default 'month' for normal searches without age filter
+          selectedTimeRange.value = 'month';
+        }
+      }
+
+      // Auto-open Extra section if it's active
+      if (props.activeExtraAction) activeSection.value = 'extra';
+    };
+
+    // Watch for route change to update sidebar UI
+    watch(() => route.query.tags, () => {
+      syncStateFromRoute();
+    });
+
+    onMounted(() => {
+      syncStateFromRoute();
+    });
+    
+    // Auto-trigger the current extra action when range changes
+    watch(selectedTimeRange, (newRange) => {
+      if (props.activeExtraAction) {
+        emit('trigger-action', props.activeExtraAction, newRange);
+      }
+    });
+
+    const onExtraAction = (action) => {
+      emit('trigger-action', action, selectedTimeRange.value);
+    };
     
     const toggleSection = (section) => {
       if (activeSection.value === section) {
@@ -380,11 +440,7 @@ export default {
         .map(t => t.trim())
         .filter(t => t.length > 0 && !t.startsWith('rating:') && !t.startsWith('order:') && !t.startsWith('status:') && !t.startsWith('age:') && !t.startsWith('-'));
       
-      if (tags.length > 2) {
-        // Emit error to parent
-        emit('search-error', `You can only search up to 2 tags at a time. You entered ${tags.length} tags: ${tags.join(', ')}`);
-        return;
-      }
+      // Smart Search enabled: We handle >2 tags in the service now.
       
       // Update URL and scroll to top when search button is clicked
       if (trimmedQuery) {
@@ -455,6 +511,8 @@ export default {
       // Accordion
       activeSection,
       toggleSection,
+      selectedTimeRange,
+      onExtraAction,
       
       // Rating Logic
       ratingDropdownOpen,
@@ -1417,6 +1475,55 @@ export default {
   transform: translateY(-5px);
 }
 
+/* Time Range Selector */
+.time-range-selector {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.range-label {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.range-options {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.range-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 6px 0;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  text-transform: capitalize;
+}
+
+.range-btn:hover {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.range-btn.active {
+  background: #a78bfa;
+  color: #16161d;
+  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.3);
+}
+
 /* Quick Actions */
 .actions-grid {
   display: grid;
@@ -1453,6 +1560,17 @@ export default {
   border-color: rgba(167, 139, 250, 0.3);
   color: #fff;
   transform: translateY(-2px);
+}
+
+.quick-action-btn.active {
+  background: #a78bfa;
+  border-color: #a78bfa;
+  color: #16161d;
+  box-shadow: 0 4px 12px rgba(167, 139, 250, 0.4);
+}
+
+.quick-action-btn.active .action-icon {
+  transform: scale(1.1);
 }
 
 .action-icon {

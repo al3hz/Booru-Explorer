@@ -1,15 +1,10 @@
-
+import DanbooruService from '../services/danbooru';
 
 export function useWikiSearch() {
-  const apiBaseUrl = '/api/danbooru';
-
   const fetchRecentWikiPages = async (limit = 20) => {
     try {
-      const res = await fetch(`${apiBaseUrl}?url=wiki_pages.json&limit=${limit}&search[order]=updated_at&search[is_deleted]=false`);
-      if (res.ok) {
-        return await res.json();
-      }
-      return [];
+      const data = await DanbooruService.getWikiPages('', limit, 1, 'updated_at');
+      return data || [];
     } catch (e) {
       console.error("Failed to fetch recent wikis:", e);
       return [];
@@ -19,6 +14,7 @@ export function useWikiSearch() {
   const fetchWikiAutocomplete = async (query) => {
     if (!query || query.length < 2) return [];
     try {
+      const apiBaseUrl = '/api/danbooru';
       const params = new URLSearchParams({
         'search[query]': query,
         'search[type]': 'wiki_page',

@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import DanbooruService from '../services/danbooru';
 
 // Global cache to persist across component mounts
 const cache = {
@@ -47,13 +48,10 @@ export function useDanbooruTrending() {
     try {
       // Fetch last 100 posts to analyze recent activity
       // Using 'limit=100' gives us a good sample size for "now"
-      const response = await fetch('/api/danbooru?url=posts.json&limit=100', {
-        signal: abortController.signal
-      });
+      const posts = await DanbooruService.getPosts('', 100);
 
-      if (!response.ok) throw new Error('Failed to fetch trending info');
-
-      const posts = await response.json();
+      // Service returns array directly
+      if (!posts) throw new Error('Failed to fetch trending info');
 
       const tagCounts = {};
 

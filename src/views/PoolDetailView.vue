@@ -170,8 +170,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePoolDetail } from '../composables/usePools';
 import { useDText } from '../composables/useDText';
+
 import ImageDetailModal from '../components/ImageDetailModal.vue';
 import SmartVideo from '../components/SmartVideo.vue';
+import DanbooruService from '../services/danbooru';
 
 export default {
   name: 'PoolDetailView',
@@ -279,9 +281,8 @@ export default {
         if (postId) {
           try {
             // Fetch the post from API
-            const res = await fetch(`/api/danbooru?url=posts/${postId}.json`);
-            if (res.ok) {
-              const post = await res.json();
+            const post = await DanbooruService.getPost(postId);
+            if (post) {
               // Open the post in the modal
               selectedPost.value = post;
               currentPostIndex.value = -1; // Not part of pool navigation

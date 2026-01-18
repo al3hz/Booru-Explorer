@@ -19,6 +19,7 @@
         :posts="posts"
         :infinite-scroll="infiniteScroll"
         :masonry-mode="isMasonryMode"
+        :active-extra-action="activeExtraAction"
         @update:search-query="inputQuery = $event"
         @update:limit="limit = $event"
         @update:rating-filter="ratingFilter = $event"
@@ -49,66 +50,40 @@
           </div>
         </transition>
         
-        <div v-if="appliedQuery === 'status:deleted' || appliedQuery.includes('status:deleted age:<1month')" class="info-banner deleted-mode">
-          <span class="icon">🗑️</span>
-          <span>Showing deleted posts of the month</span>
+        <div v-if="appliedQuery.includes('status:deleted')" class="info-banner deleted-mode">
+          <div class="banner-content">
+            <span class="icon">🗑️</span>
+            <span>Showing deleted posts of the {{ currentRangeFriendlyName }}</span>
+          </div>
           <button class="clear-mode-btn" @click="handleSearch('')" title="Clear filter">✕</button>
         </div>
 
-        <div v-if="appliedQuery === 'order:score' || appliedQuery.includes('order:score age:<1month')" class="likes-mode-container">
+        <div v-if="appliedQuery.includes('order:score')" class="likes-mode-container">
           <div class="info-banner likes-mode">
-            <span class="icon">❤️</span>
-            <span>Showing top posts of the month</span>
-            <button class="info-help-btn" @click="showTimeoutInfo = !showTimeoutInfo" title="Why only a month?">
-              {{ showTimeoutInfo ? 'Hide info' : 'Why a month?' }}
-            </button>
+            <div class="banner-content">
+              <span class="icon">❤️</span>
+              <span>Showing top posts of the {{ currentRangeFriendlyName }}</span>
+            </div>
             <button class="clear-mode-btn" @click="handleSearch('')" title="Clear filter">✕</button>
           </div>
-          <Transition name="expand">
-            <div v-if="showTimeoutInfo" class="timeout-explanation">
-              <strong>Search Timeout Explanation</strong>
-              <p>Some kinds of searches are slower than others on Danbooru. Global rankings (like <code>order:score</code>) are extremely heavy and usually time out.</p>
-              <div class="danbooru-info-box">
-                <p><strong>Danbooru says:</strong> Usually this happens when your search is too complex, or when there aren't many recent posts matching your search.</p>
-                <p>To ensure stability, we automatically apply <code>age:&lt;1month</code>.</p>
-              </div>
-              <p><strong>Tips:</strong></p>
-              <ul>
-                <li><code>order:score age:&lt;1week</code> (Best of the week)</li>
-                <li><code>tag_name order:score</code> (Best of a specific tag)</li>
-              </ul>
-            </div>
-          </Transition>
         </div>
 
-        <div v-if="appliedQuery === 'order:favcount' || appliedQuery.includes('order:favcount age:<1month')" class="favs-mode-container">
+        <div v-if="appliedQuery.includes('order:favcount')" class="favs-mode-container">
           <div class="info-banner favs-mode">
-            <span class="icon">⭐</span>
-            <span>Showing most favorited of the month</span>
-            <button class="info-help-btn" @click="showTimeoutInfo = !showTimeoutInfo" title="Why only a month?">
-              {{ showTimeoutInfo ? 'Hide info' : 'Why a month?' }}
-            </button>
+            <div class="banner-content">
+              <span class="icon">⭐</span>
+              <span>Showing most favorited of the {{ currentRangeFriendlyName }}</span>
+            </div>
             <button class="clear-mode-btn" @click="handleSearch('')" title="Clear filter">✕</button>
           </div>
-          <Transition name="expand">
-            <div v-if="showTimeoutInfo" class="timeout-explanation">
-               <div class="danbooru-info-box">
-                <p><strong>Danbooru says:</strong> Usually this happens when your search is too complex, or when there aren't many recent posts matching your search.</p>
-                <p>To ensure stability, we automatically apply <code>age:&lt;1month</code>.</p>
-              </div>
-              <p><strong>Tips:</strong></p>
-              <ul>
-                <li><code>order:score age:&lt;1week</code> (Best of the week)</li>
-                <li><code>tag_name order:score</code> (Best of a specific tag)</li>
-              </ul>
-            </div>
-          </Transition>
         </div>
 
-        <div v-if="appliedQuery === 'order:rank'" class="trending-mode-container">
+        <div v-if="appliedQuery.includes('order:rank')" class="trending-mode-container">
           <div class="info-banner trending-mode">
-            <span class="icon">🔥</span>
-            <span>Showing trending posts of the day</span>
+            <div class="banner-content">
+              <span class="icon">🔥</span>
+              <span>Showing trending posts of the {{ currentRangeFriendlyName }}</span>
+            </div>
             <button class="clear-mode-btn" @click="handleSearch('')" title="Clear filter">✕</button>
           </div>
         </div>
@@ -168,6 +143,7 @@ import ImageDetailModal from "../components/ImageDetailModal.vue";
 import { useDanbooruApi } from "../composables/useDanbooruApi";
 import { useRatingCounts } from "../composables/useRatingCounts";
 import { useLayout } from "../composables/useLayout";
+import DanbooruService from '../services/danbooru';
 
 export default {
   name: "HomeView",
@@ -197,8 +173,16 @@ export default {
     const showScrollToTop = ref(false);
 
     // Persist rating filter selection
+    // Persist and sync rating filter
     watch(ratingFilter, (newVal) => {
        localStorage.setItem('ratingFilter', newVal);
+       
+       // Update URL if the valve actually changed from the one in route
+       if (newVal !== (route.query.rating || "")) {
+         router.push({
+           query: { ...route.query, rating: newVal || undefined, page: 1 }
+         });
+       }
     });
 
     // State for user preferences (to restore when exiting Masonry)
@@ -220,10 +204,19 @@ export default {
     }
 
     // Persist posts per page limit ONLY if not in Masonry mode
+    // Persist and sync posts per page limit
     watch(limit, (newVal) => {
        if (!isMasonryMode.value) {
            userLimit.value = newVal;
            localStorage.setItem('postsPerPage', newVal);
+       }
+       
+       // Sync with URL if changed
+       const currentUrlLimit = parseInt(route.query.limit) || 20;
+       if (newVal !== currentUrlLimit && !isMasonryMode.value) {
+           router.push({
+             query: { ...route.query, limit: newVal, page: 1 }
+           });
        }
     });
 
@@ -272,9 +265,28 @@ export default {
       // limit already set above
     }
     
+    // Track current page for traditional pagination
+    const currentPageRef = computed(() => parseInt(route.query.page) || 1);
+    
     // useDanbooruApi usa appliedQuery (el valor confirmado)
     const { posts, loading, error, currentPage, hasNextPage, searchPosts } =
-      useDanbooruApi(appliedQuery, limit, ratingFilter);
+      useDanbooruApi(appliedQuery, limit, ratingFilter, infiniteScroll, currentPageRef);
+
+    const currentRangeFriendlyName = computed(() => {
+      if (appliedQuery.value.includes('age:<1d')) return 'day';
+      if (appliedQuery.value.includes('age:<1w')) return 'week';
+      if (appliedQuery.value.includes('age:<1month') || appliedQuery.value.includes('age:<1m')) return 'month';
+      if (appliedQuery.value.includes('age:<1y')) return 'year';
+      return 'all time';
+    });
+
+    const activeExtraAction = computed(() => {
+      if (appliedQuery.value.includes('status:deleted')) return 'deleted';
+      if (appliedQuery.value.includes('order:score')) return 'most-liked';
+      if (appliedQuery.value.includes('order:favcount')) return 'most-favorited';
+      if (appliedQuery.value.includes('order:rank')) return 'hot';
+      return null;
+    });
 
     const parsedTags = computed(() => {
       // Usamos inputQuery o appliedQuery? Para visualizar lo que se busca: appliedQuery
@@ -449,14 +461,31 @@ export default {
           });
         }
         
-        await loadPage(page);
+        // Wait for Vue Query to finish loading the new page
+        // The query key change will trigger the fetch automatically
+        await new Promise(resolve => {
+          let unwatch;
+          const stop = () => { if (unwatch) unwatch(); };
+          
+          unwatch = watch(loading, (isLoading) => {
+            if (!isLoading) {
+              stop();
+              resolve();
+            }
+          }, { immediate: true });
+          
+          // If immediate callback fired (sync), unwatch wasn't ready then.
+          // Stop it now if we are already done.
+          if (!loading.value) {
+            stop();
+          }
+        });
         
         if (!selectedPost.value) {
            window.scrollTo({ top: 0, behavior: "smooth" });
         }
       } finally {
         // Reset flag after navigation is complete
-        // Small delay to ensure watcher fired and was ignored
         setTimeout(() => {
           isManualNavigation.value = false;
         }, 100);
@@ -485,7 +514,6 @@ export default {
     // Watch para cambios en ratingFilter o limit
     // Estos refrescan la búsqueda ACTUAL (appliedQuery), no lo que se esté escribiendo pendiente
     watch([ratingFilter, limit], () => {
-      currentPage.value = 1;
       searchPosts(1, true);
       // Update URL to include new rating
       router.push({ 
@@ -569,10 +597,8 @@ export default {
       // Initialize page from URL
       const initialPage = parseInt(route.query.page) || 1;
 
-      Promise.all([
-        searchPosts(initialPage, true),
-        fetchRatingCounts(normalizedQuery)
-      ]);
+      // Execute initial count fetch (searchPosts will trigger automatically because appliedQuery initialized)
+      fetchRatingCounts(normalizedQuery);
       
       // Update URL to include rating if not present
       if (!route.query.rating && ratingFilter.value) {
@@ -590,43 +616,34 @@ export default {
       window.addEventListener('scroll', handleScroll);
     });
 
-    // Watch for route query changes (navigation from other views or same view)
-    watch(() => route.query.tags, (newTags) => {
+    // Unified watch for route query changes
+    watch(() => route.query, (newQuery) => {
+      const normalizedTags = newQuery.tags || "";
+      const newRating = newQuery.rating || ""; // Default ""
+      const newLimit = parseInt(newQuery.limit) || (isMasonryMode.value ? 75 : userLimit.value);
+      
       // Update internal states to match URL
-      const normalizedTags = newTags || "";
-      
-      // Validate tag count (max 2 tags for non-premium users)
-      const tags = normalizedTags
-        .split(/[,，\s]+/)
-        .map(t => t.trim())
-        .filter(t => t.length > 0 && !t.startsWith('rating:') && !t.startsWith('order:') && !t.startsWith('order:') && !t.startsWith('status:') && !t.startsWith('age:') && !t.startsWith('-'));
-      
-      if (tags.length > 2) {
-        error.value = `You can only search up to 2 tags at a time. You entered ${tags.length} tags: ${tags.join(', ')}`;
-        setTimeout(() => {
-          error.value = null;
-        }, 5000);
-        // Reset to previous valid query
-        inputQuery.value = appliedQuery.value;
-        return;
+      if (appliedQuery.value !== normalizedTags) {
+        inputQuery.value = normalizedTags;
+        appliedQuery.value = normalizedTags;
+        isRandomMode.value = false;
+        
+        // Fetch counts only when tags change
+        const normalizedQueryForCounts = normalizedTags
+          .split(/[,，\s]+/)
+          .filter(t => t.trim())
+          .join(' ');
+        fetchRatingCounts(normalizedQueryForCounts);
       }
       
-      inputQuery.value = normalizedTags;
-      appliedQuery.value = normalizedTags;
-      isRandomMode.value = false;
-      currentPage.value = 1;
+      if (ratingFilter.value !== newRating) {
+        ratingFilter.value = newRating;
+      }
       
-      // Execute fresh parallel search and count fetch
-      const normalizedQueryForCounts = normalizedTags
-        .split(/[,，\s]+/)
-        .filter(t => t.trim())
-        .join(' ');
-      
-      Promise.all([
-        searchPosts(1, true),
-        fetchRatingCounts(normalizedQueryForCounts)
-      ]);
-    });
+      if (limit.value !== newLimit) {
+        limit.value = newLimit;
+      }
+    }, { deep: true });
 
     // Watch for page changes in URL (e.g. Back Button)
     watch(() => route.query.page, (newPage) => {
@@ -677,26 +694,32 @@ export default {
        }
     };
 
-    const handleAction = async (action) => {
+    const handleAction = async (action, timeRange) => {
+      let ageFilter = '';
+      if (timeRange && timeRange !== 'all') {
+        const mapping = {
+          day: 'age:<1d',
+          week: 'age:<1w',
+          month: 'age:<1month',
+          year: 'age:<1y'
+        };
+        ageFilter = mapping[timeRange] || '';
+      }
+
       if (action === 'deleted') {
-        handleSearch('status:deleted');
+        handleSearch(`status:deleted ${ageFilter}`.trim());
       } else if (action === 'most-liked') {
-        handleSearch('order:score');
+        handleSearch(`order:score ${ageFilter}`.trim());
       } else if (action === 'most-favorited') {
-        handleSearch('order:favcount');
+        handleSearch(`order:favcount ${ageFilter}`.trim());
       } else if (action === 'hot') {
-        handleSearch('order:rank');
+        handleSearch(`order:rank ${ageFilter}`.trim()); // Hot is inherently time-based (trending)
       } else if (action === 'random') {
         isRandomMode.value = true;
         try {
-          // Usamos el endpoint dedicado /posts/random.json que es más rápido y no failea por timeout
-          const res = await fetch(`/api/danbooru?url=posts/random.json`);
-          if (res.ok) {
-            const data = await res.json();
-            // Este endpoint devuelve un solo objeto, no un array
-            if (data && data.id) {
-              selectedPost.value = data;
-            }
+          const post = await DanbooruService.getRandomPost();
+          if (post) {
+            selectedPost.value = post;
           }
         } catch (e) {
           console.error("Error fetching random post", e);
@@ -741,9 +764,10 @@ export default {
       ratingCounts,
       isSidebarVisible,
       toggleSidebar,
-      isLoadingNextPage,
       showScrollToTop,
-      scrollToTop
+      scrollToTop,
+      currentRangeFriendlyName,
+      activeExtraAction
     };
   },
 };
@@ -786,9 +810,17 @@ export default {
     margin-bottom: 20px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 12px;
     font-size: 14px;
     font-weight: 500;
+    position: relative;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .info-banner.deleted-mode {
@@ -816,7 +848,8 @@ export default {
 }
 
 .clear-mode-btn {
-  margin-left: auto;
+  position: absolute;
+  right: 16px;
   background: transparent;
   border: none;
   color: inherit;

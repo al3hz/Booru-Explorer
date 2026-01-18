@@ -17,26 +17,36 @@ export default async function handler(request, response) {
     try {
         const res = await fetch(danbooruUrl, {
             headers: {
-                'User-Agent': 'Booru-Explorer/1.0 (PROYECTO_EDUCATIVO)',
+                'User-Agent': 'Booru-Explorer/1.0 (Educational Project; al3hz)',
                 'Content-Type': 'application/json',
             },
         });
 
-        // Si Danbooru nos limita (429), devolvemos el error tal cual
-        if (res.status === 429) {
-            return response.status(429).json({ error: 'Danbooru Rate Limit Exceeded' });
+        // Handle errors from Danbooru
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`Danbooru Error ${res.status}:`, errorText.slice(0, 500));
+
+            // Try to parse as JSON if possible, otherwise return generic
+            try {
+                const errorJson = JSON.parse(errorText);
+                return response.status(res.status).json(errorJson);
+            } catch (e) {
+                return response.status(res.status).json({
+                    error: `Danbooru API returned ${res.status}`,
+                    message: errorText.slice(0, 200)
+                });
+            }
         }
 
         const data = await res.json();
 
         // Configurar Cache-Control
-        // s-maxage=300 -> 5 minutos en CDN Vercel
-        // stale-while-revalidate=60 -> sirve contenido viejo por 1 min extra mientras revalida
         response.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
 
-        return response.status(res.status).json(data);
+        return response.status(200).json(data);
     } catch (error) {
         console.error('Error proxying to Danbooru:', error);
-        return response.status(500).json({ error: 'Internal Server Error' });
+        return response.status(500).json({ error: 'Internal Server Error', message: error.message });
     }
 }

@@ -160,6 +160,7 @@
         <div v-if="loading" class="spinner-dots">
           <span></span><span></span><span></span>
         </div>
+        <p v-if="loading" class="loading-text">Loading more posts...</p>
       </div>
 
       <div class="results-meta" role="status">
@@ -256,7 +257,7 @@ const setupIntersectionObserver = () => {
       }
     },
     {
-      rootMargin: "1200px", // Trigger much earlier to prevent empty space
+      rootMargin: "5000px", // Load 5000px ahead to handle tall posts in masonry layout
       threshold: 0.1
     }
   );
@@ -305,24 +306,22 @@ watch(
 
 const getPageNumbers = () => {
   const pages = [];
-  const maxVisible = 5;
   
-  if (props.currentPage <= maxVisible) {
-    // Mostrar primeras páginas
-    for (let i = 1; i <= Math.min(maxVisible, props.currentPage + 2); i++) {
+  // Show base pages (current and previous)
+  if (props.currentPage <= 3) {
+    for (let i = 1; i <= props.currentPage; i++) {
       pages.push(i);
     }
   } else {
-    // Mostrar páginas alrededor de la actual
-    pages.push(1, '...');
-    for (let i = props.currentPage - 2; i <= props.currentPage + 2; i++) {
-      if (i > 1 && i <= props.currentPage + 2) {
-        pages.push(i);
-      }
+    pages.push(1);
+    if (props.currentPage > 4) pages.push('...');
+    for (let i = props.currentPage - 2; i <= props.currentPage; i++) {
+      if (i > 1) pages.push(i);
     }
   }
-  
-  if (props.hasNextPage && !pages.includes(props.currentPage + 1)) {
+
+  // Only show the very next page IF hasNextPage is true
+  if (props.hasNextPage) {
     pages.push(props.currentPage + 1);
   }
   

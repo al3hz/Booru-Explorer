@@ -1,206 +1,169 @@
-import { ref } from 'vue';
 
+import { ref, computed } from 'vue';
+import { useQuery, useInfiniteQuery } from '@tanstack/vue-query';
+import DanbooruService from '../services/danbooru';
+
+// --- Pool List Logic ---
 export function usePools() {
-  const pools = ref([]);
-  const loading = ref(false);
-  const error = ref(null);
   const currentPage = ref(1);
-  const hasNextPage = ref(true);
+  const currentFilters = ref({});
 
+  const queryKey = computed(() => {
+    return ['pools', { page: currentPage.value, ...currentFilters.value }];
+  });
 
+  const {
+    data: poolsData,
+    isFetching,
+    isError,
+    error
+  } = useQuery({
+    queryKey,
+    queryFn: async ({ queryKey }) => {
+      const [_key, params] = queryKey;
+      const { page, ...filters } = params;
 
-  const fetchPools = async (page = 1, filters = {}) => {
-    loading.value = true;
-    error.value = null;
+      // Fetch pools
+      const pools = await DanbooruService.getPools(filters.name || '', page, 20);
 
-    try {
-      let url = `/api/danbooru?url=pools.json&page=${page}&limit=42`;
+      if (!pools || pools.length === 0) return [];
 
-      // Add search params
-      if (filters.name) {
-        url += `&search[name_matches]=*${encodeURIComponent(filters.name)}*`;
-      }
+      // Collect post IDs for covers (prefer first post in pool)
+      const coverPostIds = pools
+        .map(pool => pool.post_ids && pool.post_ids.length > 0 ? pool.post_ids[0] : null)
+        .filter(id => id !== null);
 
-      if (filters.description) {
-        url += `&search[description_matches]=*${encodeURIComponent(filters.description)}*`;
-      }
+      if (coverPostIds.length === 0) return pools;
 
-      if (filters.category) {
-        url += `&search[category]=${filters.category}`;
-      }
+      try {
+        // Batch fetch all cover posts
+        // Danbooru allows fetching by comma-separated IDs
+        // "id:1,2,3"
+        const posts = await DanbooruService.getPosts(`id:${coverPostIds.join(',')}`, 100);
 
-      // Order parameter
-      const orderMap = {
-        'updated_at': 'updated_at',
-        'name': 'name',
-        'created_at': 'created_at',
-        'post_count': 'post_count'
-      };
-      const order = orderMap[filters.order] || 'updated_at';
-      url += `&search[order]=${order}`;
+        // Map posts back to pools
+        const postsMap = new Map(posts.map(p => [p.id, p]));
 
-      const res = await fetch(url);
-
-      if (!res.ok) {
-        throw new Error(`Failed to fetch pools: ${res.status}`);
-      }
-
-      const poolsData = await res.json();
-
-      // Fetch cover images in batches of 5 to balance speed and rate limiting
-      const fetchCover = async (pool) => {
-        if (pool.post_ids && pool.post_ids.length > 0) {
-          try {
-            const firstPostId = pool.post_ids[0];
-            const postRes = await fetch(`/api/danbooru?url=posts/${firstPostId}.json`);
-
-            if (postRes.ok) {
-              const post = await postRes.json();
-              pool.coverUrl = post.large_file_url || post.file_url || post.preview_file_url;
-            } else {
-              pool.coverUrl = null;
+        return pools.map(pool => {
+          if (pool.post_ids && pool.post_ids.length > 0) {
+            const coverId = pool.post_ids[0];
+            const post = postsMap.get(coverId);
+            if (post) {
+              return {
+                ...pool,
+                coverUrl: post.large_file_url || post.file_url || post.preview_url || post.sample_url
+              };
             }
-          } catch {
-            pool.coverUrl = null;
           }
-        } else {
-          pool.coverUrl = null;
-        }
-        return pool;
-      };
-
-      // Process in batches of 5
-      const batchSize = 5;
-      const poolsWithCovers = [];
-
-      for (let i = 0; i < poolsData.length; i += batchSize) {
-        const batch = poolsData.slice(i, i + batchSize);
-        const batchResults = await Promise.all(batch.map(fetchCover));
-        poolsWithCovers.push(...batchResults);
-
-        // Small delay between batches (only if not the last batch)
-        if (i + batchSize < poolsData.length) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
+          return pool;
+        });
+      } catch (err) {
+        console.error("Failed to enrich pools with covers:", err);
+        return pools;
       }
+    },
+    keepPreviousData: true,
+    staleTime: 5 * 60 * 1000
+  });
 
-      pools.value = poolsWithCovers;
-      currentPage.value = page;
-
-      // Check if there are more pages (if we got full batch of 42 items, likely more exist)
-      hasNextPage.value = poolsData.length === 42;
-
-    } catch (e) {
-      console.error('Error fetching pools:', e);
-      error.value = e.message;
-      pools.value = [];
-    } finally {
-      loading.value = false;
-    }
+  const fetchPools = (page, filters) => {
+    currentPage.value = page;
+    currentFilters.value = filters || {};
   };
+
+  const pools = computed(() => {
+    // Enrich with covers logic from before?
+    // The previous `queryFn` did manual cover fetching.
+    // I should probably keep that logic but inside the queryFn ABOVE.
+    return poolsData.value || [];
+  });
+
+  // Re-add cover enrichment if needed? 
+  // It was in the previous file content. I should check line 18-47 of original.
+  // I'll leave it as a TODO or implicitly assume DanbooruService might handle it (it doesn't).
+  // I will move the enrichment logic to a watcher or subsequent effect, OR put it back in `queryFn`.
+  // Putting it in `queryFn` is best.
 
   return {
     pools,
-    loading,
-    error,
+    loading: isFetching,
+    error: computed(() => isError.value ? error.value?.message : null),
     currentPage,
-    hasNextPage,
+    hasNextPage: computed(() => pools.value.length === 20), // Simple check
     fetchPools
   };
 }
 
+// --- Pool Detail Logic ---
 export function usePoolDetail() {
-  const pool = ref(null);
-  const poolPosts = ref([]);
-  const loading = ref(false);
-  const error = ref(null);
-  const loadingProgress = ref({ current: 0, total: 0 });
+  const poolId = ref(null);
+  const enabled = computed(() => !!poolId.value);
 
-  const fetchPoolDetail = async (poolId) => {
-    loading.value = true;
-    error.value = null;
+  const {
+    data: pool,
+    isFetching: poolLoading,
+    error: poolError
+  } = useQuery({
+    queryKey: ['pool', poolId],
+    queryFn: () => DanbooruService.getPool(poolId.value),
+    enabled,
+    staleTime: 5 * 60 * 1000
+  });
 
-    try {
-      // Fetch pool metadata
-      const poolRes = await fetch(`/api/danbooru?url=pools/${poolId}.json`);
+  const {
+    data: postsData,
+    isFetching: postsLoading,
+    isFetchingNextPage: postsLoadingNext,
+    fetchNextPage,
+    hasNextPage
+  } = useInfiniteQuery({
+    queryKey: ['pool_posts', poolId],
+    queryFn: async ({ pageParam = 1, queryKey }) => {
+      const [_key, pid] = queryKey;
+      // Use status:any to ensure we don't skip posts that might be deleted but are part of the pool
+      return DanbooruService.getPosts(`pool:${pid} status:any`, 100, pageParam);
+    },
+    enabled,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage || lastPage.length < 100) return undefined;
+      return allPages.length + 1;
+    },
+    staleTime: 5 * 60 * 1000
+  });
 
-      if (!poolRes.ok) {
-        throw new Error('Pool not found');
-      }
-
-      const poolData = await poolRes.json();
-      pool.value = poolData;
-
-      // Fetch pool posts
-      if (poolData.post_ids && poolData.post_ids.length > 0) {
-        const totalPosts = poolData.post_ids.length;
-        const limit = 100;
-        const totalPages = Math.ceil(totalPosts / limit);
-
-        // Initialize progress
-        loadingProgress.value = { current: 0, total: totalPosts };
-
-        // Fetch pages sequentially with delay to avoid rate limiting
-        const allPosts = [];
-
-        for (let page = 1; page <= totalPages; page++) {
-          try {
-            const url = `/api/danbooru?url=posts.json&tags=pool:${poolId}&limit=${limit}&page=${page}`;
-            const res = await fetch(url);
-
-            if (res.ok) {
-              const pageData = await res.json();
-              allPosts.push(...pageData);
-
-              // Update progress
-              loadingProgress.value = {
-                current: allPosts.length,
-                total: totalPosts
-              };
-            } else if (res.status === 429) {
-              // Rate limited - wait longer and retry
-              console.warn(`Rate limited on page ${page}, waiting 2s...`);
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              // Retry this page
-              page--;
-              continue;
-            }
-
-            // Small delay between requests to avoid rate limiting (250ms)
-            if (page < totalPages) {
-              await new Promise(resolve => setTimeout(resolve, 250));
-            }
-          } catch (e) {
-            console.error(`Error fetching page ${page}:`, e);
+  // Auto-fetch all pages
+  import('vue').then(({ watch }) => {
+    watch([hasNextPage, postsLoadingNext, poolId], ([hasMore, isFetching, pid]) => {
+      if (pid && hasMore && !isFetching) {
+        // Small delay to prevent potential call stack issues or race conditions
+        setTimeout(() => {
+          if (hasNextPage.value && !postsLoadingNext.value) {
+            fetchNextPage();
           }
-        }
-
-        // Sort posts according to pool order
-        const sortedPosts = poolData.post_ids
-          .map(id => allPosts.find(p => p.id === id))
-          .filter(p => p !== undefined);
-
-        poolPosts.value = sortedPosts;
-      } else {
-        poolPosts.value = [];
+        }, 100);
       }
+    }, { immediate: true });
+  });
 
-    } catch (e) {
-      console.error('Error fetching pool detail:', e);
-      error.value = e.message;
-      pool.value = null;
-      poolPosts.value = [];
-    } finally {
-      loading.value = false;
-    }
+  const poolPosts = computed(() => {
+    return postsData.value?.pages?.flatMap(page => page) || [];
+  });
+
+  const fetchPoolDetail = (id) => {
+    poolId.value = id;
   };
+
+  const loadingProgress = computed(() => {
+    return { current: poolPosts.value.length, total: pool.value?.post_count || 0 };
+  });
 
   return {
     pool,
     poolPosts,
-    loading,
+    loading: computed(() => poolLoading.value || postsLoading.value || hasNextPage.value || postsLoadingNext.value),
     loadingProgress,
-    error,
-    fetchPoolDetail
+    error: computed(() => poolError.value?.message || null),
+    fetchPoolDetail,
+    loadMorePosts: fetchNextPage
   };
 }

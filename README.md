@@ -4,21 +4,39 @@ An image explorer for Danbooru built with Vue 3 and Vite.
 
 ## Features
 
-- **Advanced Search**: Search for images using Danbooru tags with autocomplete and smart filters.
-- **Responsive Gallery**: Masonry layout with Infinite Scroll, progressive image loading, and Masonry mode toggle.
-- **Immersive Details**: Enhanced modal with zoom/pan support (mobile), swipe navigation, and keyboard shortcuts.
-- **Pools & Collections**: Browse organized collections of posts, comics, and doujinshi series with improved UI.
-- **Community Integration**: View post comments and artist commentary.
-- **Wiki System**: Integrated Danbooru wiki browsing with internal navigation.
-- **Performance**: Optimized rendering, lazy loading, and intelligent background video handling.
-- **Code Quality**: Robust ESLint configuration for Vue 3 and Node.js.
-- **Modern Design**: Clean interface with dark mode, glassmorphism, and smooth transitions.
+- **Smart Search (Advanced Tag Bypass)**: Allows searching with **more than 2 content tags** (overcoming Danbooru's limit for free users) using an "Oversample & Filter" strategy.
+- **Parallel Post-Fill Logic**: Optimized scanning that fetches API pages in **parallel batches** (up to 5 pages at once) to ensure full result pages even with complex filtered queries.
+- **Super Pagination**: Support for custom result limits **above 100**, automatically aggregating multiple API calls into a single seamless gallery.
+- **Enhanced Search Tools**: Dedicated "Extra" actions for Likes, Favs, Deleted, and Trending posts, with integrated **time-range filters** (Day, Week, Month, Year, All Time).
+- **Advanced Navigation Views**:
+  - **Pools Explorer**: Browse and search through Danbooru Pools with specialized layout.
+  - **Comments System**: Integrated view for post comments and artist commentaries.
+  - **Wiki Integration**: Full browsing of Danbooru Wiki pages with internal navigation.
+- **Intelligent Metadata & Analytics**:
+  - **Artist Profiling**: Detailed information, URLs, and specialized commentary.
+  - **Rating Counts**: Real-time statistics of post ratings (General, Safe, etc.) for every search.
+- **Responsive Masonry Gallery**: High-performance layout with progressive pre-loading, infinite scroll, and a dedicated Masonry mode toggle.
+- **Stable Pagination & Persistence**: Intelligent UI controls that maintain 100% synchronization with the URL state, allowing for bookmarkable searches and filters.
+- **Enhanced Immersive Details**: Advanced modal with zoom/pan, keyboard shortcuts (A/D/Arrow Keys), and improved VideoPlayer with auto-rotation.
+- **Safety & Performance**: Default filtering for `status:active` and a Vercel-hosted proxy with `Cache-Control` optimization for maximum speed.
 
 ## Technologies Used
 
 - [Vue 3](https://vuejs.org/) - Progressive JavaScript framework.
-- [Vite](https://vitejs.dev/) - Fast compilation tool.
-- [Lineicons](https://lineicons.com/) - Icon pack.
+- [Vite](https://vitejs.dev/) - Next generation frontend tooling.
+- [@tanstack/vue-query](https://tanstack.com/query/latest/docs/framework/vue/overview) - Powerful asynchronous state management.
+- [Vue Router 4](https://router.vuejs.org/) - Official router for Vue.js.
+- [Lineicons](https://lineicons.com/) - Modern and clean icon set.
+
+## Project Structure
+
+- `api/`: Vercel Serverless Functions acting as a secure, optimized API proxy.
+- `src/views/`: Main page components (Home, Pools, PoolDetail, Wiki, Comments).
+- `src/components/`: Reusable Vue components (SearchForm, PostGallery, ImageDetailModal, etc.).
+- `src/composables/`: Modular logic units (API management, Autocomplete, Layout state).
+- `src/services/`: Centralized `DanbooruService` for all API communications.
+- `src/styles/`: Global CSS design system and theme definitions.
+- `src/main.js`: Application entry point and plugin initialization.
 
 ## Installation
 
@@ -54,13 +72,6 @@ To run the linter (ESLint) and check for code quality issues:
 ```bash
 npm run lint
 ```
-
-## Project Structure
-
-- `src/components`: Vue components (Search, Gallery, Modal, Footer).
-- `src/styles`: Global styles.
-- `src/App.vue`: Root component.
-- `src/main.js`: Application entry point.
 
 ## Versioning
 

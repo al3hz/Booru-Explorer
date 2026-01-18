@@ -13,7 +13,7 @@
           
           <transition :name="transitionName" mode="out-in">
             <VideoPlayer
-              v-if="isVideo"
+              v-if="isVideo && mediaSource"
               :key="`fs-vid-${post.id}`"
               :src="mediaSource"
               class="fullscreen-image"
@@ -106,7 +106,7 @@
               <transition :name="transitionName" mode="out-in">
                 <div v-if="isFlash" class="ruffle-container" ref="ruffleContainer"></div>
                 <VideoPlayer
-                  v-else-if="isVideo"
+                  v-else-if="isVideo && mediaSource"
                   :key="`vid-${post.id}`"
                   :src="mediaSource"
                   class="detail-image"
@@ -430,6 +430,7 @@ import { useRouter } from 'vue-router';
 import { getNotes } from '../composables/useDanbooruApi';
 import { useDText } from '../composables/useDText';
 import VideoPlayer from './VideoPlayer.vue';
+import DanbooruService from '../services/danbooru';
 
 export default {
   name: 'ImageDetailModal',
@@ -728,18 +729,16 @@ export default {
       }
       
       try {
-        const res = await fetch(`/api/danbooru?url=comments.json&group_by=comment&search[post_id]=${props.post.id}&limit=${COMMENTS_LIMIT}&page=${commentsPage.value}`);
-        if (res.ok) {
-          const newComments = await res.json();
-          if (append) {
-            comments.value = [...comments.value, ...newComments];
-          } else {
-            comments.value = newComments;
-          }
-          
-          // If we got fewer items than limit, we've reached the end
-          hasMoreComments.value = newComments.length === COMMENTS_LIMIT;
+        const newComments = await DanbooruService.getComments(props.post.id, commentsPage.value, COMMENTS_LIMIT);
+        
+        if (append) {
+          comments.value = [...comments.value, ...newComments];
+        } else {
+          comments.value = newComments;
         }
+        
+        // If we got fewer items than limit, we've reached the end
+        hasMoreComments.value = newComments.length === COMMENTS_LIMIT;
       } catch (e) {
         console.error("Error fetching comments", e);
       } finally {
@@ -763,12 +762,9 @@ export default {
       commentary.value = null;
 
       try {
-        const res = await fetch(`/api/danbooru?url=artist_commentaries.json&search[post_id]=${props.post.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.length > 0) {
-            commentary.value = data[0];
-          }
+        const data = await DanbooruService.getArtistCommentary(props.post.id);
+        if (data && data.length > 0) {
+          commentary.value = data[0];
         }
       } catch (e) {
         console.error("Error fetching commentary", e);
@@ -811,10 +807,21 @@ export default {
        familyLoading.value = true;
        
        try {
-         const tags = `~parent:${rootId} ~id:${rootId}`;
-         const res = await fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(tags)}&limit=20`);
-         if (res.ok) {
-           let data = await res.json();
+         // Use the specific parent:ID search syntax supported by Danbooru
+         const tags = `parent:${rootId} status:any`; 
+         // Note: parent:ID automatically includes the parent and all children
+         // But wait, Danbooru search behavior: parent:123 finds post 123's children.
+         // It does NOT Include the parent itself usually unless we do `parent:123` AND the parent.
+         // A common way to get the whole family is `parent:123` which returns children. 
+         // To get parent + children, we usually do `pool:series` or just manual check.
+         // Actually `parent:123` returns children. 123 itself is not returned.
+         // The original code used `~parent:${rootId} ~id:${rootId}`
+         // This means (parent:rootId OR id:rootId).
+         
+         const tagsForService = `~parent:${rootId} ~id:${rootId}`;
+         const data = await DanbooruService.getPosts(tagsForService, 20);
+         
+         if (data) {
            familyPosts.value = data
             .filter(p => p.file_url || p.large_file_url || p.preview_file_url)
             .sort((a, b) => a.id - b.id);
@@ -868,10 +875,10 @@ export default {
       // For ZIP files (Ugoira animations), browsers can't play the ZIP directly
       // Use the converted video (large_file_url) instead
       if (props.post.file_ext === 'zip') {
-        return props.post.large_file_url || props.post.file_url;
+        return props.post.large_file_url || props.post.file_url || '';
       }
       // For everything else, prioritize original quality
-      return props.post.file_url || props.post.large_file_url;
+      return props.post.file_url || props.post.large_file_url || '';
     });
 
     const isVideo = computed(() => {

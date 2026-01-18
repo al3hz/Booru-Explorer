@@ -190,6 +190,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useDText } from '../composables/useDText';
 import ImageDetailModal from '../components/ImageDetailModal.vue';
 import { useWikiSearch } from '../composables/useWikiSearch';
+import DanbooruService from '../services/danbooru';
 
 export default {
   name: 'WikiView',
@@ -232,9 +233,7 @@ export default {
     const submitWikiSearch = (tag) => {
         const query = tag || wikiSearchQuery.value;
         if (!query) return;
-        
         showAutocomplete.value = false;
-        // Don't clear query, keep it as requested by user
         router.push({ name: 'wiki', params: { query: query } });
     };
 
@@ -248,7 +247,6 @@ export default {
         recentChanges.value = await fetchRecentWikiPages();
     });
 
-    // Helpers
     const isVideo = (post) => {
       const ext = post.file_ext;
       if (['mp4', 'webm', 'gifv'].includes(ext)) return true;
@@ -275,16 +273,14 @@ export default {
         try {
             const normalizedTag = normalizeTag(tag);
             const searchTags = normalizedTag ? `${normalizedTag} -status:deleted` : '-status:deleted';
-            const res = await fetch(`/api/danbooru?url=posts.json&tags=${encodeURIComponent(searchTags)}&limit=20`);
-            if (res.ok) {
-                const postsArr = await res.json();
-                const validPosts = postsArr.filter(p => {
-                    const preview = getPostPreview(p);
-                    if ((p.is_banned || p.is_deleted) && !preview) return false;
-                    return preview !== '';
-                });
-                return validPosts.slice(0, 4);
-            }
+            const postsArr = await DanbooruService.getPosts(searchTags, 20);
+            
+            const validPosts = postsArr.filter(p => {
+                const preview = getPostPreview(p);
+                if ((p.is_banned || p.is_deleted) && !preview) return false;
+                return preview !== '';
+            });
+            return validPosts.slice(0, 4);
         } catch (e) {
             console.error('Failed to fetch previews', e);
         }
@@ -295,7 +291,6 @@ export default {
         const container = wikiTextContainer.value || document.querySelector('.wiki-text') || document;
         const postStubs = container.querySelectorAll('.dtext-post-stub');
         const assetStubs = container.querySelectorAll('.dtext-asset-stub');
-        
         
         if (postStubs.length === 0 && assetStubs.length === 0) return;
         
@@ -308,55 +303,43 @@ export default {
                 const chunk = uniqueIds.slice(i, i + chunkSize);
                 const idQuery = 'id:' + chunk.join(',');
                 try {
-                    const res = await fetch(`/api/danbooru?url=posts.json&tags=${encodeURIComponent(idQuery)}&limit=100`);
-                    if (res.ok) {
-                        const postsData = await res.json();
-                        postsData.forEach(p => { wikiInlinePosts.value[p.id] = p; });
-                        postStubs.forEach(stub => {
-                            const pid = stub.dataset.postId;
-                            if (chunk.includes(pid)) {
-                                const post = wikiInlinePosts.value[pid];
-                                if (post) {
-                                    const previewUrl = getPostPreview(post);
-                                    if (previewUrl) {
-                                        const img = document.createElement('img');
-                                        img.src = previewUrl;
-                                        img.className = 'dtext-post-preview';
-                                        img.dataset.postId = pid;
-                                        img.loading = 'lazy';
-                                        img.title = `Post #${pid}`;
-                                        img.onclick = () => openPost(post); 
-                                        
-                                        // Layout fix: Add class to parent for centering
-                                        if (stub.parentElement) {
-                                            stub.parentElement.classList.add('dtext-gallery-layout');
-                                            
-                                            // Grid layout fix: Add class to list item container (grandparent)
-                                            if (stub.parentElement.parentElement && 
-                                                stub.parentElement.parentElement.classList.contains('dtext-list-item')) {
-                                                stub.parentElement.parentElement.classList.add('gallery-grid-item');
-                                            }
-
-                                            // Optional: Clean up leading ": " from next text node if present
-                                            const next = stub.nextSibling;
-                                            if (next && next.nodeType === 3) { // Text node
-                                                const text = next.textContent;
-                                                if (text.trim().startsWith(':')) {
-                                                    next.textContent = text.replace(/^\s*:\s*/, '');
-                                                }
-                                            }
+                    const postsData = await DanbooruService.getPosts(idQuery, 100);
+                    postsData.forEach(p => { wikiInlinePosts.value[p.id] = p; });
+                    
+                    postStubs.forEach(stub => {
+                        const pid = stub.dataset.postId;
+                        if (chunk.includes(pid)) {
+                            const post = wikiInlinePosts.value[pid];
+                            if (post) {
+                                const previewUrl = getPostPreview(post);
+                                if (previewUrl) {
+                                    const img = document.createElement('img');
+                                    img.src = previewUrl;
+                                    img.className = 'dtext-post-preview';
+                                    img.dataset.postId = pid;
+                                    img.loading = 'lazy';
+                                    img.title = `Post #${pid}`;
+                                    img.onclick = () => openPost(post); 
+                                    if (stub.parentElement) {
+                                        stub.parentElement.classList.add('dtext-gallery-layout');
+                                        if (stub.parentElement.parentElement && stub.parentElement.parentElement.classList.contains('dtext-list-item')) {
+                                            stub.parentElement.parentElement.classList.add('gallery-grid-item');
                                         }
-
-                                        stub.replaceWith(img);
-                                    } else {
-                                        stub.textContent = `[Post #${pid} - No preview]`;
+                                        const next = stub.nextSibling;
+                                        if (next && next.nodeType === 3) {
+                                            const text = next.textContent;
+                                            if (text.trim().startsWith(':')) next.textContent = text.replace(/^\s*:\s*/, '');
+                                        }
                                     }
+                                    stub.replaceWith(img);
                                 } else {
-                                    stub.textContent = `[Post #${pid} not found]`;
+                                    stub.textContent = `[Post #${pid} - No preview]`;
                                 }
+                            } else {
+                                stub.textContent = `[Post #${pid} not found]`;
                             }
-                        });
-                    }
+                        }
+                    });
                 } catch (e) { console.error('[WikiView] Post hydration failed', e); }
             }
         }
@@ -368,73 +351,60 @@ export default {
             const chunkSize = 50;
             for (let i = 0; i < uniqueIds.length; i += chunkSize) {
                 const chunk = uniqueIds.slice(i, i + chunkSize);
-                // Danbooru media_assets API supports search[id]=id1,id2
                 try {
-                    const res = await fetch(`/api/danbooru?url=media_assets.json&search[id]=${chunk.join(',')}&limit=100`);
-                    if (res.ok) {
-                        const assetsData = await res.json();
-                        assetsData.forEach(a => { wikiInlineAssets.value[a.id] = a; });
-                        assetStubs.forEach(stub => {
-                            const aid = stub.dataset.assetId;
-                            if (chunk.includes(aid)) {
-                                const asset = wikiInlineAssets.value[aid];
-                                if (asset) {
-                                    // Media assets have variants. Find a preview.
-                                    let previewUrl = '';
-                                    if (asset.variants) {
-                                        const pref = asset.variants.find(v => (v.type === '360x360' || v.type === '180x180' || v.type === '720x720'));
-                                        if (pref) previewUrl = pref.url;
-                                    }
-                                    
-                                    if (previewUrl) {
-                                        const img = document.createElement('img');
-                                        img.src = previewUrl;
-                                        img.className = 'dtext-post-preview dtext-asset-preview';
-                                        img.dataset.assetId = aid;
-                                        img.loading = 'lazy';
-                                        img.title = `Asset #${aid}`;
-                                        // If asset has a post_id, we can make it clickable to open the post
-                                        if (asset.post_id) {
-                                            img.onclick = async () => {
-                                                // Fetch the post if not in cache
-                                                if (!wikiInlinePosts.value[asset.post_id]) {
-                                                    const pRes = await fetch(`/api/danbooru?url=posts/${asset.post_id}.json`);
-                                                    if (pRes.ok) wikiInlinePosts.value[asset.post_id] = await pRes.json();
-                                                }
-                                                const post = wikiInlinePosts.value[asset.post_id];
-                                                if (post) openPost(post);
-                                            };
-                                        }
-
-                                        // Layout fix
-                                        if (stub.parentElement) {
-                                            stub.parentElement.classList.add('dtext-gallery-layout');
-                                            
-                                            // Grid layout fix
-                                            if (stub.parentElement.parentElement && 
-                                                stub.parentElement.parentElement.classList.contains('dtext-list-item')) {
-                                                stub.parentElement.parentElement.classList.add('gallery-grid-item');
-                                            }
-
-                                            const next = stub.nextSibling;
-                                            if (next && next.nodeType === 3) { 
-                                                const text = next.textContent;
-                                                if (text.trim().startsWith(':')) {
-                                                    next.textContent = text.replace(/^\s*:\s*/, '');
-                                                }
-                                            }
-                                        }
-
-                                        stub.replaceWith(img);
-                                    } else {
-                                        stub.textContent = `[Asset #${aid} - No preview]`;
-                                    }
-                                } else {
-                                    stub.textContent = `[Asset #${aid} not found]`;
+                    const assetsData = await DanbooruService.getMediaAssets(chunk);
+                    assetsData.forEach(a => { wikiInlineAssets.value[a.id] = a; });
+                    
+                    assetStubs.forEach(stub => {
+                        const aid = stub.dataset.assetId;
+                        if (chunk.includes(aid)) {
+                            const asset = wikiInlineAssets.value[aid];
+                            if (asset) {
+                                let previewUrl = '';
+                                if (asset.variants) {
+                                    const pref = asset.variants.find(v => (v.type === '360x360' || v.type === '180x180' || v.type === '720x720'));
+                                    if (pref) previewUrl = pref.url;
                                 }
+                                
+                                if (previewUrl) {
+                                    const img = document.createElement('img');
+                                    img.src = previewUrl;
+                                    img.className = 'dtext-post-preview dtext-asset-preview';
+                                    img.dataset.assetId = aid;
+                                    img.loading = 'lazy';
+                                    img.title = `Asset #${aid}`;
+                                    if (asset.post_id) {
+                                        img.onclick = async () => {
+                                            if (!wikiInlinePosts.value[asset.post_id]) {
+                                                try {
+                                                  const post = await DanbooruService.getPost(asset.post_id);
+                                                  wikiInlinePosts.value[asset.post_id] = post;
+                                                } catch (e) {}
+                                            }
+                                            const post = wikiInlinePosts.value[asset.post_id];
+                                            if (post) openPost(post);
+                                        };
+                                    }
+                                    if (stub.parentElement) {
+                                        stub.parentElement.classList.add('dtext-gallery-layout');
+                                        if (stub.parentElement.parentElement && stub.parentElement.parentElement.classList.contains('dtext-list-item')) {
+                                            stub.parentElement.parentElement.classList.add('gallery-grid-item');
+                                        }
+                                        const next = stub.nextSibling;
+                                        if (next && next.nodeType === 3) {
+                                            const text = next.textContent;
+                                            if (text.trim().startsWith(':')) next.textContent = text.replace(/^\s*:\s*/, '');
+                                        }
+                                    }
+                                    stub.replaceWith(img);
+                                } else {
+                                    stub.textContent = `[Asset #${aid} - No preview]`;
+                                }
+                            } else {
+                                stub.textContent = `[Asset #${aid} not found]`;
                             }
-                        });
-                    }
+                        }
+                    });
                 } catch (e) { console.error('[WikiView] Asset hydration failed', e); }
             }
         }
@@ -447,28 +417,25 @@ export default {
         error.value = '';
         artist.value = null;
         artistUrls.value = [];
-        wikiInlinePosts.value = {}; // Reset inline posts cache
+        wikiInlinePosts.value = {}; 
         
         try {
             let isArtist = false;
-            const artistRes = await fetch(`/api/danbooru?url=artists.json&search[name]=${encodeURIComponent(query)}`);
-            if (artistRes.ok) {
-                const data = await artistRes.json();
-                if (data.length > 0) {
-                    isArtist = true;
-                    artist.value = data[0];
-                    const urlsRes = await fetch(`/api/danbooru?url=artist_urls.json&search[artist_id]=${artist.value.id}`);
-                    if (urlsRes.ok) {
-                        const urlsData = await urlsRes.json();
-                        artistUrls.value = urlsData.sort((a, b) => {
-                           const score = (url) => {
-                               if (url.includes('twitter') || url.includes('x.com')) return 3;
-                               if (url.includes('pixiv')) return 2;
-                               return 1;
-                           };
-                           return score(b.url) - score(a.url);
-                        });
-                    }
+            const artistData = await DanbooruService.getArtistByName(query);
+            
+            if (artistData) {
+                isArtist = true;
+                artist.value = artistData;
+                const urlsData = await DanbooruService.getArtistUrls(artist.value.id);
+                if (urlsData) {
+                    artistUrls.value = urlsData.sort((a, b) => {
+                       const score = (url) => {
+                           if (url.includes('twitter') || url.includes('x.com')) return 3;
+                           if (url.includes('pixiv')) return 2;
+                           return 1;
+                       };
+                       return score(b.url) - score(a.url);
+                    });
                 }
             }
 
@@ -477,15 +444,12 @@ export default {
             let wikiTitle = query;
             let otherNames = [];
             
-            const wikiRes = await fetch(`/api/danbooru?url=wiki_pages.json&search[title]=${encodeURIComponent(query)}`);
-            if (wikiRes.ok) {
-                 const wikiData = await wikiRes.json();
-                 if (wikiData.length > 0) {
-                     wikiBody = wikiData[0].body;
-                     wikiId = wikiData[0].id;
-                     wikiTitle = wikiData[0].title;
-                     otherNames = wikiData[0].other_names || [];
-                 }
+            const wikiData = await DanbooruService.getWikiPage(query);
+            if (wikiData) {
+                 wikiBody = wikiData.body;
+                 wikiId = wikiData.id;
+                 wikiTitle = wikiData.title;
+                 otherNames = wikiData.other_names || [];
             }
             
             const previews = await fetchPreviewPosts(query);
@@ -500,42 +464,23 @@ export default {
                     ? `https://danbooru.donmai.us/wiki_pages/${wikiId}`
                     : (isArtist ? `https://danbooru.donmai.us/artists/${artist.value.id}` : `https://danbooru.donmai.us/posts?tags=${query}`),
                 previewPosts: previews,
-                hasPosts: previews.length > 0 // If we found previews, we definitely have posts
+                hasPosts: previews.length > 0
             };
 
-            // Check if tag exists and has posts to show the button (if not already found via previews)
             if (isArtist) {
-                // Artists usually have posts if they exist in the DB
                  currentView.value.hasPosts = true; 
             } else if (!currentView.value.hasPosts) {
                  try {
-                    // Use normalized tag (underscores) for the exact tag check
                     const normalizedQuery = normalizeTag(query);
-                    const tagRes = await fetch(`/api/danbooru?url=tags.json&search[name]=${encodeURIComponent(normalizedQuery)}`);
-                    if (tagRes.ok) {
-                        const tags = await tagRes.json();
-                        // If tag exists and has posts > 0
-                        if (tags.length > 0 && tags[0].post_count > 0) {
-                             currentView.value.hasPosts = true;
-                        } else {
-                            // Fallback: Try searching for the exact parameter as passed, just in case
-                            if (query !== normalizedQuery) {
-                                const backupRes = await fetch(`/api/danbooru?url=tags.json&search[name]=${encodeURIComponent(query)}`);
-                                if (backupRes.ok) {
-                                    const backupTags = await backupRes.json();
-                                    if (backupTags.length > 0 && backupTags[0].post_count > 0) {
-                                        currentView.value.hasPosts = true;
-                                    }
-                                }
-                            }
-                        }
+                    const count = await DanbooruService.getPostCount(normalizedQuery);
+                    if (count > 0) {
+                         currentView.value.hasPosts = true;
+                    } else if (query !== normalizedQuery) {
+                        const backupCount = await DanbooruService.getPostCount(query);
+                        if (backupCount > 0) currentView.value.hasPosts = true;
                     }
                  } catch (e) { console.warn('Tag check failed', e); }
             }
-            
-            // Trigger hydration via watcher or immediate if needed
-            // The watch will handle most cases beautifully.
-            
         } catch (e) {
             error.value = 'Failed to load information: ' + e.message;
         } finally {
@@ -543,22 +488,11 @@ export default {
         }
     };
 
-    const handleBack = () => {
-        router.go(-1);
-    };
-
-    const openPost = (post) => {
-        selectedPost.value = post;
-    };
-
-    const currentIndex = computed(() => {
-        if (!selectedPost.value || posts.value.length === 0) return -1;
-        return posts.value.findIndex(p => p.id === selectedPost.value.id);
-    });
-
+    const handleBack = () => router.go(-1);
+    const openPost = (post) => { selectedPost.value = post; };
+    const currentIndex = computed(() => !selectedPost.value || posts.value.length === 0 ? -1 : posts.value.findIndex(p => p.id === selectedPost.value.id));
     const canGoNext = computed(() => currentIndex.value >= 0 && currentIndex.value < posts.value.length - 1);
     const canGoPrev = computed(() => currentIndex.value > 0);
-
     const handleNext = () => { if (canGoNext.value) selectedPost.value = posts.value[currentIndex.value + 1]; };
     const handlePrev = () => { if (canGoPrev.value) selectedPost.value = posts.value[currentIndex.value - 1]; };
     
@@ -574,20 +508,17 @@ export default {
             const link = e.target.dataset.link;
             if(link) router.push({ name: 'wiki', params: { query: link } });
         }
-
         if(e.target.classList.contains('status-link')) {
             const tag = e.target.dataset.tag;
             if(tag) router.push({ name: 'home', query: { tags: tag } });
         }
-
         if (e.target.classList.contains('post-link')) {
             const pid = e.target.dataset.postId;
             if (pid) {
                 if (wikiInlinePosts.value[pid]) {
                     openPost(wikiInlinePosts.value[pid]);
                 } else {
-                    fetch(`/api/danbooru?url=posts/${pid}.json`)
-                        .then(res => res.json())
+                    DanbooruService.getPost(pid)
                         .then(post => {
                             wikiInlinePosts.value[pid] = post;
                             openPost(post);
@@ -596,7 +527,6 @@ export default {
                 }
             }
         }
-        
         if(e.target.classList.contains('dtext-anchor')) {
             e.preventDefault();
             const anchorId = e.target.dataset.anchor;
@@ -611,7 +541,6 @@ export default {
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
-
         if (e.target.classList.contains('accordion-checkbox') && e.type === 'change') {
             if (e.target.checked) {
                 const container = e.target.closest('.wiki-text');
@@ -621,7 +550,6 @@ export default {
                 }
             }
         }
-        
         const postElement = e.target.closest('.dtext-post-preview');
         if (postElement) {
              const postId = postElement.dataset.postId;
@@ -656,14 +584,11 @@ export default {
     watch(() => route.params.query, (newQuery) => {
         if (route.name === 'wiki') {
             loadData(newQuery);
-            // Also update the sidebar input to reflect the current page
             if (newQuery) wikiSearchQuery.value = newQuery;
-            // Scroll to top on navigation
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }, { immediate: true });
 
-    // Stop background videos when modal is open
     watch(selectedPost, (val) => {
         const videos = document.querySelectorAll('.wiki-view video');
         videos.forEach(v => {
@@ -672,11 +597,9 @@ export default {
         });
     });
 
-    // Watch for currentView changes to trigger hydration
     watch(currentView, (newVal) => {
         if (newVal) {
             nextTick(() => {
-                // We use a small delay to allow v-html and transitions to settle
                 setTimeout(hydrateWikiPosts, 800);
             });
         }

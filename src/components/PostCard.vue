@@ -29,14 +29,12 @@
       </template>
       
       <template v-else>
-        <img
+        <SmartImage
           :src="currentSrc"
           :alt="post.tag_string_general"
-          :width="post.image_width"
-          :height="post.image_height"
+          :aspect-ratio="post.image_width / post.image_height"
           class="card-image"
-          :loading="priority ? 'eager' : 'lazy'"
-          :decoding="priority ? 'auto' : 'async'"
+          :priority="priority"
           @error="handleError"
           @load="handleLoad"
         />
@@ -129,6 +127,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import SmartVideo from './SmartVideo.vue';
+import SmartImage from './SmartImage.vue';
 
 const props = defineProps({
   post: {

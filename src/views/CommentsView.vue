@@ -116,6 +116,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ImageDetailModal from '../components/ImageDetailModal.vue';
+import DanbooruService from '../services/danbooru';
 
 export default {
   name: "CommentsView",
@@ -149,25 +150,20 @@ export default {
       error.value = null;
 
       try {
-        const response = await fetch(`/api/danbooru?url=comments.json&group_by=comment&limit=10&page=${page.value}`);
-        if (!response.ok) throw new Error('Failed to fetch comments');
-        const commentsData = await response.json();
+        const commentsData = await DanbooruService.getComments(null, page.value, 10);
         comments.value = commentsData;
 
         const postIds = [...new Set(commentsData.map(c => c.post_id))];
         
         if (postIds.length > 0) {
            const idsQuery = postIds.join(',');
-           const postsResponse = await fetch(`/api/danbooru?url=posts.json&tags=id:${idsQuery}&limit=${postIds.length}`);
+           const postsData = await DanbooruService.getPosts(`id:${idsQuery}`, postIds.length);
            
-           if (postsResponse.ok) {
-             const postsData = await postsResponse.json();
-             const map = {};
-             postsData.forEach(post => {
-               map[post.id] = post;
-             });
-             postsMap.value = map;
-           }
+           const map = {};
+           postsData.forEach(post => {
+             map[post.id] = post;
+           });
+           postsMap.value = map;
         }
 
       } catch (err) {
