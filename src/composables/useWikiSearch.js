@@ -1,11 +1,11 @@
 
 
 export function useWikiSearch() {
-  const apiBaseUrl = 'https://danbooru.donmai.us';
+  const apiBaseUrl = '/api/danbooru';
 
   const fetchRecentWikiPages = async (limit = 20) => {
     try {
-      const res = await fetch(`${apiBaseUrl}/wiki_pages.json?limit=${limit}&search[order]=updated_at&search[is_deleted]=false`);
+      const res = await fetch(`${apiBaseUrl}?url=wiki_pages.json&limit=${limit}&search[order]=updated_at&search[is_deleted]=false`);
       if (res.ok) {
         return await res.json();
       }
@@ -25,7 +25,7 @@ export function useWikiSearch() {
         'version': '3',
         'limit': '10'
       });
-      const res = await fetch(`${apiBaseUrl}/autocomplete.json?${params.toString()}`);
+      const res = await fetch(`${apiBaseUrl}?url=autocomplete.json&${params.toString()}`);
       if (res.ok) {
         return await res.json();
       }

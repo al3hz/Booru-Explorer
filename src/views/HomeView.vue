@@ -690,7 +690,7 @@ export default {
         isRandomMode.value = true;
         try {
           // Usamos el endpoint dedicado /posts/random.json que es más rápido y no failea por timeout
-          const res = await fetch(`https://danbooru.donmai.us/posts/random.json`);
+          const res = await fetch(`/api/danbooru?url=posts/random.json`);
           if (res.ok) {
             const data = await res.json();
             // Este endpoint devuelve un solo objeto, no un array

@@ -279,7 +279,7 @@ export default {
         if (postId) {
           try {
             // Fetch the post from API
-            const res = await fetch(`https://danbooru.donmai.us/posts/${postId}.json`);
+            const res = await fetch(`/api/danbooru?url=posts/${postId}.json`);
             if (res.ok) {
               const post = await res.json();
               // Open the post in the modal

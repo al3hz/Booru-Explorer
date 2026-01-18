@@ -146,7 +146,7 @@ export default {
         try {
             const normalizedTag = normalizeTag(tag);
             // Fetch more posts (20) to filter out banned/broken ones
-            const res = await fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(normalizedTag)}&limit=20`);
+            const res = await fetch(`/api/danbooru?url=posts.json&tags=${encodeURIComponent(normalizedTag)}&limit=20`);
             if (res.ok) {
                 const posts = await res.json();
                 
@@ -172,7 +172,7 @@ export default {
       
       try {
         // Fetch Artist Data
-        const res = await fetch(`https://danbooru.donmai.us/artists.json?search[name]=${encodeURIComponent(props.artistName)}`);
+        const res = await fetch(`/api/danbooru?url=artists.json&search[name]=${encodeURIComponent(props.artistName)}`);
         if (!res.ok) throw new Error('Failed to fetch artist');
         
         const data = await res.json();
@@ -181,7 +181,7 @@ export default {
         artist.value = data[0];
         
         // Fetch URLs
-        const urlsRes = await fetch(`https://danbooru.donmai.us/artist_urls.json?search[artist_id]=${artist.value.id}`);
+        const urlsRes = await fetch(`/api/danbooru?url=artist_urls.json&search[artist_id]=${artist.value.id}`);
         if (urlsRes.ok) {
             const urlsData = await urlsRes.json();
             artistUrls.value = urlsData.sort((a, b) => {
@@ -196,7 +196,7 @@ export default {
 
         // Fetch Wiki
         let wikiBody = '';
-        const wikiRes = await fetch(`https://danbooru.donmai.us/wiki_pages.json?search[title]=${encodeURIComponent(props.artistName)}`);
+        const wikiRes = await fetch(`/api/danbooru?url=wiki_pages.json&search[title]=${encodeURIComponent(props.artistName)}`);
         if (wikiRes.ok) {
              const wikiData = await wikiRes.json();
              if (wikiData.length > 0) wikiBody = wikiData[0].body;
@@ -225,7 +225,7 @@ export default {
     const fetchWikiPage = async (title) => {
         loading.value = true;
         try {
-            const res = await fetch(`https://danbooru.donmai.us/wiki_pages.json?search[title]=${encodeURIComponent(title)}`);
+            const res = await fetch(`/api/danbooru?url=wiki_pages.json&search[title]=${encodeURIComponent(title)}`);
             if(!res.ok) throw new Error('Failed to load wiki');
             const data = await res.json();
             

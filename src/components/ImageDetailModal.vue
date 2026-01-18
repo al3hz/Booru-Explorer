@@ -728,7 +728,7 @@ export default {
       }
       
       try {
-        const res = await fetch(`https://danbooru.donmai.us/comments.json?group_by=comment&search[post_id]=${props.post.id}&limit=${COMMENTS_LIMIT}&page=${commentsPage.value}`);
+        const res = await fetch(`/api/danbooru?url=comments.json&group_by=comment&search[post_id]=${props.post.id}&limit=${COMMENTS_LIMIT}&page=${commentsPage.value}`);
         if (res.ok) {
           const newComments = await res.json();
           if (append) {
@@ -763,7 +763,7 @@ export default {
       commentary.value = null;
 
       try {
-        const res = await fetch(`https://danbooru.donmai.us/artist_commentaries.json?search[post_id]=${props.post.id}`);
+        const res = await fetch(`/api/danbooru?url=artist_commentaries.json&search[post_id]=${props.post.id}`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.length > 0) {

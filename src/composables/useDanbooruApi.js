@@ -8,7 +8,7 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
   const hasNextPage = ref(false)
   const totalPosts = ref(0)
 
-  const apiBaseUrl = 'https://danbooru.donmai.us'
+  const apiBaseUrl = '/api/danbooru'
 
   // Mejoras añadidas
   const cache = new Map()
@@ -100,10 +100,11 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
     const params = new URLSearchParams({
       tags: tags,
       limit: limit.value.toString(),
-      page: page.toString()
+      page: page.toString(),
+      url: 'posts.json'
     })
 
-    return `${apiBaseUrl}/posts.json?${params.toString()}`
+    return `${apiBaseUrl}?${params.toString()}`
   }
 
   // Obtener la mejor URL de imagen disponible
@@ -229,8 +230,11 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
         return null
       }
 
-      const params = new URLSearchParams({ tags: tags })
-      const res = await fetch(`${apiBaseUrl}/counts/posts.json?${params.toString()}`)
+      const params = new URLSearchParams({
+        tags: tags,
+        url: 'counts/posts.json'
+      })
+      const res = await fetch(`${apiBaseUrl}?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
         return data.counts && data.counts.posts ? data.counts.posts : null
@@ -413,7 +417,7 @@ export function useDanbooruApi(searchQuery, limit, ratingFilter) {
 }
 
 // Utility functions exported separately for ImageDetailModal
-const apiBaseUrl = 'https://danbooru.donmai.us'
+const apiBaseUrl = '/api/danbooru'
 
 const fetchWithRetry = async (url, options = {}, maxRetries = 3) => {
   for (let i = 0; i < maxRetries; i++) {
@@ -439,7 +443,7 @@ const fetchWithRetry = async (url, options = {}, maxRetries = 3) => {
 
 export const getPost = async (id) => {
   try {
-    const response = await fetchWithRetry(`${apiBaseUrl}/posts/${id}.json`)
+    const response = await fetchWithRetry(`${apiBaseUrl}?url=posts/${id}.json`)
     if (response.ok) {
       return await response.json()
     }
@@ -457,7 +461,7 @@ export const getTooglePostConfig = () => {
 export const getPostComments = async (postId, page = 1, limit = 20) => {
   try {
     const response = await fetchWithRetry(
-      `${apiBaseUrl}/comments.json?search[post_id]=${postId}&group_by=comment&limit=${limit}&page=${page}`
+      `${apiBaseUrl}?url=comments.json&search[post_id]=${postId}&group_by=comment&limit=${limit}&page=${page}`
     )
     if (response.ok) {
       return await response.json()
@@ -471,7 +475,7 @@ export const getPostComments = async (postId, page = 1, limit = 20) => {
 
 export const getArtist = async (id) => {
   try {
-    const response = await fetchWithRetry(`${apiBaseUrl}/artists/${id}.json`)
+    const response = await fetchWithRetry(`${apiBaseUrl}?url=artists/${id}.json`)
     if (response.ok) {
       return await response.json()
     }
@@ -484,7 +488,7 @@ export const getArtist = async (id) => {
 
 export const getNotes = async (postId) => {
   try {
-    const response = await fetchWithRetry(`${apiBaseUrl}/notes.json?search[post_id]=${postId}&search[is_active]=true`)
+    const response = await fetchWithRetry(`${apiBaseUrl}?url=notes.json&search[post_id]=${postId}&search[is_active]=true`)
     if (response.ok) {
       return await response.json()
     }

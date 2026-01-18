@@ -149,7 +149,7 @@ export default {
       error.value = null;
 
       try {
-        const response = await fetch(`https://danbooru.donmai.us/comments.json?group_by=comment&limit=10&page=${page.value}`);
+        const response = await fetch(`/api/danbooru?url=comments.json&group_by=comment&limit=10&page=${page.value}`);
         if (!response.ok) throw new Error('Failed to fetch comments');
         const commentsData = await response.json();
         comments.value = commentsData;
@@ -158,7 +158,7 @@ export default {
         
         if (postIds.length > 0) {
            const idsQuery = postIds.join(',');
-           const postsResponse = await fetch(`https://danbooru.donmai.us/posts.json?tags=id:${idsQuery}&limit=${postIds.length}`);
+           const postsResponse = await fetch(`/api/danbooru?url=posts.json&tags=id:${idsQuery}&limit=${postIds.length}`);
            
            if (postsResponse.ok) {
              const postsData = await postsResponse.json();

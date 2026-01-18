@@ -275,7 +275,7 @@ export default {
         try {
             const normalizedTag = normalizeTag(tag);
             const searchTags = normalizedTag ? `${normalizedTag} -status:deleted` : '-status:deleted';
-            const res = await fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(searchTags)}&limit=20`);
+            const res = await fetch(`/api/danbooru?url=posts.json&tags=${encodeURIComponent(searchTags)}&limit=20`);
             if (res.ok) {
                 const postsArr = await res.json();
                 const validPosts = postsArr.filter(p => {
@@ -308,7 +308,7 @@ export default {
                 const chunk = uniqueIds.slice(i, i + chunkSize);
                 const idQuery = 'id:' + chunk.join(',');
                 try {
-                    const res = await fetch(`https://danbooru.donmai.us/posts.json?tags=${encodeURIComponent(idQuery)}&limit=100`);
+                    const res = await fetch(`/api/danbooru?url=posts.json&tags=${encodeURIComponent(idQuery)}&limit=100`);
                     if (res.ok) {
                         const postsData = await res.json();
                         postsData.forEach(p => { wikiInlinePosts.value[p.id] = p; });
@@ -370,7 +370,7 @@ export default {
                 const chunk = uniqueIds.slice(i, i + chunkSize);
                 // Danbooru media_assets API supports search[id]=id1,id2
                 try {
-                    const res = await fetch(`https://danbooru.donmai.us/media_assets.json?search[id]=${chunk.join(',')}&limit=100`);
+                    const res = await fetch(`/api/danbooru?url=media_assets.json&search[id]=${chunk.join(',')}&limit=100`);
                     if (res.ok) {
                         const assetsData = await res.json();
                         assetsData.forEach(a => { wikiInlineAssets.value[a.id] = a; });
@@ -398,7 +398,7 @@ export default {
                                             img.onclick = async () => {
                                                 // Fetch the post if not in cache
                                                 if (!wikiInlinePosts.value[asset.post_id]) {
-                                                    const pRes = await fetch(`https://danbooru.donmai.us/posts/${asset.post_id}.json`);
+                                                    const pRes = await fetch(`/api/danbooru?url=posts/${asset.post_id}.json`);
                                                     if (pRes.ok) wikiInlinePosts.value[asset.post_id] = await pRes.json();
                                                 }
                                                 const post = wikiInlinePosts.value[asset.post_id];
@@ -451,13 +451,13 @@ export default {
         
         try {
             let isArtist = false;
-            const artistRes = await fetch(`https://danbooru.donmai.us/artists.json?search[name]=${encodeURIComponent(query)}`);
+            const artistRes = await fetch(`/api/danbooru?url=artists.json&search[name]=${encodeURIComponent(query)}`);
             if (artistRes.ok) {
                 const data = await artistRes.json();
                 if (data.length > 0) {
                     isArtist = true;
                     artist.value = data[0];
-                    const urlsRes = await fetch(`https://danbooru.donmai.us/artist_urls.json?search[artist_id]=${artist.value.id}`);
+                    const urlsRes = await fetch(`/api/danbooru?url=artist_urls.json&search[artist_id]=${artist.value.id}`);
                     if (urlsRes.ok) {
                         const urlsData = await urlsRes.json();
                         artistUrls.value = urlsData.sort((a, b) => {
@@ -477,7 +477,7 @@ export default {
             let wikiTitle = query;
             let otherNames = [];
             
-            const wikiRes = await fetch(`https://danbooru.donmai.us/wiki_pages.json?search[title]=${encodeURIComponent(query)}`);
+            const wikiRes = await fetch(`/api/danbooru?url=wiki_pages.json&search[title]=${encodeURIComponent(query)}`);
             if (wikiRes.ok) {
                  const wikiData = await wikiRes.json();
                  if (wikiData.length > 0) {
@@ -511,7 +511,7 @@ export default {
                  try {
                     // Use normalized tag (underscores) for the exact tag check
                     const normalizedQuery = normalizeTag(query);
-                    const tagRes = await fetch(`https://danbooru.donmai.us/tags.json?search[name]=${encodeURIComponent(normalizedQuery)}`);
+                    const tagRes = await fetch(`/api/danbooru?url=tags.json&search[name]=${encodeURIComponent(normalizedQuery)}`);
                     if (tagRes.ok) {
                         const tags = await tagRes.json();
                         // If tag exists and has posts > 0
@@ -520,7 +520,7 @@ export default {
                         } else {
                             // Fallback: Try searching for the exact parameter as passed, just in case
                             if (query !== normalizedQuery) {
-                                const backupRes = await fetch(`https://danbooru.donmai.us/tags.json?search[name]=${encodeURIComponent(query)}`);
+                                const backupRes = await fetch(`/api/danbooru?url=tags.json&search[name]=${encodeURIComponent(query)}`);
                                 if (backupRes.ok) {
                                     const backupTags = await backupRes.json();
                                     if (backupTags.length > 0 && backupTags[0].post_count > 0) {
@@ -586,7 +586,7 @@ export default {
                 if (wikiInlinePosts.value[pid]) {
                     openPost(wikiInlinePosts.value[pid]);
                 } else {
-                    fetch(`https://danbooru.donmai.us/posts/${pid}.json`)
+                    fetch(`/api/danbooru?url=posts/${pid}.json`)
                         .then(res => res.json())
                         .then(post => {
                             wikiInlinePosts.value[pid] = post;

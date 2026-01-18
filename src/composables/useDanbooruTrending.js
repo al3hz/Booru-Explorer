@@ -47,26 +47,26 @@ export function useDanbooruTrending() {
     try {
       // Fetch last 100 posts to analyze recent activity
       // Using 'limit=100' gives us a good sample size for "now"
-      const response = await fetch('https://danbooru.donmai.us/posts.json?limit=100', {
+      const response = await fetch('/api/danbooru?url=posts.json&limit=100', {
         signal: abortController.signal
       });
-      
+
       if (!response.ok) throw new Error('Failed to fetch trending info');
-      
+
       const posts = await response.json();
-      
+
       const tagCounts = {};
 
       posts.forEach(post => {
         if (!post.tag_string) return;
-        
+
         const tags = post.tag_string.split(' ');
         tags.forEach(tag => {
           if (!tag) return;
           if (STOP_WORDS.has(tag)) return;
           // Filter out rating/meta tags often found in tag string but not interesting for trending
-          if (tag.includes(':')) return; 
-          
+          if (tag.includes(':')) return;
+
           tagCounts[tag] = (tagCounts[tag] || 0) + 1;
         });
       });
@@ -78,11 +78,11 @@ export function useDanbooruTrending() {
         .map(([name, count]) => ({ name, count }));
 
       trendingTags.value = sortedTags;
-      
+
       // Update cache
       cache.data = sortedTags;
       cache.timestamp = Date.now();
-      
+
     } catch (err) {
       if (err.name === 'AbortError') {
         // Ignore abort errors
@@ -91,7 +91,7 @@ export function useDanbooruTrending() {
       console.error('Error fetching trending tags:', err);
       errorTrending.value = err.message;
       // Keep old data if available on error? Optional. For now fallback empty.
-      trendingTags.value = []; 
+      trendingTags.value = [];
     } finally {
       loadingTrending.value = false;
       abortController = null;
