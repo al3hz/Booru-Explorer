@@ -228,9 +228,9 @@ const updateColumns = () => {
    windowWidth.value = window.innerWidth;
    
    if (windowWidth.value <= 640) masonryColumns.value = 2; // Mobile 2 cols
-   else if (windowWidth.value <= 768) masonryColumns.value = 2;
-   else if (windowWidth.value <= 1024) masonryColumns.value = 3;
-   else masonryColumns.value = 4;
+   else if (windowWidth.value <= 1024) masonryColumns.value = 3; // Tablets 3 cols
+   else if (windowWidth.value <= 1440) masonryColumns.value = 4; // Laptops 4 cols
+   else masonryColumns.value = 5; // Large screens 5 cols
 };
 
 // Distribute posts into columns for Masonry layout

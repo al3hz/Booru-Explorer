@@ -88,6 +88,16 @@
           </div>
         </div>
 
+        <!-- New Posts Notification -->
+        <transition name="fade-up">
+          <div v-if="hasNewPosts && !loading" class="new-posts-notification">
+            <button @click="handleRefresh" class="new-posts-btn">
+              <span class="icon">✨</span>
+              New images available
+            </button>
+          </div>
+        </transition>
+
 
         <PostGallery
           :posts="posts"
@@ -269,7 +279,7 @@ export default {
     const currentPageRef = computed(() => parseInt(route.query.page) || 1);
     
     // useDanbooruApi usa appliedQuery (el valor confirmado)
-    const { posts, loading, error, currentPage, hasNextPage, searchPosts } =
+    const { posts, loading, error, currentPage, hasNextPage, searchPosts, hasNewPosts, refreshGallery } =
       useDanbooruApi(appliedQuery, limit, ratingFilter, infiniteScroll, currentPageRef);
 
     const currentRangeFriendlyName = computed(() => {
@@ -766,7 +776,12 @@ export default {
       showScrollToTop,
       scrollToTop,
       currentRangeFriendlyName,
-      activeExtraAction
+      activeExtraAction,
+      hasNewPosts,
+      handleRefresh: async () => {
+        await refreshGallery();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     };
   },
 };
@@ -1215,4 +1230,62 @@ export default {
   }
 }
 
+
+/* New Posts Notification */
+.new-posts-notification {
+  position: fixed;
+  bottom: 40px; /* Moved to the bottom */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.new-posts-btn {
+  pointer-events: auto;
+  background: rgba(167, 139, 250, 0.4); /* Slightly more opaque for visibility against images */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 12px 28px;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.new-posts-btn .icon {
+  font-size: 18px;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+}
+
+.new-posts-btn:hover {
+  background: rgba(167, 139, 250, 0.6);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-6px);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5), 0 0 20px rgba(167, 139, 250, 0.3);
+}
+
+.new-posts-btn:active {
+  transform: translateY(-2px);
+}
+
+.fade-up-enter-active,
+.fade-up-leave-active {
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.fade-up-enter-from,
+.fade-up-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 40px); /* Animate from bottom */
+}
 </style>

@@ -1,6 +1,6 @@
 
-import { computed } from 'vue';
-import { useInfiniteQuery } from '@tanstack/vue-query';
+import { ref, computed } from 'vue';
+import { useQuery, useInfiniteQuery } from '@tanstack/vue-query';
 import DanbooruService from '../services/danbooru';
 
 export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll, currentPageRef) {
@@ -113,6 +113,32 @@ export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll,
     }
   };
 
+  // --- Polling for New Posts ---
+  const { data: latestPostData, refetch: refetchLatestPost } = useQuery({
+    queryKey: computed(() => ['latest-post-check', queryKey.value[1].tags]),
+    queryFn: async ({ queryKey }) => {
+      const [, params] = queryKey;
+      return DanbooruService.getPosts(params.tags, 1, 1);
+    },
+    refetchInterval: 60000, // 1 minute
+    refetchIntervalInBackground: false,
+    staleTime: 0,
+    enabled: computed(() => posts.value.length > 0 && (!currentPageRef || currentPageRef.value === 1))
+  });
+
+  const lastAcknowledgedId = ref(0);
+
+  const hasNewPosts = computed(() => {
+    if (!latestPostData.value || latestPostData.value.length === 0 || posts.value.length === 0) return false;
+
+    const newestId = latestPostData.value[0].id;
+    const currentFirstId = posts.value[0].id;
+
+    // Only show if the newest ID is greater than what we currently show 
+    // AND greater than the ID we last acknowledged
+    return newestId > currentFirstId && newestId > lastAcknowledgedId.value;
+  });
+
   return {
     posts,
     loading: computed(() => isFetching.value && !isFetchingNextPage.value),
@@ -125,7 +151,15 @@ export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll,
       return data.value?.pages.length || 1;
     }),
     hasNextPage,
-    searchPosts
+    searchPosts,
+    hasNewPosts,
+    refreshGallery: async () => {
+      if (latestPostData.value && latestPostData.value.length > 0) {
+        lastAcknowledgedId.value = latestPostData.value[0].id;
+      }
+      await refetch();
+      await refetchLatestPost();
+    }
   };
 }
 
