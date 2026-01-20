@@ -296,12 +296,21 @@
               </div>
 
               <!-- Artist Commentary -->
-              <div v-if="commentary" class="commentary-section">
-                <h3>Artist Commentary</h3>
-                <div class="commentary-content">
-                  <h4 v-if="commentary.original_title">{{ commentary.original_title }}</h4>
-                  <div class="commentary-body" v-html="parseDText(commentary.original_description)"></div>
-                </div>
+              <div class="commentary-wrapper">
+                <transition name="fade-slide">
+                  <div v-if="commentaryLoading" key="loading" class="commentary-section skeleton">
+                    <h3>Artist Commentary</h3>
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line short"></div>
+                  </div>
+                  <div v-else-if="commentary" key="content" class="commentary-section">
+                    <h3>Artist Commentary</h3>
+                    <div class="commentary-content">
+                      <h4 v-if="commentary.original_title">{{ commentary.original_title }}</h4>
+                      <div class="commentary-body" v-html="parseDText(commentary.original_description)"></div>
+                    </div>
+                  </div>
+                </transition>
               </div>
 
               <!-- Tags Section -->
@@ -427,10 +436,14 @@
 <script>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { getNotes } from '../composables/useDanbooruApi';
+import { 
+  usePostNotes, 
+  usePostCommentary, 
+  usePostFamily, 
+  usePostComments 
+} from '../composables/useDanbooruApi';
 import { useDText } from '../composables/useDText';
 import VideoPlayer from './VideoPlayer.vue';
-import DanbooruService from '../services/danbooru';
 
 export default {
   name: 'ImageDetailModal',
@@ -466,8 +479,27 @@ export default {
     // Pending Overlay Logic
     const showPendingOverlay = ref(true);
     
-    // Notes Logic
-    const notes = ref([]);
+    // Core IDs for queries
+    const postId = computed(() => props.post.id);
+    const parentId = computed(() => props.post.parent_id);
+    const hasChildren = computed(() => props.post.has_children);
+
+    // TanStack Queries (Caching)
+    const { data: notesData } = usePostNotes(postId);
+    const { data: commentaryData, isLoading: commentaryLoading } = usePostCommentary(postId);
+    const { data: familyData, isFetching: familyLoading, isSuccess: familyLoaded } = usePostFamily(postId, parentId, hasChildren);
+    const { 
+      data: commentsData, 
+      fetchNextPage: loadMoreComments, 
+      hasNextPage: hasMoreComments, 
+      isFetching: commentsLoading 
+    } = usePostComments(postId, 20);
+
+    const notes = computed(() => notesData.value || []);
+    const commentary = computed(() => commentaryData.value);
+    const familyPosts = computed(() => familyData.value || []);
+    const comments = computed(() => commentsData.value?.pages.flatMap(p => p) || []);
+
     const hoveredNote = ref(null);
     const imageElement = ref(null);
     const imageContainer = ref(null);
@@ -594,11 +626,6 @@ export default {
     };
 
     const loading = ref(true);
-    const comments = ref([]);
-    const commentsLoading = ref(false);
-    const commentsPage = ref(1);
-    const hasMoreComments = ref(false);
-    const COMMENTS_LIMIT = 20;
     
     // Safety timeout for loading
     let loadingTimeout = null;
@@ -705,136 +732,29 @@ export default {
 
     // Unified Loading Logic
     const imageReady = ref(false);
-    const familyReady = ref(false);
     
     // Check if both are ready
     const checkLoading = () => {
-      if (imageReady.value && familyReady.value) {
+      // familyReady should now reflect the family query's success if post has family
+      const hasFamily = !!props.post.parent_id || !!props.post.has_children;
+      const isFamilyReady = hasFamily ? familyLoaded.value : true;
+
+      if (imageReady.value && isFamilyReady) {
         loading.value = false;
       }
     };
+    
+    // Watch for familyLoaded to trigger checkLoading
+    watch(familyLoaded, (isLoaded) => {
+      if (isLoaded) checkLoading();
+    });
     
     const onImageLoad = () => {
        imageReady.value = true;
        checkLoading();
     };
 
-    const fetchComments = async (append = false) => {
-      if (!props.post || !props.post.id) return;
-      
-      commentsLoading.value = true;
-      if (!append) {
-        comments.value = [];
-        commentsPage.value = 1;
-      }
-      
-      try {
-        const newComments = await DanbooruService.getComments(props.post.id, commentsPage.value, COMMENTS_LIMIT);
-        
-        if (append) {
-          comments.value = [...comments.value, ...newComments];
-        } else {
-          comments.value = newComments;
-        }
-        
-        // If we got fewer items than limit, we've reached the end
-        hasMoreComments.value = newComments.length === COMMENTS_LIMIT;
-      } catch (e) {
-        console.error("Error fetching comments", e);
-      } finally {
-        commentsLoading.value = false;
-      }
-    };
-
-    const loadMoreComments = () => {
-      commentsPage.value++;
-      fetchComments(true);
-    };
-
-    // Artist Commentary Logic
-    const commentary = ref(null);
-    const commentaryLoading = ref(false);
-
-    const fetchCommentary = async () => {
-      if (!props.post || !props.post.id) return;
-      
-      commentaryLoading.value = true;
-      commentary.value = null;
-
-      try {
-        const data = await DanbooruService.getArtistCommentary(props.post.id);
-        if (data && data.length > 0) {
-          commentary.value = data[0];
-        }
-      } catch (e) {
-        console.error("Error fetching commentary", e);
-      } finally {
-        commentaryLoading.value = false;
-      }
-    };
-
-    // Family Logic
-    const familyPosts = ref([]);
-    const familyLoading = ref(false);
-    const currentRootId = ref(null);
-
-    const fetchFamily = async () => {
-       if (!props.post) return;
-
-       let rootId = null;
-       if (props.post.parent_id) {
-         rootId = props.post.parent_id;
-       } else if (props.post.has_children) {
-         rootId = props.post.id;
-       }
-
-       if (!rootId) {
-         familyPosts.value = [];
-         currentRootId.value = null;
-         familyReady.value = true;
-         checkLoading();
-         return;
-       }
-
-       if (rootId === currentRootId.value && familyPosts.value.length > 0) {
-          familyReady.value = true; 
-          checkLoading();
-          return;
-       }
-
-       familyPosts.value = [];
-       currentRootId.value = rootId;
-       familyLoading.value = true;
-       
-       try {
-         // Use the specific parent:ID search syntax supported by Danbooru
-         // Note: parent:ID automatically includes the parent and all children
-         // But wait, Danbooru search behavior: parent:123 finds post 123's children.
-         // It does NOT Include the parent itself usually unless we do `parent:123` AND the parent.
-         // A common way to get the whole family is `parent:123` which returns children. 
-         // To get parent + children, we usually do `pool:series` or just manual check.
-         // Actually `parent:123` returns children. 123 itself is not returned.
-         // The original code used `~parent:${rootId} ~id:${rootId}`
-         // This means (parent:rootId OR id:rootId).
-         
-         const tagsForService = `~parent:${rootId} ~id:${rootId}`;
-         const data = await DanbooruService.getPosts(tagsForService, 20);
-         
-         if (data) {
-           familyPosts.value = data
-            .filter(p => p.file_url || p.large_file_url || p.preview_file_url)
-            .sort((a, b) => a.id - b.id);
-         }
-       } catch (e) {
-         console.error("Error fetching family", e);
-         familyPosts.value = [];
-         currentRootId.value = null;
-       } finally {
-         familyLoading.value = false;
-         familyReady.value = true;
-         checkLoading();
-       }
-    };
+    // No manual fetchers needed anymore, hooks handle it
 
 
 
@@ -916,9 +836,8 @@ export default {
       });
     };
 
-    let debounceTimer = null;
 
-    watch(() => props.post.id, async (newId) => {
+    watch(() => props.post.id, async () => {
        // Reset UI State IMMEDIATELY
        showPendingOverlay.value = true;
        
@@ -933,13 +852,7 @@ export default {
        }, 5000);
 
        imageReady.value = false;
-       familyReady.value = false;
-       notes.value = []; // Clear notes immediately
-       comments.value = [];
-       hasMoreComments.value = false;
-       commentsPage.value = 1;
-       commentary.value = null;
-       familyPosts.value = [];
+       // familyReady is now handled by the familyLoaded query status
        
        if (isFlash.value) {
           imageReady.value = true;
@@ -948,17 +861,7 @@ export default {
          if (ruffleContainer.value) ruffleContainer.value.innerHTML = '';
        }
 
-       // Debounce API calls (wait 300ms for navigation to settle)
-       if (debounceTimer) clearTimeout(debounceTimer);
-       
-       if (newId) {
-         debounceTimer = setTimeout(() => {
-            getNotes(newId).then(n => notes.value = n);
-            fetchComments(false);
-            fetchCommentary();
-            fetchFamily();
-         }, 300);
-       }
+       // No manual fetch calls here, queries react to newId
     }, { immediate: true });
 
     onMounted(() => {
@@ -1013,7 +916,6 @@ export default {
         if (props.hasNext) {
             loading.value = true;
             imageReady.value = false;
-            familyReady.value = false;
             transitionName.value = 'fade';
             emit('next');
         }
@@ -1023,7 +925,6 @@ export default {
         if (props.hasPrev) {
             loading.value = true;
             imageReady.value = false;
-            familyReady.value = false;
             transitionName.value = 'fade';
             emit('prev');
         }
@@ -1492,20 +1393,30 @@ export default {
 }
 
 /* Artist Commentary */
-.commentary-section {
-  margin-bottom: 25px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid rgba(167, 139, 250, 0.1);
-}
-
 .commentary-section h3 {
   font-size: 11px;
   text-transform: uppercase;
   color: #a78bfa;
   margin: 0 0 8px 0;
   letter-spacing: 0.5px;
+}
+
+.commentary-wrapper {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-bottom: 25px; /* Moved from section to wrapper */
+}
+
+.commentary-wrapper > * {
+  grid-area: 1 / 1;
+}
+
+.commentary-section {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.1);
+  height: fit-content;
 }
 
 .commentary-content h4 {
@@ -1529,6 +1440,61 @@ export default {
 
 .commentary-body :deep(a):hover {
   text-decoration: underline;
+}
+
+/* Skeleton Loading */
+.skeleton {
+  pointer-events: none;
+}
+
+.skeleton-line {
+  height: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-line.short {
+  width: 60%;
+}
+
+.skeleton-line::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Fade Slide Transition */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 .ruffle-container {

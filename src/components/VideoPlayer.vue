@@ -4,6 +4,7 @@
     @mouseenter="showControls = true" 
     @mouseleave="handleMouseLeave"
     @mousemove="handleMouseMove"
+    @touchstart="handleTouchStart"
     ref="containerRef"
   >
     <video
@@ -140,10 +141,12 @@ export default {
       if (videoRef.value.paused) {
         videoRef.value.play();
         showCenterPlay.value = false;
+        startHideTimer();
       } else {
         videoRef.value.pause();
         showCenterPlay.value = true; 
         showControls.value = true;
+        clearTimeout(controlsTimeout);
       }
     };
 
@@ -253,6 +256,7 @@ export default {
         await videoRef.value.play();
         isPlaying.value = true;
         showCenterPlay.value = false;
+        startHideTimer();
       } catch (err) {
         // Autoplay failed, likely due to sound. Try muted.
         console.warn("Autoplay with sound failed, muting...", err);
@@ -262,6 +266,7 @@ export default {
           await videoRef.value.play();
           isPlaying.value = true;
           showCenterPlay.value = false;
+          startHideTimer();
         } catch (e2) {
            console.error("Autoplay failed completely", e2);
         }
@@ -278,8 +283,7 @@ export default {
     };
 
     // Controls Hiding
-    const handleMouseMove = () => {
-      showControls.value = true;
+    const startHideTimer = () => {
       clearTimeout(controlsTimeout);
       if (isPlaying.value) {
         controlsTimeout = setTimeout(() => {
@@ -287,6 +291,22 @@ export default {
             showControls.value = false;
           }
         }, 2500);
+      }
+    };
+
+    const handleMouseMove = () => {
+      showControls.value = true;
+      startHideTimer();
+    };
+
+    const handleTouchStart = () => {
+      if (showControls.value) {
+        // If controls are shown, allow them to stay for another 2.5s
+        startHideTimer();
+      } else {
+        // If hidden, show them
+        showControls.value = true;
+        startHideTimer();
       }
     };
 
@@ -365,7 +385,8 @@ export default {
       onEnded,
       seek,
       handleMouseMove,
-      handleMouseLeave
+      handleMouseLeave,
+      handleTouchStart
     };
   }
 };

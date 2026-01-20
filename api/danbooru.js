@@ -42,7 +42,7 @@ export default async function handler(request, response) {
         const data = await res.json();
 
         // Configurar Cache-Control
-        response.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+        response.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=30');
 
         return response.status(200).json(data);
     } catch (error) {

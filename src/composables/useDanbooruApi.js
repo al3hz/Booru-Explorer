@@ -1,5 +1,5 @@
 
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useQuery, useInfiniteQuery } from '@tanstack/vue-query';
 import DanbooruService from '../services/danbooru';
 
@@ -116,9 +116,8 @@ export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll,
   // --- Polling for New Posts ---
   const { data: latestPostData, refetch: refetchLatestPost } = useQuery({
     queryKey: computed(() => ['latest-post-check', queryKey.value[1].tags]),
-    queryFn: async ({ queryKey }) => {
-      const [, params] = queryKey;
-      return DanbooruService.getPosts(params.tags, 1, 1);
+    queryFn: async ({ queryKey: [, tags] }) => {
+      return DanbooruService.getPosts(tags, 1, 1);
     },
     refetchInterval: 60000, // 1 minute
     refetchIntervalInBackground: false,
@@ -128,7 +127,17 @@ export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll,
 
   const lastAcknowledgedId = ref(0);
 
+  // Reset acknowledgment when search tags change to avoid cross-search interference
+  watch(() => queryKey.value[1].tags, () => {
+    lastAcknowledgedId.value = 0;
+  });
+
   const hasNewPosts = computed(() => {
+    // Only show if we are on the first page or using infinite scroll
+    const isFirstPage = !currentPageRef || currentPageRef.value === 1;
+    const isInfinite = !!(infiniteScroll && infiniteScroll.value);
+    if (!isFirstPage && !isInfinite) return false;
+
     if (!latestPostData.value || latestPostData.value.length === 0 || posts.value.length === 0) return false;
 
     const newestId = latestPostData.value[0].id;
@@ -154,11 +163,14 @@ export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll,
     searchPosts,
     hasNewPosts,
     refreshGallery: async () => {
-      if (latestPostData.value && latestPostData.value.length > 0) {
-        lastAcknowledgedId.value = latestPostData.value[0].id;
-      }
-      await refetch();
-      await refetchLatestPost();
+      // Perform both refetches
+      await Promise.all([refetch(), refetchLatestPost()]);
+
+      // Update acknowledgment to the maximum ID we've now seen in either query
+      const galleryLatestId = posts.value.length > 0 ? posts.value[0].id : 0;
+      const pollLatestId = (latestPostData.value && latestPostData.value.length > 0) ? latestPostData.value[0].id : 0;
+
+      lastAcknowledgedId.value = Math.max(galleryLatestId, pollLatestId, lastAcknowledgedId.value);
     }
   };
 }
@@ -218,3 +230,56 @@ export const getNotes = async (postId) => {
     return [];
   }
 };
+
+// --- Modal Detail Queries (Caching) ---
+
+export function usePostNotes(postId) {
+  return useQuery({
+    queryKey: computed(() => ['post-notes', postId.value]),
+    queryFn: () => getNotes(postId.value),
+    enabled: computed(() => !!postId.value),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+export function usePostCommentary(postId) {
+  return useQuery({
+    queryKey: computed(() => ['post-commentary', postId.value]),
+    queryFn: async () => {
+      const data = await DanbooruService.getArtistCommentary(postId.value);
+      return data?.[0] || null;
+    },
+    enabled: computed(() => !!postId.value),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function usePostFamily(postId, parentId, hasChildren) {
+  return useQuery({
+    queryKey: computed(() => ['post-family', postId.value, parentId.value]),
+    queryFn: async () => {
+      const rootId = parentId.value || (hasChildren.value ? postId.value : null);
+      if (!rootId) return [];
+
+      const tags = `~parent:${rootId} ~id:${rootId}`;
+      const data = await DanbooruService.getPosts(tags, 20);
+      return (data || [])
+        .filter(p => p.file_url || p.large_file_url || p.preview_file_url)
+        .sort((a, b) => a.id - b.id);
+    },
+    enabled: computed(() => !!postId.value && (!!parentId.value || !!hasChildren.value)),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function usePostComments(postId, limit = 20) {
+  return useInfiniteQuery({
+    queryKey: computed(() => ['post-comments', postId.value, limit]),
+    queryFn: ({ pageParam = 1 }) => DanbooruService.getComments(postId.value, pageParam, limit),
+    getNextPageParam: (lastPage, allPages) => {
+      return (lastPage && lastPage.length === limit) ? allPages.length + 1 : undefined;
+    },
+    enabled: computed(() => !!postId.value),
+    staleTime: 5 * 60 * 1000,
+  });
+}

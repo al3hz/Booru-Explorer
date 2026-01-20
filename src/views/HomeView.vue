@@ -778,6 +778,7 @@ export default {
       currentRangeFriendlyName,
       activeExtraAction,
       hasNewPosts,
+      isLoadingNextPage,
       handleRefresh: async () => {
         await refreshGallery();
         window.scrollTo({ top: 0, behavior: 'smooth' });
