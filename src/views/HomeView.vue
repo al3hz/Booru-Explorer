@@ -595,7 +595,6 @@ export default {
         .join(' ');
 
       // Initialize page from URL
-      const initialPage = parseInt(route.query.page) || 1;
 
       // Execute initial count fetch (searchPosts will trigger automatically because appliedQuery initialized)
       fetchRatingCounts(normalizedQuery);

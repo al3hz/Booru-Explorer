@@ -808,7 +808,6 @@ export default {
        
        try {
          // Use the specific parent:ID search syntax supported by Danbooru
-         const tags = `parent:${rootId} status:any`; 
          // Note: parent:ID automatically includes the parent and all children
          // But wait, Danbooru search behavior: parent:123 finds post 123's children.
          // It does NOT Include the parent itself usually unless we do `parent:123` AND the parent.

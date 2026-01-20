@@ -17,9 +17,6 @@ class DanbooruService {
         // though the proxy handles it.
         const cleanPath = danbooruPath.startsWith('/') ? danbooruPath.slice(1) : danbooruPath;
 
-        // Construct the query params for the REAL Danbooru API
-        const danbooruSearchParams = new URLSearchParams();
-
         // Move 'url' parameter to the main query string for the proxy
         const proxySearchParams = new URLSearchParams();
         proxySearchParams.set('url', cleanPath);
@@ -67,7 +64,6 @@ class DanbooruService {
             return this._fetchPostsStandard(normalizedTags, limit, page);
         }
 
-        const tagsToAnalyze = normalizedTags; // Use normalized for consistency below
 
         // SMART SEARCH: > 2 total tags
         // Prioritize which tags to send to the API (limit to 2 total)

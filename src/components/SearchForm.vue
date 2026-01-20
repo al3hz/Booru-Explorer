@@ -435,10 +435,6 @@ export default {
     const handleSearch = async () => {
       // Validate tag count before search
       const trimmedQuery = props.searchQuery.trim();
-      const tags = trimmedQuery
-        .split(/[,，\s]+/)
-        .map(t => t.trim())
-        .filter(t => t.length > 0 && !t.startsWith('rating:') && !t.startsWith('order:') && !t.startsWith('status:') && !t.startsWith('age:') && !t.startsWith('-'));
       
       // Smart Search enabled: We handle >2 tags in the service now.
       

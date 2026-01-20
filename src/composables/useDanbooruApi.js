@@ -45,7 +45,7 @@ export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll,
   } = useInfiniteQuery({
     queryKey,
     queryFn: async ({ pageParam = 1, queryKey }) => {
-      const [_key, params] = queryKey;
+      const [, params] = queryKey;
 
       // For traditional pagination, use the page from query key
       // For infinite scroll, use pageParam
@@ -64,7 +64,7 @@ export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll,
       // Smart Search check: If we have > 2 tags, we might have filtered results.
       // In this case, even a small page doesn't mean we're done (we might find more on next API page).
       // We check the tags used in the query key.
-      const [_key, params] = queryKey.value;
+      const [, params] = queryKey.value;
       const tagList = params.tags.split(' ').filter(t => t.trim() !== '' && !t.startsWith('rating:') && !t.startsWith('order:') && !t.startsWith('-'));
 
       if (tagList.length > 2) {
@@ -170,7 +170,7 @@ export const getArtist = async (id) => {
     const res = await fetch(`/api/danbooru?url=artists/${id}.json`);
     if (!res.ok) throw new Error("Failed");
     return await res.json();
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -180,7 +180,7 @@ export const getNotes = async (postId) => {
     const res = await fetch(`/api/danbooru?url=notes.json&search[post_id]=${postId}&search[is_active]=true`);
     if (!res.ok) throw new Error("Failed");
     return await res.json();
-  } catch (e) {
+  } catch {
     return [];
   }
 };

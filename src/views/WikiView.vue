@@ -379,7 +379,9 @@ export default {
                                                 try {
                                                   const post = await DanbooruService.getPost(asset.post_id);
                                                   wikiInlinePosts.value[asset.post_id] = post;
-                                                } catch (e) {}
+                                                } catch {
+                                                    // Silently ignore if post enrichment fails
+                                                }
                                             }
                                             const post = wikiInlinePosts.value[asset.post_id];
                                             if (post) openPost(post);

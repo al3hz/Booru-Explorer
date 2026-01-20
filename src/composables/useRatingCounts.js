@@ -1,6 +1,5 @@
 
 import { ref } from 'vue';
-import { useQuery } from '@tanstack/vue-query';
 import DanbooruService from '../services/danbooru';
 
 export function useRatingCounts() {

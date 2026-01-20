@@ -31,7 +31,7 @@ export default async function handler(request, response) {
             try {
                 const errorJson = JSON.parse(errorText);
                 return response.status(res.status).json(errorJson);
-            } catch (e) {
+            } catch {
                 return response.status(res.status).json({
                     error: `Danbooru API returned ${res.status}`,
                     message: errorText.slice(0, 200)

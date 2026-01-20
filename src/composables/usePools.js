@@ -20,7 +20,7 @@ export function usePools() {
   } = useQuery({
     queryKey,
     queryFn: async ({ queryKey }) => {
-      const [_key, params] = queryKey;
+      const [, params] = queryKey;
       const { page, ...filters } = params;
 
       // Fetch pools
@@ -119,7 +119,7 @@ export function usePoolDetail() {
   } = useInfiniteQuery({
     queryKey: ['pool_posts', poolId],
     queryFn: async ({ pageParam = 1, queryKey }) => {
-      const [_key, pid] = queryKey;
+      const [, pid] = queryKey;
       // Use status:any to ensure we don't skip posts that might be deleted but are part of the pool
       return DanbooruService.getPosts(`pool:${pid} status:any`, 100, pageParam);
     },
