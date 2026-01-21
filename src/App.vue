@@ -32,14 +32,9 @@ export default {
     };
   },
   computed: {
-    // Mejorado: incluye queries en la key para mejor cache
     getRouteKey() {
       return (route) => {
-        const queryString = Object.keys(route.query)
-          .sort()
-          .map((key) => `${key}=${route.query[key]}`)
-          .join("&");
-        return `${route.path}?${queryString}#${this.refreshKey}`;
+        return `${route.path}#${this.refreshKey}`;
       };
     },
   },
