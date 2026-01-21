@@ -1,79 +1,85 @@
-
-/**
- * Danbooru API Service
- * Centralizes all interactions with the backend proxy /api/danbooru
- */
+// services/danbooruService.ts
+import type {
+    DanbooruPost,
+    DanbooruTag,
+    DanbooruPool,
+    DanbooruComment,
+    DanbooruArtist,
+    DanbooruWikiPage,
+    DanbooruMediaAsset,
+    PostCounts,
+    AutocompleteResult
+} from '../types/danbooru';
 
 const API_BASE = '/api/danbooru';
 
 class DanbooruService {
+    private _smartCursors: Record<string, number> = {};
+
     /**
      * Helper to build the proxy URL
-     * @param {string} danbooruPath - The path on the Danbooru API (e.g. 'posts.json')
-     * @param {object} params - Query parameters to append
+     * @param danbooruPath - The path on the Danbooru API (e.g. 'posts.json')
+     * @param params - Query parameters to append
      */
-    _buildUrl(danbooruPath, params = {}) {
-        // Ensure path doesn't start with / to avoid double slashes if needed, 
-        // though the proxy handles it.
+    private _buildUrl(danbooruPath: string, params: Record<string, string | number | boolean> = {}): string {
         const cleanPath = danbooruPath.startsWith('/') ? danbooruPath.slice(1) : danbooruPath;
-
-        // Move 'url' parameter to the main query string for the proxy
         const proxySearchParams = new URLSearchParams();
         proxySearchParams.set('url', cleanPath);
 
-        // Append all other params to the proxy URL. 
-        // The backend logic is: /api/danbooru?url=path&param1=val1...
-        // So we just add them normally.
         Object.entries(params).forEach(([key, value]) => {
             if (value !== undefined && value !== null && value !== '') {
-                proxySearchParams.append(key, value);
+                proxySearchParams.append(key, String(value));
             }
         });
 
         return `${API_BASE}?${proxySearchParams.toString()}`;
     }
 
-    async _fetch(danbooruPath, params = {}) {
+    private async _fetch<T>(danbooruPath: string, params: Record<string, string | number | boolean> = {}): Promise<T> {
         const url = this._buildUrl(danbooruPath, params);
         const res = await fetch(url);
+        
         if (!res.ok) {
             throw new Error(`Danbooru API Error: ${res.status} ${res.statusText}`);
         }
+        
         return res.json();
     }
 
     // --- Posts ---
 
-    async getPosts(tags = '', limit = 20, page = 1) {
-        // Normalize tags: Add status:active by default if no status: is specified
+    async getPosts(tags: string = '', limit: number = 20, page: number = 1): Promise<DanbooruPost[]> {
         let normalizedTags = tags.trim();
         if (!normalizedTags.includes('status:')) {
             normalizedTags = normalizedTags ? `${normalizedTags} status:active` : 'status:active';
         }
 
-        // Check for "Smart Search" condition (more than 2 tags total)
         const tagList = normalizedTags.split(' ').filter(t => t.trim() !== '');
-        const metaPrefixes = ['rating:', 'order:', 'status:', 'date:', 'user:', 'fav:', 'score:', 'id:', 'width:', 'height:', 'mpixels:', 'ratio:', 'source:', 'parent:'];
+        const metaPrefixes = [
+            'rating:', 'order:', 'status:', 'date:', 'user:', 'fav:', 
+            'score:', 'id:', 'width:', 'height:', 'mpixels:', 'ratio:', 
+            'source:', 'parent:'
+        ];
 
-        // Separate real content tags from meta-tags
         const contentTags = tagList.filter(t => !metaPrefixes.some(p => t.startsWith(p)) && !t.startsWith('-'));
         const metaTags = tagList.filter(t => metaPrefixes.some(p => t.startsWith(p)) || t.startsWith('-'));
 
-        // If the TOTAL number of tags is <= 2, use standard fetch.
         if (tagList.length <= 2) {
             return this._fetchPostsStandard(normalizedTags, limit, page);
         }
 
-
         // SMART SEARCH: > 2 total tags
-        // Prioritize which tags to send to the API (limit to 2 total)
-        const priorityTags = [];
+        const priorityTags: string[] = [];
         const orderTag = metaTags.find(t => t.startsWith('order:'));
         if (orderTag) priorityTags.push(orderTag);
 
-        // Fill with content tags first, then other meta tags
-        for (const t of contentTags) if (priorityTags.length < 2) priorityTags.push(t);
-        for (const t of metaTags) if (t !== orderTag && priorityTags.length < 2) priorityTags.push(t);
+        for (const t of contentTags) {
+            if (priorityTags.length < 2) priorityTags.push(t);
+        }
+        
+        for (const t of metaTags) {
+            if (t !== orderTag && priorityTags.length < 2) priorityTags.push(t);
+        }
 
         const apiTags = priorityTags.join(' ');
         const filterTags = tagList.filter(t => !priorityTags.includes(t));
@@ -81,71 +87,52 @@ class DanbooruService {
         console.log(`[Smart Search] API: "${apiTags}" | Client Filter: [${filterTags.join(', ')}]`);
 
         try {
-            // STATEFUL PAGINATION LOGIC
-            // We need to keep fetching API pages until we fill 'limit'
-
-            // Generate a unique key for this search query to track cursors
             const queryKey = `smart_${apiTags}_${filterTags.join('_')}`;
-            if (!this._smartCursors) this._smartCursors = {};
-
-            // Determine start API page
-            // If page 1, start at 1.
-            // If page > 1, try to look up where previous page ended.
-            // fallback: assume 1-to-1 mapping if no cursor (heuristic)
-            let currentApiPage;
+            
+            let currentApiPage: number;
             if (page === 1) {
                 currentApiPage = 1;
             } else {
-                currentApiPage = this._smartCursors[`${queryKey}_${page - 1}`]
-                    ? this._smartCursors[`${queryKey}_${page - 1}`] + 1
+                const previousCursorKey = `${queryKey}_${page - 1}`;
+                currentApiPage = this._smartCursors[previousCursorKey] 
+                    ? this._smartCursors[previousCursorKey] + 1 
                     : page;
             }
 
-            const accumulated = [];
+            const accumulated: DanbooruPost[] = [];
             let safetyCounter = 0;
-            const MAX_API_PAGES_TO_SCAN = 10; // Prevent infinite loops (max 1000 posts scanned)
+            const MAX_API_PAGES_TO_SCAN = 10;
 
             while (accumulated.length < limit && safetyCounter < MAX_API_PAGES_TO_SCAN) {
-                // Determine batch size (fetch up to 5 pages in parallel to speed up scanning)
-                // If we need fewer results, we can be less aggressive, but for safety let's do 3-5
                 const BATCH_SIZE = 5;
-                const promises = [];
+                const promises: Array<Promise<{ page: number; posts: DanbooruPost[] }>> = [];
 
                 for (let i = 0; i < BATCH_SIZE; i++) {
-                    // Check if we exceed safety limit before scheduling
                     if (safetyCounter + i >= MAX_API_PAGES_TO_SCAN) break;
-
+                    
                     const p = currentApiPage + i;
-                    promises.push(this._fetchPostsStandard(apiTags, 100, p).then(posts => ({ page: p, posts })));
+                    promises.push(
+                        this._fetchPostsStandard(apiTags, 100, p)
+                            .then(posts => ({ page: p, posts }))
+                    );
                 }
 
                 if (promises.length === 0) break;
 
-                // Wait for all in batch
                 const batchResults = await Promise.all(promises);
-
-                // Process results IN ORDER of page number
                 batchResults.sort((a, b) => a.page - b.page);
 
-                // Iterate through batch results
                 for (const result of batchResults) {
-                    currentApiPage = result.page; // Update "last touched" page
+                    currentApiPage = result.page;
                     safetyCounter++;
 
                     if (!result.posts || result.posts.length === 0) {
-                        // If an empty page is found, stop processing further (end of results)
-                        // But wait, subsequent parallel fetches might return empty too.
-                        // We should break the outer loop if we hit true end.
-                        // For safety, let's continue processing the batch but mark us as possibly done?
-                        // Actually if page X is empty, X+1 will likely be empty too. 
-                        // So we can stop accumulation effectively.
-                        // We'll let the loop checking empty posts handle break.
+                        continue;
                     }
 
-                    // Filter in memory with a robust matcher
                     const filtered = (result.posts || []).filter(post => {
                         const postTags = post.tag_string.split(' ');
-
+                        
                         return filterTags.every(ftag => {
                             // Negative tag
                             if (ftag.startsWith('-')) {
@@ -174,40 +161,25 @@ class DanbooruService {
 
                     accumulated.push(...filtered);
 
-                    // If we have filled the limit, store the cursor for the NEXT page and BREAK
                     if (accumulated.length >= limit) {
                         this._smartCursors[`${queryKey}_${page}`] = currentApiPage;
-                        // We must break out of both loops
                         break;
                     }
                 }
 
-                // Check if we need to break outer loop (filled limit)
                 if (accumulated.length >= limit) {
                     break;
                 }
 
-                // Check for end of results in the last processed batch item
-                // If the last page of the batch was empty, we are likely done.
                 const lastBatchResult = batchResults[batchResults.length - 1];
                 if (!lastBatchResult.posts || lastBatchResult.posts.length === 0) {
                     break;
                 }
 
-                // If we are here, we processed the whole batch and still need more.
-                // Increment currentApiPage to the start of next batch
                 currentApiPage++;
             }
 
-            // Note: We might update the cursor multiple times or skip pages. 
-            // If we broke early, currentApiPage is the last one touched.
-            // If we ran out of API results, we just return what we have.
-            // If we hit safety limit, we return what we have.
-
-            // Store cursor in case we didn't fill limit but did work
             this._smartCursors[`${queryKey}_${page}`] = currentApiPage;
-
-            // Return exactly limit (or fewer if end of results)
             return accumulated.slice(0, limit);
 
         } catch (e) {
@@ -216,9 +188,7 @@ class DanbooruService {
         }
     }
 
-    async _fetchPostsStandard(tags, limit, page) {
-        // SUPER PAGINATION: Handle limits > 100
-        // Danbooru max is 100, so if user wants 150, we fetch pages 1 and 2 and combine
+    private async _fetchPostsStandard(tags: string, limit: number, page: number): Promise<DanbooruPost[]> {
         if (limit > 100) {
             const maxPerPage = 100;
             const numPages = Math.ceil(limit / maxPerPage);
@@ -226,10 +196,10 @@ class DanbooruService {
 
             console.log(`[Super Pagination] Fetching ${numPages} API pages (${limit} posts total)`);
 
-            const promises = [];
+            const promises: Array<Promise<DanbooruPost[]>> = [];
             for (let i = 0; i < numPages; i++) {
                 promises.push(
-                    this._fetch('posts.json', {
+                    this._fetch<DanbooruPost[]>('posts.json', {
                         tags: tags,
                         limit: maxPerPage,
                         page: startPage + i
@@ -238,48 +208,45 @@ class DanbooruService {
             }
 
             const results = await Promise.all(promises);
-            const combined = results.flatMap(r => r);
-
-            // Return exactly 'limit' posts
+            const combined = results.flat();
             return combined.slice(0, limit);
         }
 
-        // Standard fetch for limits <= 100
-        return this._fetch('posts.json', {
+        return this._fetch<DanbooruPost[]>('posts.json', {
             tags: tags,
             limit: limit,
             page: page
         });
     }
 
-    async getPost(id) {
-        return this._fetch(`posts/${id}.json`);
+    async getPost(id: number): Promise<DanbooruPost> {
+        return this._fetch<DanbooruPost>(`posts/${id}.json`);
     }
 
-    async getRandomPost() {
-        return this._fetch('posts/random.json');
+    async getRandomPost(): Promise<DanbooruPost> {
+        return this._fetch<DanbooruPost>('posts/random.json');
     }
 
     // --- Counts ---
 
-    async getPostCount(tags) {
-        // If it's a simple single tag, we can use tags.json for faster lookup
+    async getPostCount(tags: string): Promise<number> {
         const isSingleTag = /^[a-zA-Z0-9_().]+$/.test(tags.trim());
 
         if (isSingleTag) {
-            const data = await this._fetch('tags.json', { 'search[name]': tags.trim() });
+            const data = await this._fetch<DanbooruTag[]>('tags.json', { 
+                'search[name]': tags.trim() 
+            });
             return data?.[0]?.post_count || 0;
         } else {
-            // Complex query
-            const data = await this._fetch('counts/posts.json', { tags });
+            const data = await this._fetch<{ counts: PostCounts }>('counts/posts.json', { tags });
             return data?.counts?.posts || 0;
         }
     }
 
     // --- Pools ---
 
-    async getPools(query = '', page = 1, limit = 42) {
-        const params = {
+    async getPools(query: string = '', page: number = 1, limit: number = 42): Promise<DanbooruPool[]> {
+        const params: Record<string, string | number | boolean> = {
             page,
             limit,
             'search[is_active]': true,
@@ -290,17 +257,17 @@ class DanbooruService {
             params['search[name_matches]'] = query;
         }
 
-        return this._fetch('pools.json', params);
+        return this._fetch<DanbooruPool[]>('pools.json', params);
     }
 
-    async getPool(id) {
-        return this._fetch(`pools/${id}.json`);
+    async getPool(id: number): Promise<DanbooruPool> {
+        return this._fetch<DanbooruPool>(`pools/${id}.json`);
     }
 
     // --- Comments ---
 
-    async getComments(postId, page = 1, limit = 10) {
-        return this._fetch('comments.json', {
+    async getComments(postId: number, page: number = 1, limit: number = 10): Promise<DanbooruComment[]> {
+        return this._fetch<DanbooruComment[]>('comments.json', {
             group_by: 'comment',
             'search[post_id]': postId,
             limit,
@@ -308,7 +275,7 @@ class DanbooruService {
         });
     }
 
-    async getArtistCommentary(postId) {
+    async getArtistCommentary(postId: number): Promise<any> {
         return this._fetch('artist_commentaries.json', {
             'search[post_id]': postId
         });
@@ -316,24 +283,35 @@ class DanbooruService {
 
     // --- Artists ---
 
-    async getArtistByName(name) {
-        const data = await this._fetch('artists.json', { 'search[name]': name });
+    async getArtistByName(name: string): Promise<DanbooruArtist | null> {
+        const data = await this._fetch<DanbooruArtist[]>('artists.json', { 
+            'search[name]': name 
+        });
         return data?.[0] || null;
     }
 
-    async getArtistUrls(artistId) {
-        return this._fetch('artist_urls.json', { 'search[artist_id]': artistId });
+    async getArtistUrls(artistId: number): Promise<any[]> {
+        return this._fetch('artist_urls.json', { 
+            'search[artist_id]': artistId 
+        });
     }
 
     // --- Wiki ---
 
-    async getWikiPage(title) {
-        const data = await this._fetch('wiki_pages.json', { 'search[title]': title });
+    async getWikiPage(title: string): Promise<DanbooruWikiPage | null> {
+        const data = await this._fetch<DanbooruWikiPage[]>('wiki_pages.json', { 
+            'search[title]': title 
+        });
         return data?.[0] || null;
     }
 
-    async getWikiPages(query = '', limit = 20, page = 1, order = 'updated_at') {
-        const params = {
+    async getWikiPages(
+        query: string = '', 
+        limit: number = 20, 
+        page: number = 1, 
+        order: string = 'updated_at'
+    ): Promise<DanbooruWikiPage[]> {
+        const params: Record<string, string | number | boolean> = {
             limit,
             page,
             'search[order]': order,
@@ -344,11 +322,11 @@ class DanbooruService {
             params['search[title_matches]'] = `*${query}*`;
         }
 
-        return this._fetch('wiki_pages.json', params);
+        return this._fetch<DanbooruWikiPage[]>('wiki_pages.json', params);
     }
 
-    async getRecentWikiPages() {
-        return this._fetch('wiki_pages.json', {
+    async getRecentWikiPages(): Promise<DanbooruWikiPage[]> {
+        return this._fetch<DanbooruWikiPage[]>('wiki_pages.json', {
             limit: 10,
             'search[is_deleted]': false,
             'order': 'updated_at'
@@ -357,24 +335,23 @@ class DanbooruService {
 
     // --- Autocomplete ---
 
-    async getAutocomplete(query, type = 'tag') {
+    async getAutocomplete(query: string, type: string = 'tag'): Promise<AutocompleteResult[]> {
         if (type === 'tag') {
-            const data = await this._fetch('autocomplete.json', {
+            const data = await this._fetch<AutocompleteResult[]>('autocomplete.json', {
                 'search[query]': query,
                 'search[type]': 'tag_query',
                 limit: 10
             });
             return data || [];
         }
-        // TODO: Add wiki/artist autocomplete if needed
         return [];
     }
 
     // --- Media Assets ---
 
-    async getMediaAssets(ids) {
+    async getMediaAssets(ids: number[]): Promise<DanbooruMediaAsset[]> {
         if (!ids || ids.length === 0) return [];
-        return this._fetch('media_assets.json', {
+        return this._fetch<DanbooruMediaAsset[]>('media_assets.json', {
             'search[id]': ids.join(','),
             limit: 100
         });
