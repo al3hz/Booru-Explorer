@@ -1,6 +1,15 @@
 {
   "rewrites": [
     {
+      "source": "/assets/:path*",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
