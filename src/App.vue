@@ -40,16 +40,25 @@ export default {
   },
   methods: {
     handleLogoClick() {
+      // Preservar todos los query parameters actuales al navegar al home
+      const currentQuery = { ...this.$route.query };
+
+      // Solo refrescar si estamos en home Y no hay parámetros de búsqueda
       const isHomeWithNoQuery =
-        this.$route.path === "/" && Object.keys(this.$route.query).length === 0;
+        this.$route.path === "/" && Object.keys(currentQuery).length === 0;
 
       if (isHomeWithNoQuery) {
+        // Si estamos en home sin parámetros, refrescar
         this.refreshKey++;
-        console.log("Home refreshed");
+      } else {
+        // Si no estamos en home o tenemos parámetros, navegar a home preservando los parámetros
+        this.$router.push({
+          path: "/",
+          query: currentQuery, // Preservar rating, tags, etc.
+        });
       }
     },
 
-    // Manejo de hash anchors después de transiciones
     scrollToHash() {
       if (this.$route.hash) {
         setTimeout(() => {
@@ -62,10 +71,8 @@ export default {
     },
   },
 
-  // Lifecycle hooks para mejor manejo
   mounted() {
     // Inicializar cualquier lógica necesaria
-    console.log("App mounted");
   },
 
   beforeUnmount() {
