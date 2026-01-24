@@ -1,24 +1,55 @@
-import { createApp } from "vue";
+import { createApp, type App } from "vue";
 import { VueQueryPlugin, QueryClient } from "@tanstack/vue-query";
+import type { Query, QueryCacheNotifyEvent } from "@tanstack/vue-query";
 
 import "./styles/global.css";
-import App from "./App.vue";
+import AppComponent from "./App.vue";
 import router from "./router";
+
+// Types for cache persistence
+interface CacheItem {
+  queryKey: unknown[];
+  data: unknown;
+  timestamp: number;
+}
+
+// Types for filters
+interface Filters {
+  formatCount: (count: number) => string;
+  formatDate: (dateString: string) => string;
+  truncate: (text: string, length?: number) => string;
+  formatFileSize: (bytes: number) => string;
+  sanitizeTag: (tag: string) => string;
+}
+
+// Type for error handler
+type ErrorHandler = (err: unknown, vm: any, info: string) => void;
+
+// Type for click-outside directive
+interface ClickOutsideBinding {
+  value: (event: Event) => void;
+}
+
+// Type for click-outside element
+interface ClickOutsideElement extends HTMLElement {
+  clickOutsideEvent?: (event: Event) => void;
+}
 
 // Optimized Vue Query configuration for Danbooru
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
 
       refetchOnWindowFocus: false,
       refetchOnMount: "always",
       refetchOnReconnect: true,
 
-      keepPreviousData: true,
+      // Use placeholderData instead of keepPreviousData if needed
+      placeholderData: (previousData: unknown) => previousData,
 
-      retry: (failureCount, error) => {
+      retry: (failureCount: number, error: any) => {
         if (
           error?.status >= 400 &&
           error?.status < 500 &&
@@ -28,15 +59,15 @@ const queryClient = new QueryClient({
         }
         return failureCount < 1;
       },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      retryDelay: (attemptIndex: number) =>
+        Math.min(1000 * 2 ** attemptIndex, 30000),
 
-      networkMode: "online",
-      maxConcurrentQueries: 3,
-      networkTimeout: 30000,
+      // Remove maxConcurrentQueries and networkTimeout if they don't exist
+      // maxConcurrentQueries: 3,
+      // networkTimeout: 30000,
     },
     mutations: {
       retry: 0,
-      networkMode: "online",
     },
   },
 });
@@ -44,14 +75,14 @@ const queryClient = new QueryClient({
 // Optimized cache persistence
 if (typeof window !== "undefined") {
   const VUE_QUERY_CACHE_KEY = "danbooru_query_cache_v1";
-  const MAX_CACHE_AGE = 24 * 60 * 60 * 1000;
-  const MAX_CACHE_SIZE = 500000;
+  const MAX_CACHE_AGE = 24 * 60 * 60 * 1000; // 24 hours
+  const MAX_CACHE_SIZE = 500000; // 500KB
 
   // Restore cache from localStorage
   try {
     const cache = localStorage.getItem(VUE_QUERY_CACHE_KEY);
     if (cache) {
-      const parsedCache = JSON.parse(cache);
+      const parsedCache: CacheItem[] = JSON.parse(cache);
 
       const recentCache = parsedCache.filter((item) => {
         const isRecent = Date.now() - item.timestamp < MAX_CACHE_AGE;
@@ -64,7 +95,7 @@ if (typeof window !== "undefined") {
           if (queryKey && data) {
             queryClient.setQueryData(queryKey, data);
           }
-        } catch (err) {
+        } catch (err: unknown) {
           console.warn(
             `Error restoring query ${JSON.stringify(queryKey)}:`,
             err,
@@ -72,7 +103,7 @@ if (typeof window !== "undefined") {
         }
       });
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn("Failed to restore Vue Query cache:", err);
     try {
       localStorage.removeItem(VUE_QUERY_CACHE_KEY);
@@ -82,18 +113,18 @@ if (typeof window !== "undefined") {
   }
 
   // Optimized save system
-  let saveTimeout = null;
+  let saveTimeout: ReturnType<typeof setTimeout> | null = null;
   let isSaving = false;
 
-  const saveCacheToStorage = () => {
+  const saveCacheToStorage = (): void => {
     if (isSaving) return;
 
     isSaving = true;
     try {
       const allQueries = queryClient.getQueryCache().getAll();
       const cacheData = allQueries
-        .filter((query) => query.state.status === "success")
-        .map((query) => ({
+        .filter((query: Query) => query.state.status === "success")
+        .map((query: Query) => ({
           queryKey: query.queryKey,
           data: query.state.data,
           timestamp: Date.now(),
@@ -101,10 +132,10 @@ if (typeof window !== "undefined") {
         .slice(0, 50);
 
       localStorage.setItem(VUE_QUERY_CACHE_KEY, JSON.stringify(cacheData));
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn("Error saving cache:", err);
 
-      if (err?.name === "QuotaExceededError") {
+      if (err instanceof Error && err.name === "QuotaExceededError") {
         try {
           localStorage.removeItem(VUE_QUERY_CACHE_KEY);
         } catch {
@@ -116,7 +147,7 @@ if (typeof window !== "undefined") {
     }
   };
 
-  const scheduleCacheSave = () => {
+  const scheduleCacheSave = (): void => {
     if (saveTimeout) {
       clearTimeout(saveTimeout);
     }
@@ -127,7 +158,7 @@ if (typeof window !== "undefined") {
   };
 
   const queryCache = queryClient.getQueryCache();
-  queryCache.subscribe((event) => {
+  queryCache.subscribe((event: QueryCacheNotifyEvent) => {
     if (event.type === "updated" && event.query.state.status === "success") {
       scheduleCacheSave();
     }
@@ -141,7 +172,7 @@ if (typeof window !== "undefined") {
     try {
       const cache = localStorage.getItem(VUE_QUERY_CACHE_KEY);
       if (cache) {
-        const parsedCache = JSON.parse(cache);
+        const parsedCache: CacheItem[] = JSON.parse(cache);
         const freshCache = parsedCache.filter(
           (item) => Date.now() - item.timestamp < MAX_CACHE_AGE,
         );
@@ -157,28 +188,37 @@ if (typeof window !== "undefined") {
 }
 
 // Create Vue app
-const app = createApp(App);
+const app: App = createApp(AppComponent);
 
 // Use plugins
 app.use(router);
 app.use(VueQueryPlugin, { queryClient });
 
 // Global error handler
-app.config.errorHandler = (error, vm, info) => {
+const errorHandler: ErrorHandler = (error: unknown, vm: any, info: string) => {
   console.error("[Vue Error Handler]", error, info);
 
   if (
-    error?.message?.includes("Network Error") ||
-    error?.message?.includes("Failed to fetch")
+    error instanceof Error &&
+    (error.message.includes("Network Error") ||
+      error.message.includes("Failed to fetch"))
   ) {
     if (vm && vm.$emit) {
       vm.$emit("network-error", { error, timestamp: new Date() });
     }
-  } else if (error?.response?.status === 429) {
+  } else if (
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    error.response &&
+    typeof error.response === "object" &&
+    "status" in error.response &&
+    error.response.status === 429
+  ) {
     if (vm && vm.$emit) {
       vm.$emit("rate-limit-exceeded", {
         error,
-        retryAfter: error.response.headers?.["retry-after"] || 60,
+        retryAfter: (error.response as any).headers?.["retry-after"] || 60,
       });
     }
   }
@@ -191,17 +231,20 @@ app.config.errorHandler = (error, vm, info) => {
     console.groupEnd();
   }
 
-  if (window.gtag && import.meta.env.PROD) {
-    window.gtag("event", "exception", {
-      description: error.message,
+  const gtag = (window as any).gtag;
+  if (gtag && import.meta.env.PROD) {
+    gtag("event", "exception", {
+      description: error instanceof Error ? error.message : "Unknown error",
       fatal: false,
     });
   }
 };
 
+app.config.errorHandler = errorHandler;
+
 // Global filters
-app.config.globalProperties.$filters = {
-  formatCount(count) {
+const filters: Filters = {
+  formatCount(count: number): string {
     if (typeof count !== "number") return "0";
 
     if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
@@ -209,7 +252,7 @@ app.config.globalProperties.$filters = {
     return count.toString();
   },
 
-  formatDate(dateString) {
+  formatDate(dateString: string): string {
     if (!dateString) return "N/A";
 
     try {
@@ -217,20 +260,25 @@ app.config.globalProperties.$filters = {
       if (Number.isNaN(date.getTime())) return "Invalid date";
 
       const now = new Date();
-      const diffMs = now - date;
+      const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
 
       if (diffMins < 1) return "just now";
-      if (diffMins < 60)
+      if (diffMins < 60) {
         return `${diffMins} min${diffMins !== 1 ? "s" : ""} ago`;
-      if (diffHours < 24)
+      }
+      if (diffHours < 24) {
         return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
-      if (diffDays < 7)
+      }
+      if (diffDays < 7) {
         return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
-      if (diffDays < 30)
-        return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) !== 1 ? "s" : ""} ago`;
+      }
+      if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return `${weeks} week${weeks !== 1 ? "s" : ""} ago`;
+      }
 
       return date.toLocaleDateString("en-US", {
         year: "numeric",
@@ -242,13 +290,13 @@ app.config.globalProperties.$filters = {
     }
   },
 
-  truncate(text, length = 50) {
+  truncate(text: string, length: number = 50): string {
     if (!text || typeof text !== "string") return "";
     if (text.length <= length) return text;
     return `${text.substring(0, length).trim()}…`;
   },
 
-  formatFileSize(bytes) {
+  formatFileSize(bytes: number): string {
     if (typeof bytes !== "number" || bytes < 0) return "0 B";
 
     const units = ["B", "KB", "MB", "GB"];
@@ -263,7 +311,7 @@ app.config.globalProperties.$filters = {
     return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
   },
 
-  sanitizeTag(tag) {
+  sanitizeTag(tag: string): string {
     if (!tag || typeof tag !== "string") return "";
     return tag
       .trim()
@@ -273,18 +321,22 @@ app.config.globalProperties.$filters = {
   },
 };
 
+app.config.globalProperties.$filters = filters;
+
 // Click-outside directive
 app.directive("click-outside", {
-  beforeMount(el, binding) {
-    el.clickOutsideEvent = function (event) {
-      if (!(el === event.target || el.contains(event.target))) {
+  beforeMount(el: ClickOutsideElement, binding: ClickOutsideBinding) {
+    el.clickOutsideEvent = (event: Event) => {
+      if (!(el === event.target || el.contains(event.target as Node))) {
         binding.value(event);
       }
     };
     document.addEventListener("click", el.clickOutsideEvent);
   },
-  unmounted(el) {
-    document.removeEventListener("click", el.clickOutsideEvent);
+  unmounted(el: ClickOutsideElement) {
+    if (el.clickOutsideEvent) {
+      document.removeEventListener("click", el.clickOutsideEvent);
+    }
   },
 });
 
@@ -298,12 +350,12 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
       .register("/sw.js", {
         scope: "/",
       })
-      .catch((error) => {
+      .catch((error: Error) => {
         console.error("Service Worker registration failed:", error);
       });
   });
 
-  navigator.serviceWorker.addEventListener("message", (event) => {
+  navigator.serviceWorker.addEventListener("message", (event: MessageEvent) => {
     if (event.data?.type === "CACHE_UPDATED") {
       // Handle cache update if needed
     }
@@ -326,6 +378,9 @@ if (typeof window !== "undefined") {
 
 // Debug in development
 if (import.meta.env.DEV) {
-  window.__VUE_APP__ = app;
-  window.__VUE_QUERY_CLIENT__ = queryClient;
+  (window as any).__VUE_APP__ = app;
+  (window as any).__VUE_QUERY_CLIENT__ = queryClient;
 }
+
+// Export for potential testing
+export { app, queryClient };
