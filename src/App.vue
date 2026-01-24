@@ -3,12 +3,11 @@
     <SearchHeader @logo-click="handleLogoClick" />
 
     <router-view v-slot="{ Component, route }">
-      <transition
-        :name="route.meta.transition || 'fade'"
-        mode="out-in"
-        @after-enter="scrollToHash"
-      >
-        <component :is="Component" :key="getRouteKey(route)" />
+      <transition :name="route.meta.transition || 'fade'" mode="out-in">
+        <keep-alive v-if="route.meta.keepAlive">
+          <component :is="Component" :key="route.path" />
+        </keep-alive>
+        <component :is="Component" :key="route.path" v-else />
       </transition>
     </router-view>
 
@@ -33,9 +32,7 @@ export default {
   },
   computed: {
     getRouteKey() {
-      return (route) => {
-        return `${route.path}#${this.refreshKey}`;
-      };
+      return (route) => route.path;
     },
   },
   methods: {

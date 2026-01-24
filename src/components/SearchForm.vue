@@ -3,12 +3,16 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <h2 class="title">Filters</h2>
-        <button class="mobile-close-btn" @click="toggleSidebar" v-if="isSidebarVisible">
+        <button
+          class="mobile-close-btn"
+          @click="toggleSidebar"
+          v-if="isSidebarVisible"
+        >
           <i class="lni lni-close"></i>
         </button>
       </div>
 
-      <div class="sidebar-content" :class="{ 'faded': !isSidebarVisible }">
+      <div class="sidebar-content" :class="{ faded: !isSidebarVisible }">
         <div class="search-section">
           <div class="section-label-wrapper">
             <label class="section-label" for="search-input">Search</label>
@@ -41,26 +45,33 @@
               class="search-input"
               ref="searchInputRef"
             />
-            <button 
-              class="search-btn-icon" 
+            <button
+              class="search-btn-icon"
               @click="handleSearch"
               :disabled="loading"
               title="Search"
             >
-              <span v-if="loading || loadingSuggestions" class="input-loader"></span>
+              <span
+                v-if="loading || loadingSuggestions"
+                class="input-loader"
+              ></span>
               <span v-else>🔍</span>
-            </button> 
+            </button>
 
             <!-- Autocomplete Dropdown -->
             <ul class="suggestions-list" v-if="suggestions.length > 0">
-              <li 
-                v-for="(tag, index) in suggestions" 
+              <li
+                v-for="(tag, index) in suggestions"
                 :key="tag.name"
                 class="suggestion-item"
-                :class="{ 'active': index === activeSuggestionIndex }"
+                :class="{ active: index === activeSuggestionIndex }"
                 @mousedown.prevent="selectSuggestion(tag)"
               >
-                <span class="suggestion-name" :class="tag.class" v-html="tag.highlight"></span>
+                <span
+                  class="suggestion-name"
+                  :class="tag.class"
+                  v-html="tag.highlight"
+                ></span>
                 <span class="suggestion-count">{{ tag.formatted_count }}</span>
               </li>
             </ul>
@@ -71,7 +82,7 @@
 
         <div class="options-section">
           <h3 class="section-label">Filters</h3>
-          
+
           <div class="option-row" v-if="!masonryMode">
             <label class="opt-text" for="limit-input">Results per page</label>
             <div class="limit-input-wrapper">
@@ -86,8 +97,8 @@
                 class="limit-input"
                 title="Number of posts to show per page"
               />
-              <button 
-                class="info-icon-btn-limit" 
+              <button
+                class="info-icon-btn-limit"
                 @click.stop="showLimitTooltip = !showLimitTooltip"
                 title="Show limits"
               >
@@ -103,37 +114,47 @@
 
           <div class="option-row">
             <span class="opt-text">Masonry Mode</span>
-            <label class="switch" title="Variable height layout with infinite scroll">
-              <input 
+            <label
+              class="switch"
+              title="Variable height layout with infinite scroll"
+            >
+              <input
                 id="masonry-input"
                 name="masonry"
-                type="checkbox" 
+                type="checkbox"
                 :checked="masonryMode"
                 @change="$emit('update:masonry-mode', $event.target.checked)"
-              >
+              />
               <span class="slider round"></span>
             </label>
           </div>
 
           <div class="option-row">
             <span class="opt-text">Rating</span>
-            <div class="custom-select" :class="{ 'is-open': ratingDropdownOpen }">
+            <div
+              class="custom-select"
+              :class="{ 'is-open': ratingDropdownOpen }"
+            >
               <button class="select-trigger" @click.stop="toggleRatingDropdown">
-                <span class="selected-value">{{ getRatingLabel(ratingFilter) }}</span>
+                <span class="selected-value">{{
+                  getRatingLabel(ratingFilter)
+                }}</span>
                 <span class="chevron">▼</span>
               </button>
-              
+
               <transition name="dropdown-fade">
                 <ul v-if="ratingDropdownOpen" class="custom-options">
-                  <li 
-                    v-for="opt in ratingOptions" 
+                  <li
+                    v-for="opt in ratingOptions"
                     :key="opt.value"
                     class="custom-option"
-                    :class="{ 'selected': ratingFilter === opt.value }"
+                    :class="{ selected: ratingFilter === opt.value }"
                     @click="selectRating(opt.value)"
                   >
                     <span class="option-label">{{ opt.label }}</span>
-                    <span v-if="ratingFilter === opt.value" class="check">✓</span>
+                    <span v-if="ratingFilter === opt.value" class="check"
+                      >✓</span
+                    >
                   </li>
                 </ul>
               </transition>
@@ -143,16 +164,19 @@
 
         <div class="divider"></div>
 
-        <div class="accordion-section popular-section" :class="{ open: activeSection === 'trending' }">
+        <div
+          class="accordion-section popular-section"
+          :class="{ open: activeSection === 'trending' }"
+        >
           <div class="accordion-header" @click="toggleSection('trending')">
             <h3 class="section-label">Trending (Top 15)</h3>
             <span class="accordion-arrow">▼</span>
           </div>
-          
+
           <div class="accordion-content">
             <div class="tags-cloud">
               <div v-if="loadingTrending" class="loading-tags">
-                 <span class="tag-skeleton" v-for="i in 5" :key="i"></span>
+                <span class="tag-skeleton" v-for="i in 5" :key="i"></span>
               </div>
               <button
                 v-else
@@ -170,18 +194,21 @@
 
         <div class="divider"></div>
 
-        <div class="accordion-section actions-section" :class="{ open: activeSection === 'extra' }">
+        <div
+          class="accordion-section actions-section"
+          :class="{ open: activeSection === 'extra' }"
+        >
           <div class="accordion-header" @click="toggleSection('extra')">
             <h3 class="section-label">Extra</h3>
             <span class="accordion-arrow">▼</span>
           </div>
-          
+
           <div class="accordion-content">
             <div class="time-range-selector">
               <span class="range-label">Time Range:</span>
               <div class="range-options">
-                <button 
-                  v-for="range in ['day', 'week', 'month', 'year', 'all']" 
+                <button
+                  v-for="range in ['day', 'week', 'month', 'year', 'all']"
                   :key="range"
                   class="range-btn"
                   :class="{ active: selectedTimeRange === range }"
@@ -193,23 +220,48 @@
             </div>
 
             <div class="actions-grid">
-              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'most-liked' }" @click="onExtraAction('most-liked')" title="Most Liked">
+              <button
+                class="quick-action-btn"
+                :class="{ active: activeExtraAction === 'most-liked' }"
+                @click="onExtraAction('most-liked')"
+                title="Most Liked"
+              >
                 <span class="action-icon">❤️</span>
                 <span class="action-label">Likes</span>
               </button>
-              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'most-favorited' }" @click="onExtraAction('most-favorited')" title="Most Favorited">
+              <button
+                class="quick-action-btn"
+                :class="{ active: activeExtraAction === 'most-favorited' }"
+                @click="onExtraAction('most-favorited')"
+                title="Most Favorited"
+              >
                 <span class="action-icon">⭐</span>
                 <span class="action-label">Favs</span>
               </button>
-              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'deleted' }" @click="onExtraAction('deleted')" title="Deleted Posts">
+              <button
+                class="quick-action-btn"
+                :class="{ active: activeExtraAction === 'deleted' }"
+                @click="onExtraAction('deleted')"
+                title="Deleted Posts"
+              >
                 <span class="action-icon">🗑️</span>
                 <span class="action-label">Deleted</span>
               </button>
-              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'random' }" @click="$emit('trigger-action', 'random')" title="Random Post">
+              <button
+                class="quick-action-btn"
+                :class="{ active: activeExtraAction === 'random' }"
+                @click="$emit('trigger-action', 'random')"
+                title="Random Post"
+              >
                 <span class="action-icon">🎲</span>
                 <span class="action-label">Random</span>
               </button>
-              <button class="quick-action-btn" :class="{ active: activeExtraAction === 'hot' }" @click="onExtraAction('hot')" title="Trending Posts (Pulse)">
+              <button
+                class="quick-action-btn"
+                :class="{ active: activeExtraAction === 'hot' }"
+                @click="onExtraAction('hot')"
+                title="Trending Posts (Pulse)"
+              >
                 <span class="action-icon">🔥</span>
                 <span class="action-label">Trending</span>
               </button>
@@ -230,8 +282,7 @@ import { useLayout } from "../composables/useLayout";
 
 export default {
   name: "SearchForm",
-  components: {
-  },
+  components: {},
   props: {
     searchQuery: { type: String, default: "" },
     loading: { type: Boolean, default: false },
@@ -255,66 +306,89 @@ export default {
   setup(props, { emit }) {
     const router = useRouter();
     const route = useRoute();
-    const { suggestions, fetchSuggestions, clearSuggestions, loadingSuggestions, insertSuggestion } = useDanbooruAutocomplete();
-    const { trendingTags, loadingTrending, fetchTrendingTags } = useDanbooruTrending();
+    const {
+      suggestions,
+      fetchSuggestions,
+      clearSuggestions,
+      loadingSuggestions,
+      insertSuggestion,
+    } = useDanbooruAutocomplete();
+    const { trendingTags, loadingTrending, fetchTrendingTags } =
+      useDanbooruTrending();
     const { isSidebarVisible, toggleSidebar } = useLayout();
-    
+
     // Accordion state - default to trending
     const activeSection = ref("trending");
     const selectedTimeRange = ref("month"); // Default to month
 
+    // En SearchForm.vue, dentro del setup()
     const syncStateFromRoute = () => {
       const tags = route.query.tags || "";
-      
+
+      // Sync Rating from URL
+      const ratingFromUrl = route.query.rating || "";
+      if (ratingFromUrl !== props.ratingFilter) {
+        emit("update:rating-filter", ratingFromUrl);
+      }
+
       // Sync Time Range
-      if (tags.includes('age:<1d')) selectedTimeRange.value = 'day';
-      else if (tags.includes('age:<1w')) selectedTimeRange.value = 'week';
-      else if (tags.includes('age:<1month') || tags.includes('age:<1m')) selectedTimeRange.value = 'month';
-      else if (tags.includes('age:<1y')) selectedTimeRange.value = 'year';
-      else if (tags.includes('age:<')) { /* fallback for unknown age */ }
-      else {
-        // Only set to 'all' if we are actually in an "Extra" search
-        if (tags.includes('order:score') || tags.includes('order:favcount') || tags.includes('status:deleted') || tags.includes('order:rank')) {
-          selectedTimeRange.value = 'all';
+      if (tags.includes("age:<1d")) selectedTimeRange.value = "day";
+      else if (tags.includes("age:<1w")) selectedTimeRange.value = "week";
+      else if (tags.includes("age:<1month") || tags.includes("age:<1m"))
+        selectedTimeRange.value = "month";
+      else if (tags.includes("age:<1y")) selectedTimeRange.value = "year";
+      else if (tags.includes("age:<")) {
+        /* fallback for unknown age */
+      } else {
+        if (
+          tags.includes("order:score") ||
+          tags.includes("order:favcount") ||
+          tags.includes("status:deleted") ||
+          tags.includes("order:rank")
+        ) {
+          selectedTimeRange.value = "all";
         } else {
-          // Reset to default 'month' for normal searches without age filter
-          selectedTimeRange.value = 'month';
+          selectedTimeRange.value = "month";
         }
       }
 
       // Auto-open Extra section if it's active
-      if (props.activeExtraAction) activeSection.value = 'extra';
+      if (props.activeExtraAction) activeSection.value = "extra";
     };
 
     // Watch for route change to update sidebar UI
-    watch(() => route.query.tags, () => {
-      syncStateFromRoute();
-    });
+    watch(
+      () => route.query,
+      () => {
+        syncStateFromRoute();
+      },
+      { deep: true },
+    );
 
     onMounted(() => {
       syncStateFromRoute();
     });
-    
+
     // Auto-trigger the current extra action when range changes
     watch(selectedTimeRange, (newRange) => {
       if (props.activeExtraAction) {
-        emit('trigger-action', props.activeExtraAction, newRange);
+        emit("trigger-action", props.activeExtraAction, newRange);
       }
     });
 
     const onExtraAction = (action) => {
-      emit('trigger-action', action, selectedTimeRange.value);
+      emit("trigger-action", action, selectedTimeRange.value);
     };
-    
+
     const toggleSection = (section) => {
       if (activeSection.value === section) {
         // Optional: allow closing all sections? For now, keep it toggleable or strict accordion
-        activeSection.value = null; 
+        activeSection.value = null;
       } else {
         activeSection.value = section;
       }
     };
-    
+
     const activeSuggestionIndex = ref(-1);
     const searchInputRef = ref(null);
 
@@ -323,38 +397,51 @@ export default {
     const showLimitTooltip = ref(false);
     const showSearchTooltip = ref(false);
     const ratingOptions = [
-      { value: '', label: 'All' },
-      { value: 'general', label: 'General (G)' },
-      { value: 'safe', label: 'Safe (S)' },
-      { value: 'questionable', label: 'Questionable (Q)' },
-      { value: 'explicit', label: 'Explicit (E)' }
+      { value: "", label: "All" },
+      { value: "general", label: "General (G)" },
+      { value: "safe", label: "Safe (S)" },
+      { value: "questionable", label: "Questionable (Q)" },
+      { value: "explicit", label: "Explicit (E)" },
     ];
 
     const toggleRatingDropdown = () => {
       ratingDropdownOpen.value = !ratingDropdownOpen.value;
     };
 
-    const selectRating = (value) => {
-      emit('update:rating-filter', value);
+    const selectRating = async (value) => {
+      emit("update:rating-filter", value);
       ratingDropdownOpen.value = false;
+
+      // Update URL with new rating
+      const currentTags = route.query.tags || "";
+      const query = currentTags ? { tags: currentTags } : {};
+
+      if (value) {
+        query.rating = value;
+      }
+
+      await router.push({
+        path: "/",
+        query: query,
+      });
     };
 
     const getRatingLabel = (value) => {
-      const opt = ratingOptions.find(o => o.value === value);
+      const opt = ratingOptions.find((o) => o.value === value);
       return opt ? opt.label : value;
     };
 
     // Close dropdown on click outside
     onMounted(() => {
-      document.addEventListener('click', (e) => {
+      document.addEventListener("click", (e) => {
         const target = e.target;
-        if (!target.closest('.custom-select')) {
+        if (!target.closest(".custom-select")) {
           ratingDropdownOpen.value = false;
         }
-        if (!target.closest('.limit-input-wrapper')) {
+        if (!target.closest(".limit-input-wrapper")) {
           showLimitTooltip.value = false;
         }
-        if (!target.closest('.section-label-wrapper')) {
+        if (!target.closest(".section-label-wrapper")) {
           showSearchTooltip.value = false;
         }
       });
@@ -369,17 +456,26 @@ export default {
     };
 
     const selectTag = async (tagName) => {
-      // Update URL and scroll to top
-      await router.push({ path: '/', query: { tags: tagName } });
+      // Keep current rating in URL
+      const query = { tags: tagName };
+
+      if (props.ratingFilter) {
+        query.rating = props.ratingFilter;
+      }
+
+      await router.push({
+        path: "/",
+        query: query,
+      });
       closeSidebarOnMobile();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     // Autocomplete Logic
     const handleInput = (e) => {
       const value = e.target.value;
       emit("update:search-query", value);
-      
+
       // Composable handles debounce internally
       fetchSuggestions(value);
       activeSuggestionIndex.value = -1;
@@ -387,9 +483,9 @@ export default {
 
     const navigateSuggestions = (direction) => {
       if (suggestions.value.length === 0) return;
-      
+
       activeSuggestionIndex.value += direction;
-      
+
       if (activeSuggestionIndex.value < 0) {
         activeSuggestionIndex.value = suggestions.value.length - 1;
       } else if (activeSuggestionIndex.value >= suggestions.value.length) {
@@ -399,17 +495,21 @@ export default {
 
     const selectSuggestion = (tag) => {
       const newQuery = insertSuggestion(props.searchQuery, tag.name);
-      
+
       emit("update:search-query", newQuery);
       clearSuggestions();
       // Keep focus
-      if(searchInputRef.value) searchInputRef.value.focus();
+      if (searchInputRef.value) searchInputRef.value.focus();
     };
 
     const closeSidebarOnMobile = () => {
       // Check if running in browser environment
-      if (typeof window !== 'undefined' && window.innerWidth <= 768 && isSidebarVisible.value) {
-         toggleSidebar();
+      if (
+        typeof window !== "undefined" &&
+        window.innerWidth <= 768 &&
+        isSidebarVisible.value
+      ) {
+        toggleSidebar();
       }
     };
 
@@ -420,47 +520,43 @@ export default {
         // Update URL and scroll to top
         const trimmedQuery = props.searchQuery.trim();
         if (trimmedQuery) {
-          await router.push({ path: '/', query: { tags: trimmedQuery } });
+          await router.push({ path: "/", query: { tags: trimmedQuery } });
           closeSidebarOnMobile();
         } else {
           // Navigate to root without tags param when search is empty
-          await router.push({ path: '/' });
+          await router.push({ path: "/" });
           closeSidebarOnMobile();
         }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: "smooth" });
         clearSuggestions();
       }
     };
 
     const handleSearch = async () => {
-      // Validate tag count before search
       const trimmedQuery = props.searchQuery.trim();
-      
-      // Smart Search enabled: We handle >2 tags in the service now.
-      
-      // Update URL and scroll to top when search button is clicked
+
+      // Update URL with current rating filter
+      const query = {};
+
       if (trimmedQuery) {
-        await router.push({ 
-          path: '/', 
-          query: { 
-            tags: trimmedQuery,
-            rating: route.query.rating || undefined
-          } 
-        });
-      } else {
-        // Navigate to root without tags param when search is empty
-        await router.push({ 
-          path: '/', 
-          query: { 
-            rating: route.query.rating || undefined 
-          } 
-        });
+        query.tags = trimmedQuery;
       }
+
+      // Include current rating in URL if set
+      if (props.ratingFilter) {
+        query.rating = props.ratingFilter;
+      }
+
+      await router.push({
+        path: "/",
+        query: query,
+      });
+
       closeSidebarOnMobile();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
       clearSuggestions();
     };
-    
+
     const handleBlur = () => {
       // Delay clear to allow click event to register
       setTimeout(() => {
@@ -471,17 +567,17 @@ export default {
     const handleLimitUpdate = (e) => {
       let val = parseInt(e.target.value);
       if (isNaN(val)) return;
-      
+
       // Hard limits to prevent overload
       if (val > 100) val = 100;
       if (val < 1) val = 1;
-      
+
       // Update input display if clamped
       if (val !== parseInt(e.target.value)) {
         e.target.value = val;
       }
-      
-      emit('update:limit', val);
+
+      emit("update:limit", val);
     };
 
     return {
@@ -489,7 +585,7 @@ export default {
       loadingTrending,
       refreshTrending,
       selectTag,
-      suggestions, 
+      suggestions,
       loadingSuggestions,
       activeSuggestionIndex,
       handleInput,
@@ -509,7 +605,7 @@ export default {
       toggleSection,
       selectedTimeRange,
       onExtraAction,
-      
+
       // Rating Logic
       ratingDropdownOpen,
       ratingOptions,
@@ -517,7 +613,7 @@ export default {
       selectRating,
       getRatingLabel,
       isSidebarVisible,
-      toggleSidebar
+      toggleSidebar,
     };
   },
 };
@@ -535,7 +631,6 @@ export default {
   overflow: visible;
   min-height: 0;
 }
-
 
 .sidebar-container.is-collapsed {
   width: 0;
@@ -620,10 +715,6 @@ export default {
   min-height: 60px;
 }
 
-
-
-
-
 /* 5. Asegurar que el contenido también tenga timing sincronizado */
 .sidebar-content {
   padding: 20px;
@@ -645,7 +736,9 @@ export default {
 }
 
 /* Custom Scrollbar */
-.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
 
 /* 6. Estado colapsado - contenido */
 .sidebar-container.is-collapsed .sidebar-content {
@@ -659,15 +752,25 @@ export default {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.sidebar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
 
-
-
-.sidebar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
-.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
-.sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
-
-.sidebar-content::-webkit-scrollbar { width: 4px; }
-.sidebar-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+.sidebar-content::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
 
 /* Sections */
 .section-label {
@@ -717,7 +820,10 @@ export default {
   display: grid;
   grid-template-rows: 0fr;
   overflow: hidden; /* Prevent ghost scrollbars */
-  transition: grid-template-rows 0.3s ease-out, opacity 0.3s ease, margin 0.3s ease;
+  transition:
+    grid-template-rows 0.3s ease-out,
+    opacity 0.3s ease,
+    margin 0.3s ease;
   opacity: 0;
 }
 
@@ -788,7 +894,6 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   pointer-events: none;
 }
-
 
 .input-wrapper {
   position: relative;
@@ -862,7 +967,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .hint {
@@ -957,7 +1064,9 @@ export default {
   background: linear-gradient(135deg, #8b5cf6, #7c3aed);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 4px 15px rgba(124, 58, 237, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 14px;
@@ -966,7 +1075,9 @@ export default {
 
 .action-btn.primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 25px rgba(124, 58, 237, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   filter: brightness(1.1);
 }
 
@@ -1074,7 +1185,7 @@ export default {
   border-radius: 6px;
   cursor: pointer;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(192, 132, 252, 0.2); 
+  border: 1px solid rgba(192, 132, 252, 0.2);
   color: #c084fc;
   transition: all 0.2s;
   font-weight: 500;
@@ -1108,7 +1219,7 @@ export default {
   max-height: 250px;
   overflow-y: auto;
   overflow-x: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Custom Scrollbar for suggestions */
@@ -1136,7 +1247,8 @@ export default {
   font-size: 13px;
 }
 
-.suggestion-item:hover, .suggestion-item.active {
+.suggestion-item:hover,
+.suggestion-item.active {
   background: rgba(167, 139, 250, 0.15);
 }
 
@@ -1155,11 +1267,24 @@ export default {
 }
 
 /* Tag Colors */
-.tag-general { color: #a78bfa; }
-.tag-artist { color: #c084fc; font-weight: 700; }
-.tag-copyright { color: #d8b4fe; font-weight: 700; }
-.tag-character { color: #818cf8; font-weight: 700; }
-.tag-meta { color: #94a3b8; }
+.tag-general {
+  color: #a78bfa;
+}
+.tag-artist {
+  color: #c084fc;
+  font-weight: 700;
+}
+.tag-copyright {
+  color: #d8b4fe;
+  font-weight: 700;
+}
+.tag-character {
+  color: #818cf8;
+  font-weight: 700;
+}
+.tag-meta {
+  color: #94a3b8;
+}
 
 /* === ESTILOS MÓVIL - TRANSICIÓN LIMPIA === */
 @media (max-width: 768px) {
@@ -1179,21 +1304,22 @@ export default {
     animation: none;
     opacity: 1 !important;
   }
-  
+
   /* Estado ABIERTO (visible) */
   .sidebar-container:not(.is-collapsed) {
     transform: translateX(0);
-    box-shadow: 15px 0 40px rgba(0,0,0,0.3);
-    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                box-shadow 0.3s ease 0.1s;
+    box-shadow: 15px 0 40px rgba(0, 0, 0, 0.3);
+    transition:
+      transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      box-shadow 0.3s ease 0.1s;
   }
-  
+
   /* Estado CERRADO (deslizando fuera) */
   .sidebar-container.is-collapsed {
     transform: translateX(-100%);
     box-shadow: none;
     transition: transform 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53);
-    
+
     /* OVERRIDES CRÍTICOS: Mantener tamaño completo durante la animación */
     width: 280px !important;
     height: 100vh !important;
@@ -1201,14 +1327,14 @@ export default {
     max-height: 100vh !important;
     padding: 0 !important;
     overflow: visible !important;
-    border: none !important; 
+    border: none !important;
     background: transparent !important;
   }
-  
+
   /* Sidebar interno - mantener estilo completo durante animación */
   .sidebar {
     width: 100% !important;
-    height: 100% !important; 
+    height: 100% !important;
     max-height: none !important;
     min-height: 0 !important;
     background: rgba(20, 20, 28, 0.98) !important;
@@ -1223,7 +1349,7 @@ export default {
     box-shadow: none !important;
     overflow-y: auto !important;
   }
-  
+
   /* Header visible durante toda la animación */
   .sidebar-header {
     width: auto !important;
@@ -1235,7 +1361,7 @@ export default {
     min-height: 60px !important;
     flex-shrink: 0 !important;
   }
-  
+
   /* === CONTENIDO - ELIMINAR ANIMACIONES DE OPACIDAD EN MÓVIL === */
   .sidebar-content {
     /* Contenido SIEMPRE visible durante la animación en móvil */
@@ -1245,7 +1371,7 @@ export default {
     transform: none !important;
     /* Eliminar todas las transiciones que afecten opacidad/visibilidad */
     transition: none !important;
-    
+
     /* Layout */
     height: calc(100% - 60px); /* 100% menos el header */
     max-height: none !important;
@@ -1256,7 +1382,7 @@ export default {
     overflow-y: auto !important;
     overflow-x: hidden !important;
   }
-  
+
   /* Eliminar clase .faded en móvil */
   .sidebar-content.faded {
     opacity: 1 !important;
@@ -1265,7 +1391,7 @@ export default {
     transform: none !important;
     transition: none !important;
   }
-  
+
   /* Eliminar estado colapsado del contenido en móvil */
   .sidebar-container.is-collapsed .sidebar-content {
     opacity: 1 !important;
@@ -1277,23 +1403,23 @@ export default {
     overflow: hidden !important;
     transition: none !important;
   }
-  
+
   /* === ACORDEÓN EXTRA - SIEMPRE ABIERTO EN MÓVIL === */
   .actions-section {
     position: relative;
     flex-shrink: 0;
     margin-bottom: 20px;
   }
-  
+
   .actions-section .accordion-header {
     pointer-events: none;
     cursor: default;
   }
-  
+
   .actions-section .accordion-arrow {
     display: none;
   }
-  
+
   .actions-section .accordion-content {
     grid-template-rows: 1fr !important;
     opacity: 1 !important;
@@ -1302,38 +1428,38 @@ export default {
     height: auto !important;
     overflow: visible !important;
   }
-  
+
   /* Asegurar que ocupe espacio mínimo necesario */
   .actions-grid {
     min-height: 120px;
   }
-  
+
   /* El último elemento empuja hacia abajo */
   .actions-section:last-child {
     margin-top: auto;
     padding-bottom: 10px;
   }
-  
+
   /* === TÍTULO Y BOTÓN === */
   .title {
     opacity: 1 !important;
     transition: none !important;
   }
-  
+
   /* Ocultar botón de toggle interno en móvil */
   .sidebar-header .toggle-btn {
     display: none;
   }
-  
+
   /* === SCROLLBAR EN MÓVIL === */
   .sidebar::-webkit-scrollbar {
     width: 4px;
   }
-  
+
   .sidebar::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.2);
   }
-  
+
   .sidebar::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
@@ -1346,7 +1472,7 @@ export default {
     /* Solo en desktop, animación sutil de entrada */
     animation: sidebarEntranceDesktop 0.5s ease-out;
   }
-  
+
   @keyframes sidebarEntranceDesktop {
     from {
       opacity: 0;
@@ -1368,15 +1494,21 @@ export default {
 .tag-skeleton {
   width: 60px;
   height: 24px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
-  0% { opacity: 0.5; }
-  50% { opacity: 0.8; }
-  100% { opacity: 0.5; }
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.5;
+  }
 }
 
 /* Custom Select Styles */
@@ -1400,7 +1532,8 @@ export default {
   transition: all 0.2s;
 }
 
-.select-trigger:hover, .custom-select.is-open .select-trigger {
+.select-trigger:hover,
+.custom-select.is-open .select-trigger {
   background: rgba(0, 0, 0, 0.3);
   border-color: rgba(167, 139, 250, 0.5);
 }
@@ -1428,7 +1561,7 @@ export default {
   padding: 4px;
   list-style: none;
   z-index: 1000;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .custom-option {
@@ -1597,7 +1730,6 @@ export default {
   }
 }
 
-
 .mobile-close-btn {
   display: none;
   background: rgba(255, 255, 255, 0.05);
@@ -1624,62 +1756,15 @@ export default {
 }
 </style>
 
-/* Switch Toggle Styles */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 22px;
-}
-
-.switch input { 
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.1);
-  transition: .4s;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 2px;
-  bottom: 2px;
-  background-color: #cbd5e1;
-  transition: .4s;
-}
-
-input:checked + .slider {
-  background-color: rgba(167, 139, 250, 0.3);
-  border-color: #a78bfa;
-}
-
-input:focus + .slider {
-  box-shadow: 0 0 1px #a78bfa;
-}
-
-input:checked + .slider:before {
-  transform: translateX(18px);
-  background-color: #fff;
-}
-
-/* Rounded sliders */
-.slider.round {
-  border-radius: 22px;
-}
-
-.slider.round:before {
-  border-radius: 50%;
-}
+/* Switch Toggle Styles */ .switch { position: relative; display: inline-block;
+width: 40px; height: 22px; } .switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0;
+bottom: 0; background-color: rgba(255, 255, 255, 0.1); transition: .4s; border:
+1px solid rgba(255, 255, 255, 0.2); } .slider:before { position: absolute;
+content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px;
+background-color: #cbd5e1; transition: .4s; } input:checked + .slider {
+background-color: rgba(167, 139, 250, 0.3); border-color: #a78bfa; } input:focus
++ .slider { box-shadow: 0 0 1px #a78bfa; } input:checked + .slider:before {
+transform: translateX(18px); background-color: #fff; } /* Rounded sliders */
+.slider.round { border-radius: 22px; } .slider.round:before { border-radius:
+50%; }
