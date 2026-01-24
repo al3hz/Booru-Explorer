@@ -13,16 +13,19 @@
     </router-view>
 
     <AppFooter />
+    <SpeedInsights />
   </div>
 </template>
 
 <script>
+import { SpeedInsights } from '@vercel/speed-insights/vue';
 import SearchHeader from "./components/SearchHeader.vue";
 import AppFooter from "./components/AppFooter.vue";
 
 export default {
   name: "App",
   components: {
+    SpeedInsights,
     SearchHeader,
     AppFooter,
   },
