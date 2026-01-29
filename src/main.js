@@ -232,30 +232,14 @@ app.config.warnHandler = (msg, instance, trace) => {
 // ==========================================
 // SERVICE WORKER (PWA)
 // ==========================================
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  window.addEventListener("load", async () => {
-    try {
-      const registration = await navigator.serviceWorker.register("/sw.js", {
-        scope: "/",
-        updateViaCache: "imports",
-      });
-
-      // Manejo de actualizaciones
-      registration.addEventListener("updatefound", () => {
-        const newWorker = registration.installing;
-        newWorker.addEventListener("statechange", () => {
-          if (
-            newWorker.state === "installed" &&
-            navigator.serviceWorker.controller
-          ) {
-            // Nueva versión disponible
-            console.log("[SW] Nueva versión disponible");
-            // Podrías emitir evento global para mostrar "Update available"
-          }
-        });
-      });
-    } catch (error) {
-      console.error("[SW] Registro fallido:", error);
+// ==========================================
+// SERVICE WORKER (Desactivado/Limpieza)
+// ==========================================
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      console.log("[SW] Desregistrando Service Worker:", registration);
+      registration.unregister();
     }
   });
 }
