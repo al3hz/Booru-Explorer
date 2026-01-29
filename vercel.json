@@ -1,7 +1,7 @@
 {
   "version": 2,
   "name": "booru-explorer",
-  "framework": "vite",
+  "framework": "vue",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
@@ -38,6 +38,6 @@
       ]
     }
   ],
-  "cleanUrls": true,
+  "cleanUrls": false,
   "trailingSlash": false
 }
