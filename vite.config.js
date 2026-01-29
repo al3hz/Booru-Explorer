@@ -5,12 +5,7 @@ export default defineConfig({
   plugins: [vue()],
   base: "/",
   build: {
-    rollupOptions: {
-      output: {
-        entryFileNames: "assets/[name]-[hash].js",
-        chunkFileNames: "assets/[name]-[hash].js",
-      },
-    },
+    outDir: "dist",
   },
   server: {
     port: 3000,
