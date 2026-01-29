@@ -92,7 +92,9 @@ const CONFIG = {
     'posts',
     'tags',
     'pools',
-    'comments'
+    'comments',
+    'counts/posts.json',
+    'counts/posts'
   ] as const
 } as const;
 
