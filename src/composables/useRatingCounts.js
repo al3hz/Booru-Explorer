@@ -1,87 +1,167 @@
-
-import { ref } from 'vue';
-import DanbooruService from '../services/danbooru';
+import { ref } from "vue";
+import { useQuery } from "@tanstack/vue-query";
+import DanbooruService from "../services/danbooru";
 
 export function useRatingCounts() {
-  const ratingCounts = ref({}); // Keep local ref structure if components depend on it heavily? 
-  // Actually, components likely use it as reactive object.
-  // But Vue Query gives us `data`.
-  // Let's implement fetchRatingCounts to return or populate data.
+  const ratingCounts = ref({
+    all: 0,
+    g: 0,
+    s: 0,
+    q: 0,
+    e: 0,
+  });
 
-  // Since fetching counts is often triggered by the Search Page for multiple counts (G, S, Q, E) or just general search count.
-  // The previous implementation had `fetchRatingCounts(query)` which populated `ratingCounts` ref.
+  const loadingCounts = ref(false);
+  const isLimited = ref(false);
+  let abortController = null;
 
-  // We can use `useQuery` but since the query changes dynamicallly based on search, 
-  // and we might want to fetch multiple things?
-  // Actually, the previous implementation just did:
-  // ratingCounts.value = { general: ..., sensitive: ..., etc }
+  // Función para obtener conteos usando useQuery con cache
+  const useRatingCountsQuery = (currentTags) => {
+    return useQuery({
+      queryKey: ["ratingCounts", currentTags],
+      queryFn: async ({ signal }) => {
+        const counts = {
+          all: 0,
+          g: 0,
+          s: 0,
+          q: 0,
+          e: 0,
+        };
 
-  // It's probably better to keep `fetchRatingCounts` as an async function that uses the Service directly
-  // rather than full Vue Query if it's just a one-off fetch on search.
-  // HOWEVER, we want caching. Vue Query `queryClient.fetchQuery` is perfect for this.
+        const ratings = ["g", "s", "q", "e"];
+        const baseTags = currentTags ? currentTags.trim() : "";
 
+        try {
+          // Helper para fetch individual
+          const getCount = async (tags) => {
+            try {
+              return await DanbooruService.getPostCount(tags, { signal });
+            } catch (err) {
+              // No loguear AbortError
+              if (err.name === "AbortError") {
+                throw err;
+              }
+              console.warn("[RatingCounts] Error fetching:", tags, err.message);
+              return 0;
+            }
+          };
+
+          // Paralelizar requests
+          const promises = [
+            getCount(baseTags), // Total
+            ...ratings.map((r) => getCount(`${baseTags} rating:${r}`.trim())),
+          ];
+
+          const results = await Promise.all(promises);
+
+          counts.all = results[0];
+          ratings.forEach((r, i) => {
+            counts[r] = results[i + 1];
+          });
+
+          // Detectar si es búsqueda limitada
+          isLimited.value = baseTags.split(" ").length > 2;
+        } catch (err) {
+          if (err.name !== "AbortError") {
+            console.error("[RatingCounts] Error:", err);
+          }
+          throw err;
+        }
+
+        return counts;
+      },
+      // Configuración de cache y comportamiento
+      enabled: !!currentTags || currentTags === "", // Habilitar incluso para búsqueda vacía
+      staleTime: 1000 * 60 * 5, // 5 minutos
+      gcTime: 1000 * 60 * 10, // 10 minutos
+      retry: 2,
+      refetchOnWindowFocus: false,
+    });
+  };
+
+  // Función original para compatibilidad (llamada imperativa)
   const fetchRatingCounts = async (currentTags) => {
-    // Logic from original:
-    // 1. Fetch total
-    // 2. Fetch specific ratings
+    // Cancelar petición anterior si existe
+    if (abortController) {
+      abortController.abort();
+    }
 
-    // Since this is complex dynamic logic, wrapping it in a function is best.
-    // We can genericize it.
+    abortController = new AbortController();
+    loadingCounts.value = true;
+    isLimited.value = false;
 
     const counts = {
       all: 0,
-      general: 0,
-      sensitive: 0,
-      questionable: 0,
-      explicit: 0
+      g: 0,
+      s: 0,
+      q: 0,
+      e: 0,
     };
 
-    // Use short codes for API reliability
-    const ratingMap = {
-      'g': 'general',
-      's': 'sensitive',
-      'q': 'questionable',
-      'e': 'explicit'
-    };
-    const ratings = Object.keys(ratingMap);
+    const ratings = ["g", "s", "q", "e"];
+    const baseTags = currentTags ? currentTags.trim() : "";
 
-    // Helper to fetch one count using service
-    const getCount = async (tags) => {
-      try {
-        return await DanbooruService.getPostCount(tags);
-      } catch (e) {
-        console.error('Error fetching count for tags:', tags, e);
-        return 0;
+    try {
+      // Helper para fetch individual con timeout
+      const getCount = async (tags) => {
+        try {
+          return await DanbooruService.getPostCount(tags, {
+            signal: abortController.signal,
+          });
+        } catch (err) {
+          // No loguear AbortError (es comportamiento esperado)
+          if (err.name === "AbortError") {
+            throw err;
+          }
+          console.warn("[RatingCounts] Error fetching:", tags, err.message);
+          return 0;
+        }
+      };
+
+      // Paralelizar requests
+      const promises = [
+        getCount(baseTags), // Total
+        ...ratings.map((r) => getCount(`${baseTags} rating:${r}`.trim())),
+      ];
+
+      const results = await Promise.all(promises);
+
+      counts.all = results[0];
+      ratings.forEach((r, i) => {
+        counts[r] = results[i + 1];
+      });
+
+      // Detectar si es búsqueda limitada (tags complejos)
+      isLimited.value = baseTags.split(" ").length > 2;
+    } catch (err) {
+      // Solo loguear si NO es AbortError
+      if (err.name !== "AbortError") {
+        console.error("[RatingCounts] Error:", err);
       }
-    };
-
-    // Base tags
-    const baseTags = currentTags ? currentTags.trim() : '';
-
-    // Parallel fetch
-    const promises = [
-      getCount(baseTags), // Total (All)
-      ...ratings.map(r => getCount(`${baseTags} rating:${r}`))
-    ];
-
-    const results = await Promise.all(promises);
-
-    counts.all = results[0];
-    ratings.forEach((r, i) => {
-      // PostGallery expects short keys (g, s, q, e)
-      counts[r] = results[i + 1];
-    });
+      // En caso de error/abort, mantener counts anteriores o 0
+    } finally {
+      loadingCounts.value = false;
+      abortController = null;
+    }
 
     ratingCounts.value = counts;
     return counts;
   };
 
+  // Cleanup al desmontar
+  const cleanup = () => {
+    if (abortController) {
+      abortController.abort();
+      abortController = null;
+    }
+  };
+
   return {
     ratingCounts,
-    fetchRatingCounts
-    // Note: We aren't using useQuery hook here because this logic is imperative (called by HomeView watcher).
-    // If we wanted reactive auto-fetch, we'd accept `tags` ref as argument.
-    // But HomeView calls it manually. So we stick to function but use Service.
-    // Ideally we should move to `useQuery` in HomeView, but that's a bigger refactor.
+    loadingCounts,
+    isLimited,
+    useRatingCountsQuery,
+    fetchRatingCounts,
+    cleanup,
   };
 }

@@ -4,10 +4,18 @@
 
     <router-view v-slot="{ Component, route }">
       <transition :name="route.meta.transition || 'fade'" mode="out-in">
+        <!-- 
+          keep-alive solo para rutas que lo especifiquen en meta.keepAlive
+          La key incluye el path y refreshKey para forzar recarga cuando sea necesario
+        -->
         <keep-alive v-if="route.meta.keepAlive">
-          <component :is="Component" :key="route.path" />
+          <component :is="Component" :key="`${route.path}-${refreshKey}`" />
         </keep-alive>
-        <component :is="Component" :key="route.path" v-else />
+        <component
+          :is="Component"
+          :key="`${route.path}-${refreshKey}`"
+          v-else
+        />
       </transition>
     </router-view>
 
@@ -15,64 +23,89 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, watch, nextTick } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useQueryClient } from "@tanstack/vue-query";
 import SearchHeader from "./components/SearchHeader.vue";
 import AppFooter from "./components/AppFooter.vue";
+import "./styles/global.css";
 
-export default {
-  name: "App",
-  components: {
-    SearchHeader,
-    AppFooter,
-  },
-  data() {
-    return {
-      refreshKey: 0,
-    };
-  },
-  computed: {
-    getRouteKey() {
-      return (route) => route.path;
-    },
-  },
-  methods: {
-    handleLogoClick() {
-      const isHomeWithNoQuery =
-        this.$route.path === "/" && Object.keys(this.$route.query).length === 0;
+// ==========================================
+// ROUTER & QUERY CLIENT
+// ==========================================
+const route = useRoute();
+const router = useRouter();
+const queryClient = useQueryClient();
 
-      if (isHomeWithNoQuery) {
-        this.refreshKey++;
-        console.log("Home refreshed");
-      }
-    },
+// Key para forzar re-render de componentes cuando se hace click en logo
+const refreshKey = ref(0);
 
-    // Manejo de hash anchors después de transiciones
-    scrollToHash() {
-      if (this.$route.hash) {
-        setTimeout(() => {
-          const element = document.querySelector(this.$route.hash);
-          if (element) {
-            element.scrollIntoView({ behavior: "smooth" });
-          }
-        }, 100);
-      }
-    },
-  },
+// ==========================================
+// NAVEGACIÓN Y REFRESH
+// ==========================================
+const handleLogoClick = async () => {
+  const isHome = route.path === "/";
+  const hasNoQuery = Object.keys(route.query).length === 0;
 
-  // Lifecycle hooks para mejor manejo
-  mounted() {
-    // Inicializar cualquier lógica necesaria
-    console.log("App mounted");
-  },
+  if (isHome && hasNoQuery) {
+    // Estamos en home limpio: invalidar queries y forzar re-render
+    refreshKey.value++;
 
-  beforeUnmount() {
-    // Cleanup si es necesario
-  },
+    // Invalidar todas las queries de posts para refrescar datos
+    await queryClient.invalidateQueries({
+      queryKey: ["posts"],
+      refetchType: "active",
+    });
+
+    // Scroll al top suave
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    console.log("[App] Home refreshed");
+  } else {
+    // Navegar a home limpio
+    await router.push({ path: "/", query: {} });
+  }
 };
+
+// ==========================================
+// SCROLL TO HASH (Anclas en URL)
+// ==========================================
+watch(
+  () => route.hash,
+  (newHash) => {
+    if (newHash) {
+      nextTick(() => {
+        // Esperar a que termine la transición de ruta
+        setTimeout(() => {
+          const element = document.querySelector(newHash);
+          if (element) {
+            element.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }
+        }, 350); // Delay ligeramente mayor que la duración de la transición CSS
+      });
+    }
+  },
+  { immediate: true },
+);
+
+// ==========================================
+// MANEJO GLOBAL DE ERRORES NO CAPTURADOS
+// ==========================================
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("[Unhandled Promise Rejection]", event.reason);
+  // Prevenir que Vue Query mute el error
+  event.preventDefault();
+});
 </script>
 
 <style>
-/* Transiciones mejoradas */
+/* ==========================================
+   TRANSICIONES DE RUTA
+   ========================================== */
 .fade-enter-active {
   transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -86,7 +119,7 @@ export default {
   opacity: 0;
 }
 
-/* Transiciones adicionales que puedes usar en las rutas */
+/* Slide horizontal */
 .slide-enter-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -105,21 +138,57 @@ export default {
   transform: translateX(-20px);
 }
 
-/* Estructura básica mejorada */
+/* Slide vertical (útil para modales/mobile) */
+.slide-up-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-up-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.slide-up-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+/* ==========================================
+   LAYOUT BASE
+   ========================================== */
 .app-container {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   position: relative;
+  /* Prevenir scroll horizontal accidental durante transiciones */
+  overflow-x: hidden;
 }
 
-.app-container > *:not(router-view) {
+/* El contenido principal ocupa todo el espacio disponible */
+.app-container > main,
+.app-container > .router-view-wrapper,
+.app-container > :nth-child(2) {
+  flex: 1;
+  width: 100%;
+}
+
+/* Header y footer no se encogen */
+.app-container > header,
+.app-container > footer,
+.app-container > :first-child,
+.app-container > :last-child {
   flex-shrink: 0;
 }
 
-.app-container > router-view {
-  flex: 1;
+/* Mejorar rendimiento de animaciones */
+[class*="-enter-active"],
+[class*="-leave-active"] {
+  will-change: opacity, transform;
+  pointer-events: none; /* Prevenir clicks durante transición */
 }
 </style>
-
-<style src="./styles/global.css"></style>

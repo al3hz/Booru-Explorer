@@ -1,13 +1,13 @@
 <template>
   <div class="home-view">
     <div class="app-layout" :class="{ 'no-sidebar-gap': !isSidebarVisible }">
-      <!-- Sidebar Backdrop (Mobile Overlay) -->
+      <!-- Backdrop Mobile -->
       <transition name="fade">
         <div
           v-if="isSidebarVisible"
           class="sidebar-backdrop"
           @click="toggleSidebar"
-        ></div>
+        />
       </transition>
 
       <SearchForm
@@ -20,10 +20,10 @@
         :masonry-mode="isMasonryMode"
         :active-extra-action="activeExtraAction"
         @update:search-query="inputQuery = $event"
-        @update:limit="limit = $event"
-        @update:rating-filter="ratingFilter = $event"
+        @update:limit="updateLimit"
+        @update:rating-filter="updateRatingFilter"
         @update:infinite-scroll="infiniteScroll = $event"
-        @update:masonry-mode="isMasonryMode = $event"
+        @update:masonry-mode="toggleMasonry"
         @search="handleSearch"
         @example-clicked="setExample"
         @trigger-action="handleAction"
@@ -31,27 +31,18 @@
       />
 
       <main class="main-content" :class="{ 'sidebar-open': isSidebarVisible }">
+        <!-- Error Banner -->
         <transition name="slide-down">
           <div v-if="error" class="error-banner">
             <span class="icon">⚠️</span>
             <span class="error-text">{{ error }}</span>
-            <button class="close-error-btn" @click="error = null" title="Close">
-              ✕
-            </button>
+            <button class="close-error-btn" @click="error = null">✕</button>
           </div>
         </transition>
 
-        <!-- Search Query Title -->
+        <!-- Search Title -->
         <transition name="slide-fade">
-          <div
-            v-if="
-              appliedQuery &&
-              !appliedQuery.includes('status:deleted') &&
-              !appliedQuery.includes('order:score') &&
-              !appliedQuery.includes('order:favcount')
-            "
-            class="search-title-container"
-          >
+          <div v-if="showSearchTitle" class="search-title-container">
             <h2 class="search-title">
               <span class="results-text">Results for:</span>
               <span class="search-query">{{ appliedQuery }}</span>
@@ -59,96 +50,18 @@
           </div>
         </transition>
 
-        <div
-          v-if="appliedQuery.includes('status:deleted')"
-          class="info-banner deleted-mode"
-        >
-          <div class="banner-content">
-            <span class="icon">🗑️</span>
-            <span
-              >Showing deleted posts of the {{ currentRangeFriendlyName }}</span
-            >
-          </div>
-          <button
-            class="clear-mode-btn"
-            @click="handleSearch('')"
-            title="Clear filter"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div
-          v-if="appliedQuery.includes('order:score')"
-          class="likes-mode-container"
-        >
-          <div class="info-banner likes-mode">
-            <div class="banner-content">
-              <span class="icon">❤️</span>
-              <span
-                >Showing top posts of the {{ currentRangeFriendlyName }}</span
-              >
-            </div>
-            <button
-              class="clear-mode-btn"
-              @click="handleSearch('')"
-              title="Clear filter"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="appliedQuery.includes('order:favcount')"
-          class="favs-mode-container"
-        >
-          <div class="info-banner favs-mode">
-            <div class="banner-content">
-              <span class="icon">⭐</span>
-              <span
-                >Showing most favorited of the
-                {{ currentRangeFriendlyName }}</span
-              >
-            </div>
-            <button
-              class="clear-mode-btn"
-              @click="handleSearch('')"
-              title="Clear filter"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="appliedQuery.includes('order:rank')"
-          class="trending-mode-container"
-        >
-          <div class="info-banner trending-mode">
-            <div class="banner-content">
-              <span class="icon">🔥</span>
-              <span
-                >Showing trending posts of the
-                {{ currentRangeFriendlyName }}</span
-              >
-            </div>
-            <button
-              class="clear-mode-btn"
-              @click="handleSearch('')"
-              title="Clear filter"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
+        <!-- Mode Banners -->
+        <ModeBanner
+          v-if="modeBannerConfig"
+          v-bind="modeBannerConfig"
+          @clear="handleSearch('')"
+        />
 
         <!-- New Posts Notification -->
         <transition name="fade-up">
           <div v-if="hasNewPosts && !loading" class="new-posts-notification">
             <button @click="handleRefresh" class="new-posts-btn">
-              <span class="icon">✨</span>
-              New images available
+              <span class="icon">✨</span> New images available
             </button>
           </div>
         </transition>
@@ -184,739 +97,582 @@
       />
     </Transition>
 
-    <!-- Scroll to Top Button (Masonry Mode) -->
     <Transition name="fade">
       <button
         v-if="showScrollToTop && isMasonryMode && !selectedPost"
         @click="scrollToTop"
         class="scroll-to-top-btn"
-        title="Scroll to top"
+        aria-label="Scroll to top"
       >
-        <i class="lni lni-arrow-up"></i>
+        <i class="lni lni-arrow-up" />
       </button>
     </Transition>
   </div>
 </template>
 
-<script>
-import { ref, watch, computed, onMounted, onUnmounted, onUpdated } from "vue";
+<script setup>
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import SearchForm from "../components/SearchForm.vue";
 import PostGallery from "../components/PostGallery.vue";
 import ImageDetailModal from "../components/ImageDetailModal.vue";
+import ModeBanner from "../components/ModeBanner.vue";
 import { useDanbooruApi } from "../composables/useDanbooruApi";
 import { useRatingCounts } from "../composables/useRatingCounts";
 import { useLayout } from "../composables/useLayout";
 import DanbooruService from "../services/danbooru";
 
-export default {
-  name: "HomeView",
-  components: {
-    SearchForm,
-    PostGallery,
-    ImageDetailModal,
-  },
-  setup() {
-    const route = useRoute();
-    const router = useRouter();
-    const inputQuery = ref(""); // Lo que escribe el usuario
-    const appliedQuery = ref(""); // Lo que realmente se está buscando (applied)
+// ==========================================
+// ROUTER Y ESTADO GLOBAL
+// ==========================================
+const route = useRoute();
+const router = useRouter();
+const { isSidebarVisible, toggleSidebar, setSidebarVisible } = useLayout();
 
-    // Initialize limit from localStorage or default to 10
-    const savedLimit = localStorage.getItem("postsPerPage");
-    const limit = ref(savedLimit ? parseInt(savedLimit, 10) : 10);
+// ==========================================
+// ESTADO DEL FORMULARIO
+// ==========================================
+const inputQuery = ref("");
+const appliedQuery = ref("");
+const selectedPost = ref(null);
+const error = ref(null);
+const isRandomMode = ref(false);
+const isLoadingNextPage = ref(false);
+const showScrollToTop = ref(false);
 
-    // Default to All ("") if nothing saved. If saved, use saved value.
-    const savedRating = localStorage.getItem("ratingFilter");
-    const ratingFilter = ref(savedRating !== null ? savedRating : "general");
+// Persistencia local
+const ls = {
+  limit: localStorage.getItem("postsPerPage"),
+  rating: localStorage.getItem("ratingFilter"),
+  masonry: localStorage.getItem("masonryMode"),
+};
 
-    const { isSidebarVisible, toggleSidebar, setSidebarVisible } = useLayout();
-    const infiniteScroll = ref(false);
-    const selectedPost = ref(null);
-    const isRandomMode = ref(false);
-    const showTimeoutInfo = ref(false);
-    const isLoadingNextPage = ref(false);
-    const showScrollToTop = ref(false);
+const isMasonryMode = ref(ls.masonry === "true");
+const infiniteScroll = ref(isMasonryMode.value);
 
-    // Flag to control scroll on update
-    const shouldScrollToTop = ref(false);
+const userLimit = ref(ls.limit ? parseInt(ls.limit, 10) : 20);
+const limit = ref(isMasonryMode.value ? 75 : userLimit.value);
+// Default to 'general' (G) if no preference is saved
+const ratingFilter = ref(ls.rating !== null ? ls.rating : "general");
 
-    // Flag to prevent race condition between manual navigation and route watcher
-    const isManualNavigation = ref(false);
+const lastListPost = ref(null);
 
-    // State for user preferences (to restore when exiting Masonry)
-    const storedLimit = localStorage.getItem("postsPerPage");
-    const userLimit = ref(storedLimit ? parseInt(storedLimit) : 20);
+// ==========================================
+// COMPOSABLES DE API
+// ==========================================
+const currentPageRef = computed(() => parseInt(route.query.page) || 1);
 
-    // Masonry Mode Logic
-    const savedMasonry = localStorage.getItem("masonryMode");
-    const isMasonryMode = ref(savedMasonry === "true"); // Default false
+const {
+  posts,
+  loading,
+  error: apiError,
+  currentPage,
+  hasNextPage,
+  searchPosts,
+  hasNewPosts,
+  refreshGallery,
+} = useDanbooruApi(
+  appliedQuery,
+  limit,
+  ratingFilter,
+  infiniteScroll,
+  currentPageRef,
+);
 
-    // Initialize limit: 75 if Masonry, else user preference
-    if (savedMasonry === "true") {
-      limit.value = 75;
-    }
+watch(apiError, (val) => {
+  if (val) error.value = val;
+});
 
-    // ============ WATCHER 1: Rating Filter ============
-    // Persist and sync rating filter with URL
-    watch(
-      ratingFilter,
-      (newVal) => {
-        localStorage.setItem("ratingFilter", newVal);
+const {
+  ratingCounts,
+  fetchRatingCounts,
+  cleanup: cleanupRatingCounts,
+} = useRatingCounts();
 
-        // Solo actualizar URL si realmente cambió y no estamos en navegación manual
-        const currentUrlRating = route.query.rating || "";
-        if (newVal !== currentUrlRating && !isManualNavigation.value) {
-          router.push({
-            query: {
-              ...route.query,
-              rating: newVal || undefined,
-              page: 1, // Reset to page 1 when rating changes
-            },
-          });
-        }
-      },
-      { immediate: true },
-    );
+// ==========================================
+// COMPUTED PROPERTIES
+// ==========================================
+const showSearchTitle = computed(() => {
+  if (!appliedQuery.value) return false;
+  const excluded = ["status:deleted", "order:score", "order:favcount"];
+  return !excluded.some((tag) => appliedQuery.value.includes(tag));
+});
 
-    // ============ WATCHER 2: Limit ============
-    // Persist and sync posts per page limit
-    watch(
-      limit,
-      (newVal) => {
-        if (!isMasonryMode.value) {
-          userLimit.value = newVal;
-          localStorage.setItem("postsPerPage", newVal);
-        }
+const currentRangeFriendlyName = computed(() => {
+  const q = appliedQuery.value;
+  if (q.includes("age:<1d")) return "day";
+  if (q.includes("age:<1w")) return "week";
+  if (q.includes("age:<1month") || q.includes("age:<1m")) return "month";
+  if (q.includes("age:<1y")) return "year";
+  return "all time";
+});
 
-        // Sync with URL if changed and not in masonry mode
-        const currentUrlLimit = parseInt(route.query.limit) || 20;
-        if (
-          newVal !== currentUrlLimit &&
-          !isMasonryMode.value &&
-          !isManualNavigation.value
-        ) {
-          router.push({
-            query: { ...route.query, limit: newVal, page: 1 },
-          });
-        }
-      },
-      { immediate: true },
-    );
+const activeExtraAction = computed(() => {
+  const q = appliedQuery.value;
+  if (q.includes("status:deleted")) return "deleted";
+  if (q.includes("order:score")) return "most-liked";
+  if (q.includes("order:favcount")) return "most-favorited";
+  if (q.includes("order:rank")) return "hot";
+  return null;
+});
 
-    // ============ WATCHER 3: Masonry Mode ============
-    watch(isMasonryMode, async (newVal) => {
-      localStorage.setItem("masonryMode", newVal);
+const modeBannerConfig = computed(() => {
+  const q = appliedQuery.value;
+  if (!q) return null;
 
-      if (newVal) {
-        // Entering Masonry Mode
-        infiniteScroll.value = true;
-        if (limit.value < 75) {
-          limit.value = 75;
-        }
-      } else {
-        // Exiting Masonry Mode -> Restore User Preferences
-        infiniteScroll.value = false; // Restore pagination
-        limit.value = userLimit.value; // Restore user limit
+  const configs = {
+    "status:deleted": {
+      icon: "🗑️",
+      text: `Showing deleted posts of the ${currentRangeFriendlyName.value}`,
+      type: "deleted",
+    },
+    "order:score": {
+      icon: "❤️",
+      text: `Showing top posts of the ${currentRangeFriendlyName.value}`,
+      type: "likes",
+    },
+    "order:favcount": {
+      icon: "⭐",
+      text: `Showing most favorited of the ${currentRangeFriendlyName.value}`,
+      type: "favs",
+    },
+    "order:rank": {
+      icon: "🔥",
+      text: `Showing trending posts of the ${currentRangeFriendlyName.value}`,
+      type: "trending",
+    },
+  };
+
+  const key = Object.keys(configs).find((k) => q.includes(k));
+  return key ? configs[key] : null;
+});
+
+const currentPostIndex = computed(() => {
+  if (!selectedPost.value) return -1;
+  return posts.value.findIndex((p) => p.id === selectedPost.value.id);
+});
+
+const canPrev = computed(() => {
+  if (!selectedPost.value || isRandomMode.value) return false;
+  return currentPostIndex.value > 0 || currentPage.value > 1;
+});
+
+const canNext = computed(() => {
+  if (!selectedPost.value || isRandomMode.value) return false;
+  return currentPostIndex.value < posts.value.length - 1 || hasNextPage.value;
+});
+
+// ==========================================
+// WATCHERS OPTIMIZADOS (INTEGRADOS)
+// ==========================================
+
+// 1. Sincronización URL <-> Estado (con FIX de tags y comas)
+watch(
+  () => route.query,
+  async (newQuery, oldQuery) => {
+    // 1. Sincronización URL <-> Estado
+    const newTags = newQuery.tags || "";
+    const newRating = newQuery.rating; // undefined if missing
+    const newPage = parseInt(newQuery.page) || 1;
+
+    // Handle Rating Logic First
+    if (newRating !== undefined) {
+      if (newRating !== ratingFilter.value) {
+        ratingFilter.value = newRating;
       }
-
-      // Mark that we should scroll after the update is complete
-      shouldScrollToTop.value = true;
-      await handleSearch();
-    });
-
-    // ============ WATCHER 4: Route Query (Principal) ============
-    watch(
-      () => route.query,
-      (newQuery) => {
-        const normalizedTags = newQuery.tags || "";
-        const newRating = newQuery.rating || ""; // Default empty string
-        const newLimit =
-          parseInt(newQuery.limit) ||
-          (isMasonryMode.value ? 75 : userLimit.value);
-
-        // Update internal states to match URL
-        if (appliedQuery.value !== normalizedTags) {
-          inputQuery.value = normalizedTags;
-          appliedQuery.value = normalizedTags;
-          isRandomMode.value = false;
-
-          // Fetch counts only when tags change
-          const normalizedQueryForCounts = normalizedTags
-            .split(/[,，\s]+/)
-            .filter((t) => t.trim())
-            .join(" ");
-          fetchRatingCounts(normalizedQueryForCounts);
-        }
-
-        // IMPORTANTE: Sincronizar rating desde URL solo si es diferente
-        if (ratingFilter.value !== newRating) {
-          ratingFilter.value = newRating;
-        }
-
-        if (limit.value !== newLimit) {
-          limit.value = newLimit;
-        }
-      },
-      { deep: true, immediate: true },
-    );
-
-    // ============ WATCHER 5: Page Changes ============
-    // Watch for page changes in URL (e.g. Back Button)
-    watch(
-      () => route.query.page,
-      (newPage) => {
-        const p = parseInt(newPage) || 1;
-        // Fetch only if we aren't already on this page AND not manually navigating
-        if (p !== currentPage.value && !isManualNavigation.value) {
-          handlePageChange(p);
-        }
-      },
-    );
-
-    // ============ WATCHER 6: Rating + Limit (para refrescar búsqueda) ============
-    watch([ratingFilter, limit], () => {
-      // Solo buscar si hay una query aplicada y no estamos en navegación manual
-      if (appliedQuery.value && !isManualNavigation.value) {
-        searchPosts(1, true);
-      }
-    });
-
-    // ============ WATCHER 7: Applied Query (para título dinámico) ============
-    // Dynamic Title Logic
-    watch(appliedQuery, (newVal) => {
-      if (newVal) {
-        // Format: "tag1 AND tag2 | Booru Explorer"
-        const formattedTags = newVal
-          .split(/[,，\s]+/)
-          .filter((t) => t)
-          .join(" AND ");
-        document.title = `${formattedTags} | Booru Explorer`;
-      } else {
-        document.title = "Booru Explorer | Anime Image Board";
-      }
-    });
-
-    // Handle scroll in onUpdated to ensure DOM is ready
-    onUpdated(() => {
-      if (shouldScrollToTop.value) {
-        shouldScrollToTop.value = false;
-        // Immediate/Auto scroll as requested
-        window.scrollTo({ top: 0, behavior: "auto" });
-
-        // Redundancy for different browsers/containers
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-      }
-    });
-
-    // Initial setup for Masonry props
-    if (isMasonryMode.value) {
-      infiniteScroll.value = true;
-    }
-
-    // Track current page for traditional pagination
-    const currentPageRef = computed(() => parseInt(route.query.page) || 1);
-
-    // useDanbooruApi usa appliedQuery (el valor confirmado)
-    const {
-      posts,
-      loading,
-      error,
-      currentPage,
-      hasNextPage,
-      searchPosts,
-      hasNewPosts,
-      refreshGallery,
-    } = useDanbooruApi(
-      appliedQuery,
-      limit,
-      ratingFilter,
-      infiniteScroll,
-      currentPageRef,
-    );
-
-    const currentRangeFriendlyName = computed(() => {
-      if (appliedQuery.value.includes("age:<1d")) return "day";
-      if (appliedQuery.value.includes("age:<1w")) return "week";
-      if (
-        appliedQuery.value.includes("age:<1month") ||
-        appliedQuery.value.includes("age:<1m")
-      )
-        return "month";
-      if (appliedQuery.value.includes("age:<1y")) return "year";
-      return "all time";
-    });
-
-    const activeExtraAction = computed(() => {
-      if (appliedQuery.value.includes("status:deleted")) return "deleted";
-      if (appliedQuery.value.includes("order:score")) return "most-liked";
-      if (appliedQuery.value.includes("order:favcount"))
-        return "most-favorited";
-      if (appliedQuery.value.includes("order:rank")) return "hot";
-      return null;
-    });
-
-    const parsedTags = computed(() => {
-      return appliedQuery.value
-        .trim()
-        .split(/[,，\s]+/)
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0);
-    });
-
-    const currentPostIndex = computed(() => {
-      if (!selectedPost.value) return -1;
-      return posts.value.findIndex((p) => p.id === selectedPost.value.id);
-    });
-
-    const canPrev = computed(() => {
-      if (!selectedPost.value || isRandomMode.value) return false;
-      return currentPostIndex.value > 0 || currentPage.value > 1;
-    });
-
-    const canNext = computed(() => {
-      if (!selectedPost.value || isRandomMode.value) return false;
-      return (
-        currentPostIndex.value < posts.value.length - 1 || hasNextPage.value
-      );
-    });
-
-    const lastListPost = ref(null); // Track the post we opened from the list
-
-    const openModal = (post) => {
-      isRandomMode.value = false;
-      selectedPost.value = post;
-      lastListPost.value = post; // Save reference for navigation fallback
-    };
-
-    const navigatePost = async (direction) => {
-      if (!selectedPost.value || isRandomMode.value) return;
-
-      let index = posts.value.findIndex((p) => p.id === selectedPost.value.id);
-
-      // Fallback: If current post is not in list (e.g. navigated to child), use last known list post
-      if (index === -1 && lastListPost.value) {
-        index = posts.value.findIndex((p) => p.id === lastListPost.value.id);
-      }
-
-      // If still not found, we can't navigate safely
-      if (index === -1) return;
-
-      const newIndex = index + direction;
-
-      // Caso 1: Navegación dentro de la página actual
-      if (newIndex >= 0 && newIndex < posts.value.length) {
-        selectedPost.value = posts.value[newIndex];
-        lastListPost.value = posts.value[newIndex]; // Update anchor
-        return;
-      }
-
-      // Caso 2: Siguiente página (Infinite Next)
-      if (newIndex >= posts.value.length) {
-        if (hasNextPage.value && !loading.value) {
-          isLoadingNextPage.value = true;
-          const nextPage = currentPage.value + 1;
-          try {
-            if (isMasonryMode.value) {
-              // Masonry Override: Append posts directly without triggering route change/reset
-              await searchPosts(nextPage, false); // false = append
-
-              // Select the first post of the new batch (which is at the previous length index)
-              if (posts.value.length > index + 1) {
-                const nextPost = posts.value[index + 1];
-                selectedPost.value = nextPost;
-                lastListPost.value = nextPost;
-              }
-            } else {
-              // Pagination behavior: Replace page
-              await handlePageChange(nextPage);
-              if (posts.value.length > 0) {
-                selectedPost.value = posts.value[0];
-                lastListPost.value = posts.value[0];
-              }
-            }
-          } finally {
-            isLoadingNextPage.value = false;
-          }
-        }
-        return;
-      }
-
-      // Caso 3: Página anterior (Infinite Prev)
-      if (newIndex < 0) {
-        if (currentPage.value > 1 && !loading.value) {
-          isLoadingNextPage.value = true;
-          const prevPage = currentPage.value - 1;
-          try {
-            await handlePageChange(prevPage);
-            if (posts.value.length > 0) {
-              selectedPost.value = posts.value[posts.value.length - 1];
-            }
-          } finally {
-            isLoadingNextPage.value = false;
-          }
-        }
-        return;
-      }
-    };
-
-    // Acción explicita de buscar (Enter o Botón)
-    const handleSearch = async (overrideQuery) => {
-      const finalQuery =
-        typeof overrideQuery === "string" ? overrideQuery : inputQuery.value;
-
-      // Validate tag count
-      const tags = finalQuery
-        .split(/[,，\s]+/)
-        .map((t) => t.trim())
-        .filter(
-          (t) =>
-            t.length > 0 &&
-            !t.startsWith("rating:") &&
-            !t.startsWith("order:") &&
-            !t.startsWith("status:") &&
-            !t.startsWith("age:") &&
-            !t.startsWith("-"),
-        );
-
-      if (tags.length > 2) {
-        error.value = `You can only search up to 2 tags at a time. You entered ${tags.length} tags: ${tags.join(", ")}`;
-        setTimeout(() => {
-          error.value = null;
-        }, 5000);
-        return;
-      }
-
-      // Auto-close sidebar on mobile
-      if (window.innerWidth <= 768) {
-        setSidebarVisible(false);
-      }
-
-      isRandomMode.value = false;
-
-      // Build query object with rating
-      const queryParams = {};
-
-      if (finalQuery) {
-        queryParams.tags = finalQuery;
-      }
-
-      // Always include rating if set
-      if (ratingFilter.value) {
-        queryParams.rating = ratingFilter.value;
-      }
-
-      // Reset to page 1 for new searches
-      queryParams.page = 1;
-
-      // Update URL
-      await router.push({
-        path: "/",
-        query: queryParams,
-      });
-
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    };
-
-    // Integrate Rating Counts
-    const { ratingCounts, fetchRatingCounts } = useRatingCounts();
-
-    const handlePageChange = async (page) => {
-      if (loading.value) return;
-
-      // Set flag to prevent race condition with route watcher
-      isManualNavigation.value = true;
-
-      try {
-        // Update URL if needed
-        const currentRoutePage = parseInt(route.query.page) || 1;
-        if (currentRoutePage !== page) {
-          await router.push({
-            query: {
-              ...route.query,
-              page: page.toString(),
-            },
-          });
-        }
-
-        // Wait for Vue Query to finish loading the new page
-        await new Promise((resolve) => {
-          let unwatch;
-          const stop = () => {
-            if (unwatch) unwatch();
-          };
-
-          unwatch = watch(
-            loading,
-            (isLoading) => {
-              if (!isLoading) {
-                stop();
-                resolve();
-              }
-            },
-            { immediate: true },
-          );
-
-          if (!loading.value) {
-            stop();
-          }
+    } else {
+      // URL has no rating -> Enforce current preference
+      if (ratingFilter.value !== "") {
+        // Redirect to include the rating in URL
+        router.replace({
+          query: { ...newQuery, rating: ratingFilter.value },
         });
-
-        if (!selectedPost.value) {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-      } finally {
-        // Reset flag after navigation is complete
-        setTimeout(() => {
-          isManualNavigation.value = false;
-        }, 100);
+        return; // Stop processing to avoid double-fetch
       }
-    };
+    }
 
-    const handleLoadMore = async () => {
-      if (loading.value || !hasNextPage.value) return;
-      const nextPage = currentPage.value + 1;
-      // Pass false to append posts instead of replacing
-      await searchPosts(nextPage, false);
-    };
+    const tagsChanged = newTags !== appliedQuery.value;
 
-    const setExample = (example) => {
-      inputQuery.value = example;
-      handleSearch();
-    };
+    if (tagsChanged) {
+      appliedQuery.value = newTags;
+      isRandomMode.value = false;
 
-    const handleSearchError = (errorMessage) => {
-      error.value = errorMessage;
-      setTimeout(() => {
-        error.value = null;
-      }, 5000);
-    };
+      const isSpecialMode = [
+        "status:deleted",
+        "order:score",
+        "order:favcount",
+        "order:rank",
+      ].some((tag) => newTags.includes(tag));
 
-    // Keyboard navigation
-    let lastKeyTime = 0;
-    const handleKeydown = (e) => {
-      // Throttle key events (max 1 every 150ms)
-      const now = Date.now();
-      if (now - lastKeyTime < 150) return;
-
-      // Ignore if typing in an input or textarea
-      const target = e.target;
-      if (
-        ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
-        target.isContentEditable
-      ) {
-        return;
+      if (isSpecialMode) {
+        inputQuery.value = "";
+      } else {
+        inputQuery.value = newTags;
       }
 
-      lastKeyTime = now;
-
-      const key = e.key.toLowerCase();
-
-      // Si el modal está abierto, usamos A/D para navegar imágenes
-      if (selectedPost.value) {
-        if (key === "a" || key === "arrowleft") {
-          navigatePost(-1);
-        } else if (key === "d" || key === "arrowright") {
-          navigatePost(1);
-        }
-        return;
-      }
-
-      // Si el modal está cerrado, paginación normal
-      if (key === "a") {
-        if (currentPage.value > 1) {
-          handlePageChange(currentPage.value - 1);
-        }
-      } else if (key === "d") {
-        if (hasNextPage.value) {
-          handlePageChange(currentPage.value + 1);
-        }
-      }
-    };
-
-    // Scroll handler for scroll-to-top button
-    const handleScroll = () => {
-      // Show button when scrolled down more than 300px
-      showScrollToTop.value = window.scrollY > 300;
-    };
-
-    // Scroll to top function
-    const scrollToTop = () => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    };
-
-    // Cargar datos al montar el componente
-    onMounted(() => {
-      // Check for query params
-      if (route.query.tags) {
-        inputQuery.value = route.query.tags;
-        appliedQuery.value = route.query.tags;
-      }
-
-      // Initialize rating from URL if present
-      if (route.query.rating) {
-        ratingFilter.value = route.query.rating;
-      }
-
-      // Execute parallel search and count fetch
-      const normalizedQuery = appliedQuery.value
-        .split(/[,，\s]+/)
+      // FIX: Normalización mejorada soportando coma arabe (،) y coma estandar
+      const normalized = newTags
+        .split(/[,،\s]+/)
         .filter((t) => t.trim())
         .join(" ");
+      fetchRatingCounts(normalized);
 
-      // Execute initial count fetch
-      fetchRatingCounts(normalizedQuery);
-
-      // Update URL to include rating if not present
-      if (!route.query.rating && ratingFilter.value) {
-        router.replace({
-          path: "/",
-          query: {
-            tags: route.query.tags || undefined,
-            rating: ratingFilter.value,
-            page: route.query.page || undefined,
-          },
-        });
+      if (oldQuery && tagsChanged) {
+        await searchPosts(1, true);
       }
+    }
 
-      window.addEventListener("keydown", handleKeydown);
-      window.addEventListener("scroll", handleScroll);
-    });
-
-    onUnmounted(() => {
-      window.removeEventListener("keydown", handleKeydown);
-      window.removeEventListener("scroll", handleScroll);
-    });
-
-    const handleTagSearch = async (tag, clearFilter = false) => {
-      isRandomMode.value = false;
-
-      // Build query object
-      const queryParams = { tags: tag };
-
-      // Preserve current rating unless explicitly cleared
-      if (!clearFilter && ratingFilter.value) {
-        queryParams.rating = ratingFilter.value;
-      }
-
-      selectedPost.value = null; // Cerrar modal
-
-      // Update URL first
-      await router.push({ path: "/", query: queryParams });
-
-      // Scroll to top
-      window.scrollTo({ top: 0, behavior: "smooth" });
-
-      // Auto-close sidebar on mobile
-      if (window.innerWidth <= 768) {
-        setSidebarVisible(false);
-      }
-    };
-
-    const handleAction = async (action, timeRange) => {
-      let ageFilter = "";
-      if (timeRange && timeRange !== "all") {
-        const mapping = {
-          day: "age:<1d",
-          week: "age:<1w",
-          month: "age:<1month",
-          year: "age:<1y",
-        };
-        ageFilter = mapping[timeRange] || "";
-      }
-
-      // Build the search query
-      let searchQuery = "";
-      if (action === "deleted") {
-        searchQuery = `status:deleted ${ageFilter}`.trim();
-      } else if (action === "most-liked") {
-        searchQuery = `order:score ${ageFilter}`.trim();
-      } else if (action === "most-favorited") {
-        searchQuery = `order:favcount ${ageFilter}`.trim();
-      } else if (action === "hot") {
-        searchQuery = `order:rank ${ageFilter}`.trim();
-      } else if (action === "random") {
-        isRandomMode.value = true;
-        try {
-          const post = await DanbooruService.getRandomPost();
-          if (post) {
-            selectedPost.value = post;
-          }
-        } catch (e) {
-          console.error("Error fetching random post", e);
-        }
-        return; // Exit early for random
-      }
-
-      // Build URL query with preserved rating
-      const queryParams = {
-        tags: searchQuery,
-        page: 1,
-      };
-
-      // Preserve current rating
-      if (ratingFilter.value) {
-        queryParams.rating = ratingFilter.value;
-      }
-
-      // Update URL
-      await router.push({
-        path: "/",
-        query: queryParams,
-      });
-
-      // Update input query
-      inputQuery.value = searchQuery;
-
-      // Auto-close sidebar on mobile
-      if (window.innerWidth <= 768) {
-        setSidebarVisible(false);
-      }
-    };
-
-    return {
-      inputQuery,
-      appliedQuery,
-      posts,
-      loading,
-      error,
-      limit,
-      ratingFilter,
-      currentPage,
-      hasNextPage,
-      parsedTags,
-      infiniteScroll,
-      handleSearch,
-      handleTagSearch,
-      handlePageChange,
-      setExample,
-      handleSearchError,
-      selectedPost,
-      isMasonryMode,
-      handleLoadMore,
-      openModal,
-      navigatePost,
-      canPrev,
-      canNext,
-      handleAction,
-      showTimeoutInfo,
-      ratingCounts,
-      isSidebarVisible,
-      toggleSidebar,
-      showScrollToTop,
-      scrollToTop,
-      currentRangeFriendlyName,
-      activeExtraAction,
-      hasNewPosts,
-      isLoadingNextPage,
-      handleRefresh: async () => {
-        await refreshGallery();
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      },
-    };
+    if (oldQuery && newPage !== currentPage.value && !loading.value) {
+      await searchPosts(newPage, !infiniteScroll.value);
+    }
   },
+  { immediate: true },
+);
+
+// 2. Persistencia rating
+watch(ratingFilter, (val) => {
+  localStorage.setItem("ratingFilter", val);
+  if (route.query.rating !== val) {
+    router.replace({
+      query: { ...route.query, rating: val || undefined, page: 1 },
+    });
+  }
+});
+
+// 3. Persistencia limit (solo si no es masonry)
+watch(limit, (val) => {
+  if (!isMasonryMode.value) {
+    userLimit.value = val;
+    localStorage.setItem("postsPerPage", val);
+  }
+});
+
+// 4. Título dinámico
+watch(
+  appliedQuery,
+  (val) => {
+    if (val) {
+      const formatted = val
+        .split(/[,،\s]+/)
+        .filter((t) => t)
+        .join(" AND ");
+      document.title = `${formatted} | Booru Explorer`;
+    } else {
+      document.title = "Booru Explorer | Anime Image Board";
+    }
+  },
+  { immediate: true },
+);
+
+// ==========================================
+// MANEJADORES DE EVENTOS
+// ==========================================
+
+const updateLimit = (val) => {
+  limit.value = val;
+  if (!isMasonryMode.value) {
+    router.push({ query: { ...route.query, limit: val, page: 1 } });
+  }
 };
+
+const updateRatingFilter = (val) => {
+  ratingFilter.value = val;
+};
+
+const toggleMasonry = async (val) => {
+  isMasonryMode.value = val;
+  localStorage.setItem("masonryMode", val);
+
+  if (val) {
+    infiniteScroll.value = true;
+    if (limit.value < 75) limit.value = 75;
+  } else {
+    infiniteScroll.value = false;
+    limit.value = userLimit.value;
+  }
+
+  await nextTick();
+  window.scrollTo({ top: 0, behavior: "auto" });
+};
+
+const handleSearch = async (overrideQuery) => {
+  const finalQuery =
+    typeof overrideQuery === "string" ? overrideQuery : inputQuery.value;
+
+  // Validación de tags (máximo 2 sin meta-tags)
+  const contentTags = finalQuery
+    .split(/[,،\s]+/)
+    .map((t) => t.trim())
+    .filter((t) => t && !t.match(/^(rating:|order:|status:|age:|-)/));
+
+  if (contentTags.length > 2) {
+    error.value = `You can only search up to 2 tags at a time. You entered ${contentTags.length} tags: ${contentTags.join(", ")}`;
+    setTimeout(() => (error.value = null), 5000);
+    return;
+  }
+
+  if (window.innerWidth <= 768) setSidebarVisible(false);
+
+  isRandomMode.value = false;
+  error.value = null;
+
+  const queryParams = {};
+  if (finalQuery) queryParams.tags = finalQuery;
+  if (ratingFilter.value) queryParams.rating = ratingFilter.value;
+  queryParams.page = 1;
+
+  await router.push({ path: "/", query: queryParams });
+
+  const isSpecialMode = [
+    "status:deleted",
+    "order:score",
+    "order:favcount",
+    "order:rank",
+  ].some((tag) => finalQuery.includes(tag));
+
+  if (isSpecialMode) {
+    inputQuery.value = "";
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+const handlePageChange = async (page) => {
+  if (loading.value) return;
+  await router.push({ query: { ...route.query, page: page.toString() } });
+};
+
+const handleLoadMore = async () => {
+  if (loading.value || !hasNextPage.value) return;
+  await searchPosts(currentPage.value + 1, true);
+};
+
+const setExample = (example) => {
+  inputQuery.value = example;
+  handleSearch();
+};
+
+const handleSearchError = (msg) => {
+  error.value = msg;
+  setTimeout(() => (error.value = null), 5000);
+};
+
+const handleTagSearch = async (tag, clearFilter = false) => {
+  isRandomMode.value = false;
+  selectedPost.value = null;
+
+  const queryParams = { tags: tag };
+  if (!clearFilter && ratingFilter.value)
+    queryParams.rating = ratingFilter.value;
+
+  await router.push({ path: "/", query: queryParams });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  if (window.innerWidth <= 768) setSidebarVisible(false);
+};
+
+const handleAction = async (action, timeRange) => {
+  const ageMap = {
+    day: "age:<1d",
+    week: "age:<1w",
+    month: "age:<1month",
+    year: "age:<1y",
+  };
+  const ageFilter = ageMap[timeRange] || "";
+
+  if (action === "random") {
+    isRandomMode.value = true;
+    inputQuery.value = "";
+    try {
+      const post = await DanbooruService.getRandomPost();
+      if (post) selectedPost.value = post;
+    } catch (e) {
+      console.error("Error fetching random post", e);
+      error.value = "Failed to load random post";
+    }
+    return;
+  }
+
+  const actionMap = {
+    deleted: `status:deleted ${ageFilter}`,
+    "most-liked": `order:score ${ageFilter}`,
+    "most-favorited": `order:favcount ${ageFilter}`,
+    hot: `order:rank ${ageFilter}`,
+  };
+
+  const searchQuery = actionMap[action]?.trim();
+  if (!searchQuery) return;
+
+  error.value = null;
+
+  const queryParams = {
+    tags: searchQuery,
+    page: 1,
+  };
+
+  if (ratingFilter.value) {
+    queryParams.rating = ratingFilter.value;
+  }
+
+  await router.push({ path: "/", query: queryParams });
+
+  if (window.innerWidth <= 768) setSidebarVisible(false);
+};
+
+const handleRefresh = async () => {
+  console.log("[HomeView] Refreshing gallery...");
+  await refreshGallery();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+// ==========================================
+// MODAL NAVIGATION
+// ==========================================
+
+const openModal = (post) => {
+  isRandomMode.value = false;
+  selectedPost.value = post;
+  lastListPost.value = post;
+};
+
+const navigatePost = async (direction) => {
+  if (!selectedPost.value || isRandomMode.value) return;
+
+  let index = posts.value.findIndex((p) => p.id === selectedPost.value.id);
+  if (index === -1 && lastListPost.value) {
+    index = posts.value.findIndex((p) => p.id === lastListPost.value.id);
+  }
+  if (index === -1) return;
+
+  const newIndex = index + direction;
+
+  if (newIndex >= 0 && newIndex < posts.value.length) {
+    selectedPost.value = posts.value[newIndex];
+    lastListPost.value = posts.value[newIndex];
+    return;
+  }
+
+  if (newIndex >= posts.value.length && hasNextPage.value && !loading.value) {
+    if (isMasonryMode.value) {
+      isLoadingNextPage.value = true;
+      try {
+        await searchPosts(currentPage.value + 1, true);
+        if (posts.value.length > index + 1) {
+          selectedPost.value = posts.value[index + 1];
+          lastListPost.value = posts.value[index + 1];
+        }
+      } finally {
+        isLoadingNextPage.value = false;
+      }
+    } else {
+      const nextPage = currentPage.value + 1;
+      await handlePageChange(nextPage);
+      if (posts.value.length > 0) {
+        selectedPost.value = posts.value[0];
+        lastListPost.value = posts.value[0];
+      }
+    }
+    return;
+  }
+
+  if (newIndex < 0 && currentPage.value > 1 && !loading.value) {
+    isLoadingNextPage.value = true;
+    try {
+      await handlePageChange(currentPage.value - 1);
+      if (posts.value.length > 0) {
+        selectedPost.value = posts.value[posts.value.length - 1];
+        lastListPost.value = posts.value[posts.value.length - 1];
+      }
+    } finally {
+      isLoadingNextPage.value = false;
+    }
+  }
+};
+
+// ==========================================
+// KEYBOARD NAVIGATION
+// ==========================================
+let lastKeyTime = 0;
+const KEY_THROTTLE = 150;
+
+const handleKeydown = (e) => {
+  const now = Date.now();
+  if (now - lastKeyTime < KEY_THROTTLE) return;
+
+  const target = e.target;
+  if (
+    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
+    target.isContentEditable
+  )
+    return;
+
+  const key = e.key.toLowerCase();
+  lastKeyTime = now;
+
+  if (selectedPost.value) {
+    if (key === "a" || key === "arrowleft") navigatePost(-1);
+    else if (key === "d" || key === "arrowright") navigatePost(1);
+  } else {
+    if (key === "a" && currentPage.value > 1)
+      handlePageChange(currentPage.value - 1);
+    else if (key === "d" && hasNextPage.value)
+      handlePageChange(currentPage.value + 1);
+  }
+};
+
+// ==========================================
+// SCROLL HANDLER (DEBOUNCED)
+// ==========================================
+let scrollTimeout;
+const handleScroll = () => {
+  clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    showScrollToTop.value = window.scrollY > 300;
+  }, 100);
+};
+
+const scrollToTop = () => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+// ==========================================
+// LIFECYCLE - INTEGRADO CON FIX
+// ==========================================
+let removeAfterEach = null;
+
+onMounted(() => {
+  window.addEventListener("keydown", handleKeydown);
+  window.addEventListener("scroll", handleScroll, { passive: true });
+
+  // FIX: Garantizar fetch inicial de counts, incluso sin tags (del primer código)
+  const initialTags = route.query.tags || "";
+  const normalized = initialTags
+    .split(/[,،\s]+/)
+    .filter((t) => t.trim())
+    .join(" ");
+
+  fetchRatingCounts(normalized);
+
+  // Mantener el scroll automático después de navegación (del segundo código)
+  removeAfterEach = router.afterEach(() => {
+    nextTick(() => {
+      if (!selectedPost.value) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", handleKeydown);
+  window.removeEventListener("scroll", handleScroll);
+  if (removeAfterEach) removeAfterEach();
+  clearTimeout(scrollTimeout);
+});
+
+if (typeof cleanupRatingCounts === "function") {
+  cleanupRatingCounts();
+}
 </script>
 
 <style scoped>
@@ -974,19 +730,19 @@ export default {
 }
 
 .info-banner.likes-mode {
-  background: rgba(236, 72, 153, 0.15); /* Pinkish */
+  background: rgba(236, 72, 153, 0.15);
   border-color: rgba(236, 72, 153, 0.3);
   color: #fbcfe8;
 }
 
 .info-banner.favs-mode {
-  background: rgba(251, 191, 36, 0.15); /* Amber/Gold */
+  background: rgba(251, 191, 36, 0.15);
   border-color: rgba(251, 191, 36, 0.3);
   color: #fde68a;
 }
 
 .info-banner.trending-mode {
-  background: rgba(249, 115, 22, 0.15); /* Orange */
+  background: rgba(249, 115, 22, 0.15);
   border-color: rgba(249, 115, 22, 0.3);
   color: #fdba74;
 }
@@ -1068,28 +824,6 @@ export default {
   transform: translateY(-10px);
 }
 
-.info-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.info-help-btn {
-  margin-left: 0;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: inherit;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.info-help-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
 .timeout-explanation {
   margin-top: -10px;
   margin-bottom: 20px;
@@ -1106,12 +840,6 @@ export default {
 .timeout-explanation ul {
   margin-left: 20px;
   margin-top: 5px;
-}
-
-.timeout-explanation strong {
-  color: #fff;
-  display: block;
-  margin-bottom: 8px;
 }
 
 .danbooru-info-box {
@@ -1139,49 +867,21 @@ export default {
 }
 
 /* Mobile Responsiveness Styles */
-.mobile-menu-trigger {
-  display: none; /* Hidden on desktop */
-}
-
 .sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 999;
   display: none;
 }
 
 @media (max-width: 768px) {
-  .mobile-menu-trigger {
-    display: flex;
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: #a78bfa;
-    color: white;
-    border: none;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    box-shadow: 0 4px 15px rgba(167, 139, 250, 0.4);
-    z-index: 900;
-    cursor: pointer;
-    transition: transform 0.2s;
-  }
-
-  .mobile-menu-trigger:active {
-    transform: scale(0.9);
-  }
-
   .sidebar-backdrop {
     display: block;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-    z-index: 998; /* Below sidebar (1000), above content */
   }
 }
 
@@ -1222,7 +922,7 @@ export default {
   background-clip: text;
   font-family: "Inter", sans-serif;
   font-weight: 700;
-  overflow-wrap: anywhere; /* Ensure long tags break */
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -1239,24 +939,6 @@ export default {
 }
 
 /* Slide fade transition */
-.slide-fade-enter-active {
-  transition: all 0.3s ease-out;
-}
-
-.slide-fade-leave-active {
-  transition: all 0.2s ease-in;
-}
-
-.slide-fade-enter-from {
-  opacity: 0;
-  transform: translateY(-20px);
-}
-
-.slide-fade-leave-to {
-  opacity: 0;
-  transform: translateY(20px);
-}
-
 @media (max-width: 768px) {
   .search-title {
     font-size: 16px;
@@ -1265,7 +947,7 @@ export default {
 
   .search-title-container {
     margin-bottom: 16px;
-    padding: 10px 12px; /* Reduced side padding */
+    padding: 10px 12px;
     width: 100%;
     box-sizing: border-box;
   }
@@ -1279,24 +961,6 @@ export default {
 
   .search-title-container {
     padding: 8px 10px;
-  }
-}
-
-.sidebar-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  z-index: 999;
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .sidebar-backdrop {
-    display: block;
   }
 }
 
@@ -1366,7 +1030,7 @@ export default {
 /* New Posts Notification */
 .new-posts-notification {
   position: fixed;
-  bottom: 40px; /* Moved to the bottom */
+  bottom: 40px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1100;
@@ -1377,12 +1041,7 @@ export default {
 
 .new-posts-btn {
   pointer-events: auto;
-  background: rgba(
-    167,
-    139,
-    250,
-    0.4
-  ); /* Slightly more opaque for visibility against images */
+  background: rgba(167, 139, 250, 0.4);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   color: #fff;
@@ -1425,6 +1084,6 @@ export default {
 .fade-up-enter-from,
 .fade-up-leave-to {
   opacity: 0;
-  transform: translate(-50%, 40px); /* Animate from bottom */
+  transform: translate(-50%, 40px);
 }
 </style>

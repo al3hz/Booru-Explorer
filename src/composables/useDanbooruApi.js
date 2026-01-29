@@ -1,37 +1,87 @@
+// composables/useDanbooruApi.js
+import { ref, computed, watch } from "vue";
+import { useQuery, useInfiniteQuery } from "@tanstack/vue-query";
+import DanbooruService from "../services/danbooru";
 
-import { ref, computed, watch } from 'vue';
-import { useQuery, useInfiniteQuery } from '@tanstack/vue-query';
-import DanbooruService from '../services/danbooru';
+/**
+ * Composable principal para gestión de posts de Danbooru.
+ *
+ * Características:
+ * - Dual mode: Paginación tradicional VS Infinite scroll (Masonry)
+ * - Smart Search: Bypass del límite de 2 tags de Danbooru
+ * - Polling inteligente: Detecta nuevos posts cada 60s
+ * - Cancelación de requests: AbortController para evitar race conditions
+ *
+ * @param {Ref<string>} initialTags - Tags de búsqueda (reactivo)
+ * @param {Ref<number>} limit - Posts por página
+ * @param {Ref<string>} ratingFilter - '', 'general', 'safe', etc
+ * @param {Ref<boolean>} infiniteScroll - true = Masonry mode
+ * @param {Ref<number>} currentPageRef - Página actual
+ * @param {Ref<boolean>} isRandomMode - Modo random activado
+ */
+export function useDanbooruApi(
+  initialTags,
+  limit,
+  ratingFilter,
+  infiniteScroll,
+  currentPageRef,
+  isRandomMode = ref(false), // Nuevo parámetro con valor por defecto
+) {
+  // ==========================================
+  // CONFIGURACIÓN Y ESTADO
+  // ==========================================
 
-export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll, currentPageRef) {
-  // Use a unique query key that includes all dependencies
+  const lastAcknowledgedId = ref(0);
+
+  // FIX: Inicializar lastAcknowledgedId al cargar posts para evitar
+  // que muestré "New images!" inmediatamente al cambiar de búsqueda
+  const initializeAcknowledgedId = (posts) => {
+    if (posts?.length > 0 && lastAcknowledgedId.value === 0) {
+      lastAcknowledgedId.value = posts[0].id;
+    }
+  };
+
+  const RATING_MAP = {
+    general: "g",
+    safe: "s",
+    questionable: "q",
+    explicit: "e",
+  };
+
+  // ==========================================
+  // COMPUTED: Construcción de Query Key
+  // ==========================================
+
   const queryKey = computed(() => {
-    let tags = initialTags.value || '';
-    const ratingMap = {
-      'general': 'g',
-      'safe': 's',
-      'questionable': 'q',
-      'explicit': 'e'
-    };
+    let tags = initialTags.value?.trim() || "";
 
-    if (ratingFilter.value) {
-      const shortRating = ratingMap[ratingFilter.value] || ratingFilter.value;
-      // Filter if it's a known rating or just a value (e.g. if we add more later)
-      // Always apply if selected, even for general (rating:g)
+    if (ratingFilter.value && RATING_MAP[ratingFilter.value]) {
+      const shortRating = RATING_MAP[ratingFilter.value];
       if (!tags.includes(`rating:${shortRating}`)) {
-        tags = `${tags} rating:${shortRating}`;
+        tags = tags ? `${tags} rating:${shortRating}` : `rating:${shortRating}`;
       }
     }
 
-    // For traditional pagination, include page in key to isolate cache per page
-    // For infinite scroll, don't include page (accumulate all pages)
-    const baseKey = ['posts', { tags: tags.trim(), limit: limit.value }];
-    if (!infiniteScroll || !infiniteScroll.value) {
-      const page = currentPageRef ? currentPageRef.value : 1;
-      baseKey.push({ page });
+    const baseKey = [
+      "posts",
+      {
+        tags: tags.trim(),
+        limit: limit.value,
+        mode: infiniteScroll?.value ? "infinite" : "paged",
+        random: isRandomMode.value ? "random" : "ordered", // Incluir modo random en key
+      },
+    ];
+
+    if (!infiniteScroll?.value && currentPageRef?.value) {
+      baseKey.push({ page: currentPageRef.value });
     }
+
     return baseKey;
   });
+
+  // ==========================================
+  // INFINITE QUERY PRINCIPAL
+  // ==========================================
 
   const {
     data,
@@ -41,148 +91,234 @@ export function useDanbooruApi(initialTags, limit, ratingFilter, infiniteScroll,
     error,
     fetchNextPage,
     hasNextPage,
-    refetch
+    refetch,
   } = useInfiniteQuery({
     queryKey,
+
     queryFn: async ({ pageParam = 1, queryKey }) => {
       const [, params] = queryKey;
 
-      // For traditional pagination, use the page from query key
-      // For infinite scroll, use pageParam
-      let pageToFetch = pageParam;
-      if (!infiniteScroll || !infiniteScroll.value) {
-        // Traditional pagination: get page from currentPageRef
-        pageToFetch = currentPageRef ? currentPageRef.value : 1;
+      // Modo random: siempre usar página 1 para obtener posts aleatorios
+      const pageToFetch = isRandomMode.value
+        ? 1
+        : infiniteScroll?.value
+          ? pageParam
+          : currentPageRef?.value || 1;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      try {
+        let result;
+
+        if (isRandomMode.value) {
+          // En modo random, añadir orden aleatorio
+          const randomTags = params.tags
+            ? `${params.tags} order:random`
+            : "order:random";
+          result = await DanbooruService.getPosts(
+            randomTags,
+            params.limit,
+            pageToFetch,
+            { signal: controller.signal },
+          );
+        } else {
+          result = await DanbooruService.getPosts(
+            params.tags,
+            params.limit,
+            pageToFetch,
+            { signal: controller.signal },
+          );
+        }
+
+        return result;
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      return DanbooruService.getPosts(params.tags, params.limit, pageToFetch);
     },
+
     getNextPageParam: (lastPage, allPages) => {
-      // If last page is empty, we are done
-      if (!lastPage || lastPage.length === 0) return undefined;
+      if (!lastPage?.length) return undefined;
 
-      // Smart Search check: If we have > 2 tags, we might have filtered results.
-      // In this case, even a small page doesn't mean we're done (we might find more on next API page).
-      // We check the tags used in the query key.
+      // Modo random: deshabilitar paginación infinita
+      if (isRandomMode.value) return undefined;
+
       const [, params] = queryKey.value;
-      const tagList = params.tags.split(' ').filter(t => t.trim() !== '' && !t.startsWith('rating:') && !t.startsWith('order:') && !t.startsWith('-'));
+      const contentTags = params.tags
+        .split(" ")
+        .filter((t) => t && !t.match(/^(rating:|order:|status:|age:|-)/));
 
-      if (tagList.length > 2) {
-        // In Smart Search, always try next page if we got ANY results
+      const isSmartSearch = contentTags.length > 2;
+
+      if (isSmartSearch && lastPage.length > 0) {
         return allPages.length + 1;
       }
 
-      // Standard behavior: if last page < limit, we assume end of results
       if (lastPage.length < limit.value) return undefined;
 
       return allPages.length + 1;
     },
+
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    keepPreviousData: true,
+    retry: 2,
+    retryDelay: (attempt) => attempt * 1000,
   });
 
-  // Flatten pages into a single list of posts
+  // ==========================================
+  // COMPUTED: Posts procesados
+  // ==========================================
+
   const posts = computed(() => {
-    if (!data.value?.pages || data.value.pages.length === 0) return [];
+    if (!data.value?.pages?.length) return [];
 
-    // In infinite scroll mode: show all accumulated pages
-    // In traditional pagination mode: show only the last fetched page
-    if (infiniteScroll && infiniteScroll.value) {
-      return data.value.pages.flatMap(page => page);
-    } else {
-      // Traditional pagination: return only the last page
-      const lastPage = data.value.pages[data.value.pages.length - 1];
-      return lastPage || [];
+    // FIX: Inicializar acknowledgedId cuando se cargan posts nuevos
+    const result = infiniteScroll?.value
+      ? data.value.pages.flat()
+      : data.value.pages[data.value.pages.length - 1] || [];
+
+    // Inicializar solo si es nueva búsqueda (ack es 0)
+    if (result.length > 0) {
+      initializeAcknowledgedId(result);
     }
+
+    return result;
   });
 
-  // Wrapper for manual search (mainly for component compatibility)
-  const searchPosts = async (page = 1, isNewSearch = false) => {
+  // ==========================================
+  // POLLING: Detección de nuevos posts (SOLO primera página)
+  // ==========================================
+
+  const { data: latestCheck, refetch: checkForNewPosts } = useQuery({
+    queryKey: computed(() => ["latest-check", queryKey.value[1]?.tags]),
+
+    queryFn: async ({ queryKey: [, params] }) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      try {
+        // Solo buscar 1 post el más reciente
+        return await DanbooruService.getPosts(params.tags, 1, 1, {
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    },
+
+    // FIX: Polling cada 60s solo si:
+    // - Estamos en primera página
+    // - Tenemos posts cargados
+    // - No estamos en modo random
+    refetchInterval: computed(() => {
+      const isFirstPage = !currentPageRef?.value || currentPageRef.value === 1;
+      const hasPosts = posts.value.length > 0;
+      const canPoll = isFirstPage && hasPosts && !isRandomMode.value;
+      return canPoll ? 60000 : false; // false = desactivar polling
+    }),
+
+    refetchIntervalInBackground: false,
+    staleTime: 0,
+    enabled: computed(() => {
+      // Solo habilitar query si cumple condiciones
+      const isFirstPage = !currentPageRef?.value || currentPageRef.value === 1;
+      const hasPosts = posts.value.length > 0;
+      return isFirstPage && hasPosts && !isRandomMode.value;
+    }),
+  });
+
+  // FIX: hasNewPosts solo true si:
+  // 1. Hay datos del poll
+  // 2. Hay posts visibles
+  // 3. El ID del poll es MAYOR AL PRIMER POST VISIBLE
+  // 4. El ID es mayor al último acknowledge
+  const hasNewPosts = computed(() => {
+    // Validaciones básicas
+    if (!latestCheck.value?.[0] || !posts.value?.[0]) return false;
+    if (isRandomMode.value) return false;
+
+    const newestId = latestCheck.value[0].id;
+    const currentFirstId = posts.value[0].id;
+
+    // Solo verdadero si:
+    // - El poll encontró un ID más reciente que el primero visible
+    // - Y no hemos reconocido ese ID aún
+    const hasNewer = newestId > currentFirstId;
+    const isUnacknowledged = newestId > lastAcknowledgedId.value;
+
+    return hasNewer && isUnacknowledged;
+  });
+
+  // Watcher para resetear acknowledge SÓLO cuando cambian los tags
+  watch(
+    () => queryKey.value[1]?.tags,
+    (newTags, oldTags) => {
+      if (newTags !== oldTags) {
+        console.log("[DanbooruApi] Tags changed, resetting acknowledge");
+        lastAcknowledgedId.value = 0;
+      }
+    },
+    { flush: "post" },
+  ); // 'post' para que corra después de que posts se actualice
+
+  // ==========================================
+  // MÉTODOS PÚBLICOS
+  // ==========================================
+
+  const searchPosts = async (targetPage = 1, isNewSearch = false) => {
     if (isNewSearch) {
-      // Reset and fetch up to the requested page
       await refetch();
 
-      // If page > 1, we need to fetch additional pages
-      const currentPages = data.value?.pages.length || 0;
-      for (let i = currentPages; i < page; i++) {
+      const loadedPages = data.value?.pages.length || 0;
+      for (let i = loadedPages; i < targetPage; i++) {
+        if (!hasNextPage.value) break;
         await fetchNextPage();
       }
     } else {
-      // Just load the next page (infinite scroll behavior)
       await fetchNextPage();
     }
   };
 
-  // --- Polling for New Posts ---
-  const { data: latestPostData, refetch: refetchLatestPost } = useQuery({
-    queryKey: computed(() => ['latest-post-check', queryKey.value[1].tags]),
-    queryFn: async ({ queryKey: [, tags] }) => {
-      return DanbooruService.getPosts(tags, 1, 1);
-    },
-    refetchInterval: 60000, // 1 minute
-    refetchIntervalInBackground: false,
-    staleTime: 0,
-    enabled: computed(() => posts.value.length > 0 && (!currentPageRef || currentPageRef.value === 1))
-  });
+  const refreshGallery = async () => {
+    await Promise.all([refetch(), checkForNewPosts()]);
 
-  const lastAcknowledgedId = ref(0);
-
-  // Reset acknowledgment when search tags change to avoid cross-search interference
-  watch(() => queryKey.value[1].tags, () => {
-    lastAcknowledgedId.value = 0;
-  });
-
-  const hasNewPosts = computed(() => {
-    // Only show if we are on the first page or using infinite scroll
-    const isFirstPage = !currentPageRef || currentPageRef.value === 1;
-    const isInfinite = !!(infiniteScroll && infiniteScroll.value);
-    if (!isFirstPage && !isInfinite) return false;
-
-    if (!latestPostData.value || latestPostData.value.length === 0 || posts.value.length === 0) return false;
-
-    const newestId = latestPostData.value[0].id;
-    const currentFirstId = posts.value[0].id;
-
-    // Only show if the newest ID is greater than what we currently show 
-    // AND greater than the ID we last acknowledged
-    return newestId > currentFirstId && newestId > lastAcknowledgedId.value;
-  });
+    const currentMax = Math.max(
+      posts.value[0]?.id || 0,
+      latestCheck.value?.[0]?.id || 0,
+      lastAcknowledgedId.value,
+    );
+    lastAcknowledgedId.value = currentMax;
+  };
 
   return {
     posts,
     loading: computed(() => isFetching.value && !isFetchingNextPage.value),
     loadingNext: isFetchingNextPage,
-    error: computed(() => isError.value ? error.value?.message : null),
+    error: computed(() => (isError.value ? error.value?.message : null)),
     currentPage: computed(() => {
-      if (!infiniteScroll || !infiniteScroll.value) {
-        return currentPageRef ? currentPageRef.value : 1;
+      if (!infiniteScroll?.value) {
+        return currentPageRef?.value || 1;
       }
       return data.value?.pages.length || 1;
     }),
     hasNextPage,
-    searchPosts,
     hasNewPosts,
-    refreshGallery: async () => {
-      // Perform both refetches
-      await Promise.all([refetch(), refetchLatestPost()]);
-
-      // Update acknowledgment to the maximum ID we've now seen in either query
-      const galleryLatestId = posts.value.length > 0 ? posts.value[0].id : 0;
-      const pollLatestId = (latestPostData.value && latestPostData.value.length > 0) ? latestPostData.value[0].id : 0;
-
-      lastAcknowledgedId.value = Math.max(galleryLatestId, pollLatestId, lastAcknowledgedId.value);
-    }
+    searchPosts,
+    refreshGallery,
+    refetch,
   };
 }
 
-// Standalone exports for compatibility with ImageDetailModal
-// These are stateless wrappers around the Service
+// ==========================================
+// FUNCIONES STANDALONE (Modal Detail)
+// ==========================================
 
 export const getPost = async (id) => {
   try {
     return await DanbooruService.getPost(id);
   } catch (e) {
-    console.error("getPost error", e);
+    console.error("[useDanbooruApi] getPost error:", e);
     return null;
   }
 };
@@ -191,60 +327,47 @@ export const getPostComments = async (postId, page = 1, limit = 20) => {
   try {
     return await DanbooruService.getComments(postId, page, limit);
   } catch (e) {
-    console.error("getComments error", e);
+    console.error("[useDanbooruApi] getComments error:", e);
     return [];
   }
 };
 
 export const getArtist = async (id) => {
   try {
-    // The original used artists/{id}.json, let's assume getArtistByName or similar logic isn't needed here if we have ID
-    // But service currently has getArtistByName. Let's add getArtistById or just fetch directly if needed.
-    // Wait, service methods: getArtistByName(name), getArtistUrls(artistId).
-    // We need getArtist(id). Let's add it to service or direct fetch here?
-    // Let's rely on proxy direct fetch for now to match exactly or update service.
-    // Updating service is better but I can't edit it easily without another tool call.
-    // I will use internal helper logic or assume DanbooruService has it? 
-    // I didn't add getArtist(id) to service, only getArtistByName.
-    // I'll add a quick fetch here or accept normalized name.
-    // Actually, let's use the proxy via service private method if possible or standard fetch.
-    // Ideally I should update DanbooruService to have getArtistById.
-
-    // Temporary: direct fetch via proxy url construction manually 
-    // or just use DanbooruService._fetch if I exported it? No, it's internal.
-    // I'll update the service in next step or just use fetch here.
     const res = await fetch(`/api/danbooru?url=artists/${id}.json`);
-    if (!res.ok) throw new Error("Failed");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
-  } catch {
+  } catch (e) {
+    console.error("[useDanbooruApi] getArtist error:", e);
     return null;
   }
 };
 
 export const getNotes = async (postId) => {
   try {
-    const res = await fetch(`/api/danbooru?url=notes.json&search[post_id]=${postId}&search[is_active]=true`);
-    if (!res.ok) throw new Error("Failed");
+    const res = await fetch(
+      `/api/danbooru?url=notes.json&search[post_id]=${postId}&search[is_active]=true`,
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
-  } catch {
+  } catch (e) {
+    console.error("[useDanbooruApi] getNotes error:", e);
     return [];
   }
 };
 
-// --- Modal Detail Queries (Caching) ---
-
 export function usePostNotes(postId) {
   return useQuery({
-    queryKey: computed(() => ['post-notes', postId.value]),
+    queryKey: computed(() => ["post-notes", postId.value]),
     queryFn: () => getNotes(postId.value),
     enabled: computed(() => !!postId.value),
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
   });
 }
 
 export function usePostCommentary(postId) {
   return useQuery({
-    queryKey: computed(() => ['post-commentary', postId.value]),
+    queryKey: computed(() => ["post-commentary", postId.value]),
     queryFn: async () => {
       const data = await DanbooruService.getArtistCommentary(postId.value);
       return data?.[0] || null;
@@ -256,28 +379,33 @@ export function usePostCommentary(postId) {
 
 export function usePostFamily(postId, parentId, hasChildren) {
   return useQuery({
-    queryKey: computed(() => ['post-family', postId.value, parentId.value]),
+    queryKey: computed(() => ["post-family", postId.value, parentId.value]),
     queryFn: async () => {
-      const rootId = parentId.value || (hasChildren.value ? postId.value : null);
+      const rootId =
+        parentId.value || (hasChildren.value ? postId.value : null);
       if (!rootId) return [];
 
       const tags = `~parent:${rootId} ~id:${rootId}`;
-      const data = await DanbooruService.getPosts(tags, 20);
-      return (data || [])
-        .filter(p => p.file_url || p.large_file_url || p.preview_file_url)
+      const posts = await DanbooruService.getPosts(tags, 20);
+
+      return (posts || [])
+        .filter((p) => p.file_url || p.large_file_url)
         .sort((a, b) => a.id - b.id);
     },
-    enabled: computed(() => !!postId.value && (!!parentId.value || !!hasChildren.value)),
+    enabled: computed(() => {
+      return !!postId.value && (!!parentId.value || !!hasChildren.value);
+    }),
     staleTime: 10 * 60 * 1000,
   });
 }
 
 export function usePostComments(postId, limit = 20) {
   return useInfiniteQuery({
-    queryKey: computed(() => ['post-comments', postId.value, limit]),
-    queryFn: ({ pageParam = 1 }) => DanbooruService.getComments(postId.value, pageParam, limit),
+    queryKey: computed(() => ["post-comments", postId.value, limit]),
+    queryFn: ({ pageParam = 1 }) =>
+      DanbooruService.getComments(postId.value, pageParam, limit),
     getNextPageParam: (lastPage, allPages) => {
-      return (lastPage && lastPage.length === limit) ? allPages.length + 1 : undefined;
+      return lastPage?.length === limit ? allPages.length + 1 : undefined;
     },
     enabled: computed(() => !!postId.value),
     staleTime: 5 * 60 * 1000,

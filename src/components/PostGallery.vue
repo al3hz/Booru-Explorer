@@ -1,7 +1,14 @@
 <template>
-  <div class="post-gallery" :class="{ 'is-sidebar-collapsed': !isSidebarVisible }">
-    <!-- Estados de carga mejorados -->
-    <div v-if="loading && posts.length === 0" class="state-container loading" role="status">
+  <div
+    class="post-gallery"
+    :class="{ 'is-sidebar-collapsed': !isSidebarVisible }"
+  >
+    <!-- Estados de carga -->
+    <div
+      v-if="loading && posts.length === 0"
+      class="state-container loading"
+      role="status"
+    >
       <div class="loader-ring"></div>
       <p>Loading content...</p>
     </div>
@@ -16,32 +23,29 @@
       <p>Try adjusting your search filters.</p>
     </div>
 
-    <!-- Gallery Grid with Overlay -->
+    <!-- Gallery Grid -->
     <div v-else class="gallery-wrapper">
-      
-      <!-- Rating Distribution Container (prevents layout shift) -->
+      <!-- Rating Distribution (usando props de HomeView) -->
       <div class="rating-container">
-        <!-- Rating Distribution Loading State -->
         <Transition name="fade-slide" mode="out-in">
-          <div v-if="loadingCounts" key="loading" class="rating-bar loading">
-             <div class="loader-dots">
-                <span></span><span></span><span></span>
-             </div>
-             <span class="loading-text">Calculating rating distribution...</span>
+          <!-- Loading state -->
+          <div v-if="isLoadingCounts" key="loading" class="rating-bar loading">
+            <div class="loader-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="loading-text">Calculating rating distribution...</span>
           </div>
 
-          <!-- Rating Distribution Bar -->
-          <div v-else-if="!loading && isLimited" key="limited" class="rating-limit-info">
-            <span class="icon">⚠️</span>
-            <span>Counts by rating are unavailable for this tag due to API complexity limits.</span>
-          </div>
-          <div v-else-if="!loading && (tagCount || ratingCounts.g?.count !== null || ratingCounts.s?.count !== null || ratingCounts.q?.count !== null || ratingCounts.e?.count !== null)" key="ratings" class="rating-bar-container">
-           <div class="rating-bar">
+          <!-- Rating Bar con datos reales -->
+          <div v-else key="ratings" class="rating-bar-container">
+            <div class="rating-bar">
               <!-- Left: Total Count -->
               <div class="rating-bar-left">
-                <span v-if="tagCount" class="total-badge">Total Tag Count: {{ formatCount(tagCount) }}</span>
+                <span v-if="ratingCounts.all > 0" class="total-badge">
+                  Total: {{ formatCount(ratingCounts.all || 0) }}
+                </span>
               </div>
-              
+
               <!-- Center: Rating Stats -->
               <div class="rating-bar-center">
                 <div class="rating-stat general" title="General">
@@ -74,19 +78,27 @@
                 </div>
               </div>
             </div>
-         </div>
+          </div>
         </Transition>
       </div>
 
-      <!-- Overlay de carga para grid existente -->
+      <!-- Overlay de carga -->
       <div v-if="loading && posts.length > 0" class="grid-loading-overlay">
         <div class="loader-ring small"></div>
         <span>Loading more...</span>
       </div>
-      
+
       <!-- Masonry Grid -->
-      <div v-if="masonry" class="masonry-grid" :class="{ 'is-dimmed': loading && posts.length > 0 }">
-        <div v-for="(col, colIndex) in columns" :key="colIndex" class="masonry-column">
+      <div
+        v-if="masonry"
+        class="masonry-grid"
+        :class="{ 'is-dimmed': loading && posts.length > 0 }"
+      >
+        <div
+          v-for="(col, colIndex) in columns"
+          :key="colIndex"
+          class="masonry-column"
+        >
           <PostCard
             v-for="(post, index) in col"
             :key="post.id"
@@ -99,7 +111,7 @@
         </div>
       </div>
 
-      <!-- Grid optimizado (Normal Mode) -->
+      <!-- Grid Normal -->
       <div v-else class="gallery-grid" :class="{ 'is-dimmed': loading }">
         <PostCard
           v-for="(post, index) in posts"
@@ -111,10 +123,12 @@
         />
       </div>
 
-      <!-- Paginación accesible (Hidden in Masonry) -->
-      <nav v-if="!infiniteScroll && !masonry && (currentPage > 1 || hasNextPage)" 
-           class="pagination-wrapper" 
-           aria-label="Pagination">
+      <!-- Paginación -->
+      <nav
+        v-if="!infiniteScroll && !masonry && (currentPage > 1 || hasNextPage)"
+        class="pagination-wrapper"
+        aria-label="Pagination"
+      >
         <button
           @click="goToPage(currentPage - 1)"
           :disabled="currentPage === 1 || loading"
@@ -124,7 +138,7 @@
           <i class="lni lni-chevron-left arrow"></i>
           <span class="nav-text">Previous</span>
         </button>
-        
+
         <div class="page-numbers">
           <button
             v-for="page in getPageNumbers()"
@@ -150,7 +164,7 @@
         </button>
       </nav>
 
-      <!-- Infinite scroll optimizado -->
+      <!-- Infinite scroll -->
       <div
         v-if="infiniteScroll && hasNextPage"
         ref="infiniteScrollTrigger"
@@ -173,9 +187,8 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from "vue";
-import { useRatingCounts } from "../composables/useRatingCounts";
-import { useLayout } from '../composables/useLayout';
-import PostCard from './PostCard.vue';
+import { useLayout } from "../composables/useLayout";
+import PostCard from "./PostCard.vue";
 
 const props = defineProps({
   posts: {
@@ -198,9 +211,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // FIX: Recibir ratingCounts directamente de HomeView
   ratingCounts: {
     type: Object,
-    default: () => ({ g: 0, s: 0, q: 0, e: 0 }),
+    default: () => ({ all: 0, g: 0, s: 0, q: 0, e: 0 }),
   },
   pauseAnimations: {
     type: Boolean,
@@ -214,29 +228,40 @@ const props = defineProps({
 
 const emit = defineEmits(["load-more", "change-page", "post-clicked"]);
 
-const { isLimited, loadingCounts, tagCount } = useRatingCounts();
 const { isSidebarVisible } = useLayout();
 const infiniteScrollTrigger = ref(null);
 let observer = null;
 
+// FIX: Loading local basado en props
+const isLoadingCounts = computed(() => {
+  // Si estamos cargando posts y todos los counts son 0, mostrar loading
+  if (!props.loading) return false;
+  const counts = props.ratingCounts || {};
+  const hasAnyCount = ["all", "g", "s", "q", "e"].some(
+    (k) => (counts[k] || 0) > 0,
+  );
+  return !hasAnyCount;
+});
+
 // Masonry Logic
 const masonryColumns = ref(4);
-const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1200);
+const windowWidth = ref(
+  typeof window !== "undefined" ? window.innerWidth : 1200,
+);
 
 const updateColumns = () => {
-   if (typeof window === 'undefined') return;
-   windowWidth.value = window.innerWidth;
-   
-   if (windowWidth.value <= 640) masonryColumns.value = 2; // Mobile 2 cols
-   else if (windowWidth.value <= 1024) masonryColumns.value = 3; // Tablets 3 cols
-   else if (windowWidth.value <= 1440) masonryColumns.value = 4; // Laptops 4 cols
-   else masonryColumns.value = 5; // Large screens 5 cols
+  if (typeof window === "undefined") return;
+  windowWidth.value = window.innerWidth;
+
+  if (windowWidth.value <= 640) masonryColumns.value = 2;
+  else if (windowWidth.value <= 1024) masonryColumns.value = 3;
+  else if (windowWidth.value <= 1440) masonryColumns.value = 4;
+  else masonryColumns.value = 5;
 };
 
-// Distribute posts into columns for Masonry layout
 const columns = computed(() => {
   if (!props.masonry) return [];
-  
+
   const cols = Array.from({ length: masonryColumns.value }, () => []);
   props.posts.forEach((post, index) => {
     cols[index % masonryColumns.value].push(post);
@@ -247,7 +272,6 @@ const columns = computed(() => {
 const setupIntersectionObserver = () => {
   if (!props.infiniteScroll || !props.hasNextPage || props.loading) return;
 
-  // Limpiar observer existente
   if (observer) observer.disconnect();
 
   observer = new IntersectionObserver(
@@ -257,9 +281,9 @@ const setupIntersectionObserver = () => {
       }
     },
     {
-      rootMargin: "5000px", // Load 5000px ahead to handle tall posts in masonry layout
-      threshold: 0.1
-    }
+      rootMargin: "5000px",
+      threshold: 0.1,
+    },
   );
 
   if (infiniteScrollTrigger.value) {
@@ -271,8 +295,7 @@ onMounted(() => {
   if (props.infiniteScroll) {
     nextTick(setupIntersectionObserver);
   }
-  window.addEventListener('resize', updateColumns);
-  // Defer initial calculation to avoid "forced layout" warning during mount
+  window.addEventListener("resize", updateColumns);
   nextTick(() => {
     updateColumns();
   });
@@ -283,16 +306,12 @@ onUnmounted(() => {
     observer.disconnect();
     observer = null;
   }
-  window.removeEventListener('resize', updateColumns);
+  window.removeEventListener("resize", updateColumns);
 });
 
 watch(
-  [
-    () => props.infiniteScroll,
-    () => props.hasNextPage,
-    () => props.loading,
-  ],
-  setupIntersectionObserver
+  [() => props.infiniteScroll, () => props.hasNextPage, () => props.loading],
+  setupIntersectionObserver,
 );
 
 watch(
@@ -301,67 +320,47 @@ watch(
     if (props.infiniteScroll) {
       nextTick(setupIntersectionObserver);
     }
-  }
+  },
 );
 
 const getPageNumbers = () => {
   const pages = [];
-  
-  // Show base pages (current and previous)
+
   if (props.currentPage <= 3) {
     for (let i = 1; i <= props.currentPage; i++) {
       pages.push(i);
     }
   } else {
     pages.push(1);
-    if (props.currentPage > 4) pages.push('...');
+    if (props.currentPage > 4) pages.push("...");
     for (let i = props.currentPage - 2; i <= props.currentPage; i++) {
       if (i > 1) pages.push(i);
     }
   }
 
-  // Only show the very next page IF hasNextPage is true
   if (props.hasNextPage) {
     pages.push(props.currentPage + 1);
   }
-  
+
   return pages;
 };
 
 const goToPage = (page) => {
-  if (page !== '...') {
+  if (page !== "...") {
     emit("change-page", page);
   }
 };
 
-const formatCount = (countData) => {
-  if (countData === null || countData === undefined) return '0';
-  
-  // Handle legacy number case
-  if (typeof countData === 'number') {
-    const val = countData;
-    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
-    if (val >= 1000) return (val / 1000).toFixed(1) + 'k';
-    return val.toString();
-  }
+const formatCount = (val) => {
+  if (val === null || val === undefined || val === 0) return "0";
 
-  // Handle object case
-  const val = countData.count;
-  const approx = countData.isApproximate ? '~' : '';
-  
-  if (val === null || val === undefined) return '?';
-  if (val === 0) return '0';
-  
-  let formatted = val.toString();
-  if (val >= 1000000) {
-    formatted = (val / 1000000).toFixed(1) + 'M';
-  } else if (val >= 1000) {
-    formatted = (val / 1000).toFixed(1) + 'k';
-  } else {
-    formatted = val.toString();
-  }
-  
-  return `${approx}${formatted}`;
+  // Si es número, formatear
+  const num = typeof val === "number" ? val : parseInt(val);
+  if (isNaN(num)) return "0";
+
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+  if (num >= 1000) return (num / 1000).toFixed(1) + "k";
+  return num.toString();
 };
 </script>
 
@@ -369,7 +368,7 @@ const formatCount = (countData) => {
 /* Base Layout */
 .post-gallery {
   width: 100%;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 /* State Containers (Loading / No Posts) */
@@ -405,7 +404,9 @@ const formatCount = (countData) => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
-.rating-bar-left { justify-self: start; }
+.rating-bar-left {
+  justify-self: start;
+}
 
 .rating-bar-center {
   display: flex;
@@ -415,7 +416,9 @@ const formatCount = (countData) => {
   flex-wrap: wrap;
 }
 
-.rating-bar-right { justify-self: end; }
+.rating-bar-right {
+  justify-self: end;
+}
 
 .rating-limit-info {
   display: flex;
@@ -431,7 +434,9 @@ const formatCount = (countData) => {
   font-size: 13px;
 }
 
-.rating-limit-info .icon { color: #eab308; }
+.rating-limit-info .icon {
+  color: #eab308;
+}
 
 @media (max-width: 1024px) {
   .rating-bar {
@@ -440,21 +445,31 @@ const formatCount = (countData) => {
     padding: 12px 16px;
     text-align: center;
   }
-  
-  .rating-bar-left, .rating-bar-center, .rating-bar-right {
+
+  .rating-bar-left,
+  .rating-bar-center,
+  .rating-bar-right {
     justify-self: center;
     width: 100%;
   }
 
-  .rating-bar-center { gap: 12px; }
+  .rating-bar-center {
+    gap: 12px;
+  }
 }
 
 @media (max-width: 480px) {
-  .rating-bar { padding: 10px 8px; }
-  .rating-bar-center { gap: 8px; }
+  .rating-bar {
+    padding: 10px 8px;
+  }
+  .rating-bar-center {
+    gap: 8px;
+  }
 }
 
-.rating-bar-container { margin-bottom: 24px; }
+.rating-bar-container {
+  margin-bottom: 24px;
+}
 
 .total-badge {
   font-size: 13px;
@@ -483,7 +498,7 @@ const formatCount = (countData) => {
 }
 
 .rating-legend span::before {
-  content: '';
+  content: "";
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -522,12 +537,24 @@ const formatCount = (countData) => {
   animation: pulse 1.4s infinite ease-in-out both;
 }
 
-.loader-dots span:nth-child(1) { animation-delay: -0.32s; }
-.loader-dots span:nth-child(2) { animation-delay: -0.16s; }
+.loader-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.loader-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
 
 @keyframes pulse {
-  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-  40% { transform: scale(1); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+    opacity: 0.3;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .rating-stat {
@@ -544,10 +571,22 @@ const formatCount = (countData) => {
   border-radius: 50%;
 }
 
-.rating-stat.general .r-dot { background: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
-.rating-stat.safe .r-dot { background: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
-.rating-stat.questionable .r-dot { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
-.rating-stat.explicit .r-dot { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+.rating-stat.general .r-dot {
+  background: #3b82f6;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+.rating-stat.safe .r-dot {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+.rating-stat.questionable .r-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+.rating-stat.explicit .r-dot {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
 
 .r-label {
   font-weight: 600;
@@ -563,8 +602,12 @@ const formatCount = (countData) => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loader-ring {
@@ -607,8 +650,14 @@ const formatCount = (countData) => {
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translate(-50%, -40%); }
-  to { opacity: 1; transform: translate(-50%, -50%); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
 }
 
 .gallery-grid.is-dimmed {
@@ -617,7 +666,11 @@ const formatCount = (countData) => {
   transition: opacity 0.3s ease;
 }
 
-@keyframes fadeIn { to { opacity: 1; } }
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
 
 .icon-large {
   font-size: 48px;
@@ -637,7 +690,9 @@ const formatCount = (countData) => {
 }
 
 @media (max-width: 1024px) {
-  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
@@ -655,7 +710,9 @@ const formatCount = (countData) => {
 }
 
 @media (max-width: 480px) {
-  .gallery-grid { gap: 16px; }
+  .gallery-grid {
+    gap: 16px;
+  }
 }
 
 /* Masonry Layout */
@@ -674,7 +731,10 @@ const formatCount = (countData) => {
 }
 
 @media (max-width: 768px) {
-  .masonry-grid, .masonry-column { gap: 16px; }
+  .masonry-grid,
+  .masonry-column {
+    gap: 16px;
+  }
 }
 
 .pagination-wrapper {
@@ -755,22 +815,31 @@ const formatCount = (countData) => {
 }
 
 @media (max-width: 640px) {
-  .nav-text { display: none; }
-  .pagination-wrapper { gap: 10px; margin-top: 20px; }
-  .page-numbers { gap: 2px; }
-  .gallery-grid { gap: 10px; }
-  
+  .nav-text {
+    display: none;
+  }
+  .pagination-wrapper {
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .page-numbers {
+    gap: 2px;
+  }
+  .gallery-grid {
+    gap: 10px;
+  }
+
   .rating-bar {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
   }
-  
+
   .rating-bar-center {
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .rating-stat {
     flex: 1;
     min-width: 120px;
@@ -790,14 +859,26 @@ const formatCount = (countData) => {
   margin-bottom: 20px;
 }
 
-.fade-slide-enter-active, .fade-slide-leave-active { transition: all 0.3s ease; }
-.fade-slide-enter-from { opacity: 0; transform: translateY(-10px); }
-.fade-slide-leave-to { opacity: 0; transform: translateY(10px); }
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
 
-.nav-btn:focus-visible, .num-btn:focus-visible {
+.nav-btn:focus-visible,
+.num-btn:focus-visible {
   outline: 2px solid #a78bfa;
   outline-offset: 2px;
 }
 
-.arrow { font-size: 14px; }
+.arrow {
+  font-size: 14px;
+}
 </style>

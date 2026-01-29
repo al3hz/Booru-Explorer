@@ -1,20 +1,19 @@
 // api/danbooru.ts
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Tipos para la respuesta de Danbooru
-interface DanbooruError {
-  error: string;
-  message?: string;
-  success?: boolean;
-  [key: string]: any;
-}
+// ==========================================
+// TIPOS ESPECÍFICOS POR ENDPOINT
+// ==========================================
 
-interface DanbooruPost {
+export type DanbooruRating = 'g' | 's' | 'q' | 'e';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+
+export interface DanbooruPost {
   id: number;
   file_url: string;
   preview_url: string;
   sample_url?: string;
-  rating: 's' | 'q' | 'e';
+  rating: DanbooruRating;
   score: number;
   tag_string: string;
   tag_string_general: string;
@@ -40,7 +39,7 @@ interface DanbooruPost {
   approver_id?: number;
 }
 
-interface DanbooruTag {
+export interface DanbooruTag {
   id: number;
   name: string;
   post_count: number;
@@ -49,7 +48,7 @@ interface DanbooruTag {
   updated_at: string;
 }
 
-interface DanbooruPool {
+export interface DanbooruPool {
   id: number;
   name: string;
   description: string;
@@ -60,7 +59,7 @@ interface DanbooruPool {
   is_deleted: boolean;
 }
 
-interface DanbooruComment {
+export interface DanbooruComment {
   id: number;
   post_id: number;
   creator_id: number;
@@ -71,266 +70,297 @@ interface DanbooruComment {
   is_hidden: boolean;
 }
 
-type DanbooruResponse = 
-  | DanbooruPost[]
-  | DanbooruPost
-  | DanbooruTag[]
-  | DanbooruPool[]
-  | DanbooruPool
-  | DanbooruComment[]
-  | DanbooruError
-  | { posts: DanbooruPost[] }
-  | { tags: DanbooruTag[] }
-  | { pools: DanbooruPool[] }
-  | { comments: DanbooruComment[] };
+// ==========================================
+// CONFIGURACIÓN TIPADA Y VALIDACIÓN
+// ==========================================
 
-// Configuración de la API
-interface ApiConfig {
-  userAgent: string;
-  baseUrl: string;
-  defaultPath: string;
-  cacheTime: number;
-  staleWhileRevalidate: number;
-}
+const CONFIG = {
+  USER_AGENT: 'Booru-Explorer/2.0 (Educational Project; https://github.com/al3hz/Booru-Explorer)',
+  BASE_URL: 'https://danbooru.donmai.us',
+  DEFAULT_PATH: 'posts.json',
+  TIMEOUT_MS: 10000,
+  CACHE: {
+    MAX_AGE: 30,
+    STALE_WHILE_REVALIDATE: 30
+  },
+  ALLOWED_METHODS: ['GET'] as const,
+  ALLOWED_PATHS: [
+    'posts.json',
+    'tags.json',
+    'pools.json',
+    'comments.json',
+    'posts',
+    'tags',
+    'pools',
+    'comments'
+  ] as const
+} as const;
 
-const API_CONFIG: ApiConfig = {
-  userAgent: 'Booru-Explorer/1.0 (Educational Project; al3hz)',
-  baseUrl: 'https://danbooru.donmai.us',
-  defaultPath: 'posts.json',
-  cacheTime: 30, // seconds
-  staleWhileRevalidate: 30, // seconds
-};
+type AllowedPath = typeof CONFIG.ALLOWED_PATHS[number];
 
-// Helper para construir URL de Danbooru
-function buildDanbooruUrl(requestUrl: string): string {
-  try {
-    const url = new URL(requestUrl, 'http://dummy'); // Base dummy para parsing
-    const searchParams = url.searchParams;
-    
-    // Extraer el path objetivo
-    const targetPath = searchParams.get('url') || API_CONFIG.defaultPath;
-    searchParams.delete('url');
-    
-    // Limpiar parámetros que no deben ir a Danbooru
-    const cleanParams = new URLSearchParams();
-    for (const [key, value] of searchParams.entries()) {
-      if (key && value) {
-        cleanParams.append(key, value);
-      }
+// ==========================================
+// CLASES DE ERROR ESPECÍFICAS
+// ==========================================
+
+class ApiError extends Error {
+  statusCode: number;
+  code: string;
+  details?: unknown;
+
+  constructor(
+    statusCode: number,
+    message: string,
+    code: string,
+    details?: unknown
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.code = code;
+    this.details = details;
+  }
+
+  toJSON() {
+    const result: Record<string, unknown> = {
+      success: false,
+      error: this.code,
+      message: this.message,
+      timestamp: new Date().toISOString()
+    };
+
+    if (this.details) {
+      result.details = this.details;
     }
-    
-    // Construir URL final
-    return `${API_CONFIG.baseUrl}/${targetPath}?${cleanParams.toString()}`;
-  } catch (error) {
-    throw new Error(`Invalid URL format: ${requestUrl}`);
+
+    return result;
   }
 }
 
-// Helper para manejar errores de fetch
-async function handleFetchError(response: Response): Promise<DanbooruError> {
-  const status = response.status;
+class ValidationError extends ApiError {
+  constructor(message: string) {
+    super(400, message, 'BAD_REQUEST');
+    this.name = 'ValidationError';
+  }
+}
+
+class DanbooruApiError extends ApiError {
+  originalResponse?: string;
+
+  constructor(status: number, message: string, originalResponse?: string) {
+    super(status, message, 'DANBOORU_API_ERROR', { originalResponse });
+    this.name = 'DanbooruApiError';
+    this.originalResponse = originalResponse;
+  }
+}
+
+// ==========================================
+// UTILIDADES Y HELPERS
+// ==========================================
+
+const generateRequestId = (): string =>
+  `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
+
+const validateTargetPath = (path: string | null): AllowedPath => {
+  if (!path) return CONFIG.DEFAULT_PATH;
+
+  const dangerousPatterns = /^(https?:\/\/|\/\/|\.{2,})|[<>\"']/;
+  if (dangerousPatterns.test(path)) {
+    throw new ValidationError('Invalid path format: potential security risk');
+  }
+
+  const cleanPath = path.replace(/^\/+/, '');
+  const isAllowed = CONFIG.ALLOWED_PATHS.some(allowed =>
+    cleanPath === allowed || cleanPath.startsWith(`${allowed}/`)
+  );
+
+  if (!isAllowed) {
+    throw new ValidationError(`Path not allowed: ${path}`);
+  }
+
+  return cleanPath as AllowedPath;
+};
+
+const buildDanbooruUrl = (requestUrl: string): string => {
+  try {
+    const url = new URL(requestUrl, 'http://localhost');
+    const targetPath = validateTargetPath(url.searchParams.get('url'));
+
+    url.searchParams.delete('url');
+
+    const danbooruUrl = new URL(targetPath, CONFIG.BASE_URL);
+
+    url.searchParams.forEach((value, key) => {
+      if (key && value) {
+        danbooruUrl.searchParams.append(key, value);
+      }
+    });
+
+    return danbooruUrl.toString();
+  } catch (error) {
+    if (error instanceof ValidationError) throw error;
+    throw new ValidationError(`Invalid URL format: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+const parseDanbooruError = async (response: Response): Promise<DanbooruApiError> => {
   const errorText = await response.text();
-  
-  console.error(`Danbooru API Error ${status}:`, errorText.slice(0, 500));
-  
+  const truncated = errorText.slice(0, 500);
+
   try {
     const errorJson = JSON.parse(errorText);
-    return {
-      error: `Danbooru API Error ${status}`,
-      message: errorJson.message || errorJson.error || 'Unknown error',
-      ...errorJson
-    };
+    return new DanbooruApiError(
+      response.status,
+      errorJson.message || errorJson.error || 'Unknown Danbooru error',
+      truncated
+    );
   } catch {
-    return {
-      error: `Danbooru API returned ${status}`,
-      message: errorText.slice(0, 200) || 'No error details available'
-    };
+    return new DanbooruApiError(
+      response.status,
+      `HTTP ${response.status}: ${response.statusText}`,
+      truncated
+    );
   }
-}
+};
 
-// Helper para validar la respuesta
-function validateResponse(data: unknown): DanbooruResponse {
-  // Validación básica de tipos
-  if (data === null || data === undefined) {
-    throw new Error('Empty response from Danbooru API');
-  }
-  
-  // Si es un array o objeto, asumimos que es válido
-  // En producción podrías agregar validación más estricta aquí
-  return data as DanbooruResponse;
-}
-
-// Helper para setear headers de cache
-function setCacheHeaders(response: VercelResponse, config: ApiConfig): void {
-  response.setHeader(
-    'Cache-Control',
-    `public, s-maxage=${config.cacheTime}, stale-while-revalidate=${config.staleWhileRevalidate}`
+const setSecurityHeaders = (res: VercelResponse): void => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Cache-Control',
+    `public, s-maxage=${CONFIG.CACHE.MAX_AGE}, stale-while-revalidate=${CONFIG.CACHE.STALE_WHILE_REVALIDATE}`
   );
-  
-  response.setHeader('Content-Type', 'application/json; charset=utf-8');
-  response.setHeader('X-Content-Type-Options', 'nosniff');
-  response.setHeader('X-Powered-By', 'Booru-Explorer-API');
-}
+};
 
-// Métodos HTTP permitidos
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+// ==========================================
+// MANEJADOR PRINCIPAL
+// ==========================================
 
-const ALLOWED_METHODS: HttpMethod[] = ['GET'];
-const DEFAULT_METHOD: HttpMethod = 'GET';
-
-// Handler principal
 export default async function handler(
-  request: VercelRequest,
-  response: VercelResponse
+  req: VercelRequest,
+  res: VercelResponse
 ): Promise<void> {
-  // Métricas de tiempo de respuesta
-  const startTime = Date.now();
-  
-  try {
-    // 1. Validar método HTTP
-    const method = (request.method?.toUpperCase() || DEFAULT_METHOD) as HttpMethod;
-    if (!ALLOWED_METHODS.includes(method)) {
-      response.status(405).json({
-        error: 'Method Not Allowed',
-        message: `Only ${ALLOWED_METHODS.join(', ')} methods are allowed`,
-        allowed_methods: ALLOWED_METHODS
-      });
-      return;
-    }
-    
-    // 2. Validar que tenemos una URL
-    const requestUrl = request.url || '';
-    if (!requestUrl) {
-      response.status(400).json({
-        error: 'Bad Request',
-        message: 'Missing URL parameter'
-      });
-      return;
-    }
-    
-    // 3. Construir URL de Danbooru
-    let danbooruUrl: string;
-    try {
-      danbooruUrl = buildDanbooruUrl(requestUrl);
-    } catch (error) {
-      response.status(400).json({
-        error: 'Bad Request',
-        message: error instanceof Error ? error.message : 'Invalid URL format'
-      });
-      return;
-    }
-    
-    // Logging para desarrollo
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[API] Proxying to: ${danbooruUrl}`);
-    }
-    
-    // 4. Hacer la request a Danbooru
-    const fetchOptions: RequestInit = {
-      method: method,
-      headers: {
-        'User-Agent': API_CONFIG.userAgent,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      // Timeout configurable
-      signal: AbortSignal.timeout(10000) // 10 segundos timeout
+  const requestId = generateRequestId();
+  const startTime = performance.now();
+
+  const log = (level: 'info' | 'error' | 'warn', message: string, meta?: Record<string, unknown>) => {
+    const entry = {
+      requestId,
+      level,
+      message,
+      duration: Math.round(performance.now() - startTime),
+      ...meta
     };
-    
-    // Si hay body en POST/PUT requests (para futura expansión)
-    if (request.body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-      fetchOptions.body = JSON.stringify(request.body);
+
+    if (process.env.NODE_ENV === 'development' || level === 'error') {
+      console[level](`[API] ${message}`, JSON.stringify(entry));
     }
-    
-    let apiResponse: Response;
-    try {
-      apiResponse = await fetch(danbooruUrl, fetchOptions);
-    } catch (fetchError) {
-      console.error('Network error fetching from Danbooru:', fetchError);
-      
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        response.status(504).json({
-          error: 'Gateway Timeout',
-          message: 'Request to Danbooru API timed out'
-        });
-      } else {
-        response.status(502).json({
-          error: 'Bad Gateway',
-          message: 'Failed to connect to Danbooru API',
-          details: fetchError instanceof Error ? fetchError.message : 'Unknown network error'
-        });
-      }
-      return;
-    }
-    
-    // 5. Manejar errores de la API de Danbooru
-    if (!apiResponse.ok) {
-      const errorData = await handleFetchError(apiResponse);
-      response.status(apiResponse.status).json(errorData);
-      return;
-    }
-    
-    // 6. Parsear y validar la respuesta
-    let responseData: DanbooruResponse;
-    try {
-      const rawData = await apiResponse.json();
-      responseData = validateResponse(rawData);
-    } catch (parseError) {
-      console.error('Error parsing Danbooru response:', parseError);
-      response.status(502).json({
-        error: 'Bad Gateway',
-        message: 'Invalid JSON response from Danbooru API',
-        details: parseError instanceof Error ? parseError.message : 'Parse error'
+  };
+
+  try {
+    const method = (req.method?.toUpperCase() || 'GET') as HttpMethod;
+    if (method !== 'GET') {
+      throw new ApiError(405, `Method ${method} not allowed`, 'METHOD_NOT_ALLOWED', {
+        allowed_methods: ['GET']
       });
-      return;
     }
-    
-    // 7. Setear headers de cache
-    setCacheHeaders(response, API_CONFIG);
-    
-    // 8. Enviar respuesta exitosa
-    response.status(200).json(responseData);
-    
-    // Logging de performance
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[API] Request completed in ${duration}ms`);
+
+    if (!req.url) {
+      throw new ValidationError('Missing request URL');
     }
-    
-  } catch (error) {
-    // Error inesperado
-    console.error('Unexpected error in API handler:', error);
-    
-    response.status(500).json({
-      error: 'Internal Server Error',
-      message: 'An unexpected error occurred',
-      timestamp: new Date().toISOString(),
-      request_id: Math.random().toString(36).substring(2, 15)
+
+    const targetUrl = buildDanbooruUrl(req.url);
+    log('info', 'Proxying request', { target: targetUrl.replace(CONFIG.BASE_URL, '') });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.TIMEOUT_MS);
+
+
+
+    const fetchOptions: RequestInit = {
+      method,
+      headers: {
+        'User-Agent': CONFIG.USER_AGENT,
+        'Accept': 'application/json',
+        'X-Request-ID': requestId
+      },
+      signal: controller.signal
+    };
+
+    let response: Response;
+    try {
+      response = await fetch(targetUrl, fetchOptions);
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        throw new ApiError(504, 'Request timeout', 'GATEWAY_TIMEOUT');
+      }
+
+      throw new ApiError(502, 'Failed to reach Danbooru API', 'BAD_GATEWAY', {
+        originalError: fetchError instanceof Error ? fetchError.message : 'Unknown'
+      });
+    }
+
+    if (!response.ok) {
+      const error = await parseDanbooruError(response);
+      log('error', 'Danbooru API error', {
+        status: error.statusCode,
+        message: error.message
+      });
+      throw error;
+    }
+
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      throw new ApiError(502, 'Invalid JSON from upstream', 'INVALID_RESPONSE', {
+        originalError: parseError instanceof Error ? parseError.message : 'Parse failed'
+      });
+    }
+
+    setSecurityHeaders(res);
+    res.setHeader('X-Request-ID', requestId);
+
+    res.status(200).json({
+      success: true,
+      data,
+      meta: {
+        requestId,
+        cached: false,
+        responseTime: Math.round(performance.now() - startTime)
+      }
     });
+
+    log('info', 'Request completed successfully');
+
+  } catch (error) {
+    let apiError: ApiError;
+
+    if (error instanceof ApiError) {
+      apiError = error;
+    } else {
+      apiError = new ApiError(
+        500,
+        'Internal server error',
+        'INTERNAL_ERROR',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      log('error', 'Unexpected error', { stack: error instanceof Error ? error.stack : undefined });
+    }
+
+    res.status(apiError.statusCode).json(apiError.toJSON());
   }
 }
 
-// Export para Vercel
+// ==========================================
+// EXPORTS Y CONFIG
+// ==========================================
+
 export const config = {
-  runtime: 'nodejs'
-};
-
-// Tipos de export para uso externo
-export type {
-  DanbooruPost,
-  DanbooruTag,
-  DanbooruPool,
-  DanbooruComment,
-  DanbooruError,
-  DanbooruResponse
-};
-
-// Helper functions exportadas para testing
-export {
-  buildDanbooruUrl,
-  handleFetchError,
-  validateResponse,
-  setCacheHeaders
+  runtime: 'nodejs',
+  regions: ['iad1'],
+  maxDuration: 10
 };

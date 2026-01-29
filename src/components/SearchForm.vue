@@ -325,11 +325,8 @@ export default {
     const syncStateFromRoute = () => {
       const tags = route.query.tags || "";
 
-      // Sync Rating from URL
-      const ratingFromUrl = route.query.rating || "";
-      if (ratingFromUrl !== props.ratingFilter) {
-        emit("update:rating-filter", ratingFromUrl);
-      }
+      // Sync Rating from URL logic removed to prevent overwriting 'general' default
+
 
       // Sync Time Range
       if (tags.includes("age:<1d")) selectedTimeRange.value = "day";
@@ -408,22 +405,9 @@ export default {
       ratingDropdownOpen.value = !ratingDropdownOpen.value;
     };
 
-    const selectRating = async (value) => {
+    const selectRating = (value) => {
       emit("update:rating-filter", value);
       ratingDropdownOpen.value = false;
-
-      // Update URL with new rating
-      const currentTags = route.query.tags || "";
-      const query = currentTags ? { tags: currentTags } : {};
-
-      if (value) {
-        query.rating = value;
-      }
-
-      await router.push({
-        path: "/",
-        query: query,
-      });
     };
 
     const getRatingLabel = (value) => {

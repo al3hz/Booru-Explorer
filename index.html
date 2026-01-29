@@ -1,16 +1,75 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet">
-    <link rel="icon" type="image/svg+xml" href="https://danbooru.donmai.us/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    
+    <!-- SEO Básico -->
     <title>Booru Explorer</title>
+    <meta name="description" content="Advanced image explorer for Danbooru with smart search, parallel loading, and enhanced navigation. Browse anime artwork with powerful filtering capabilities." />
+    <meta name="keywords" content="danbooru, anime, image board, booru, gallery, artwork" />
+    <meta name="author" content="Booru Explorer Team" />
+    
+    <!-- Tema y Colores -->
+    <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+    
+    <!-- PWA / Mobile -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Booru Explorer" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- Optimización de Recursos Externos -->
+    <link rel="preconnect" href="https://cdn.lineicons.com" crossorigin />
+    <link rel="preconnect" href="https://danbooru.donmai.us" crossorigin />
+    <link rel="preconnect" href="https://unpkg.com" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.lineicons.com" />
+    <link rel="dns-prefetch" href="https://danbooru.donmai.us" />
+    
+    <!-- Iconos y Favicons -->
+    <link rel="icon" type="image/x-icon" href="https://danbooru.donmai.us/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    
+    <!-- Estilos Críticos Inline (evita FOUC en tema oscuro) -->
+    <style>
+      /* Prevenir flash de tema claro si el usuario prefiere oscuro */
+      @media (prefers-color-scheme: dark) {
+        html { background-color: #0f0f1e; color: #ffffff; }
+      }
+      /* Fallback mientras carga Vue */
+      #app:empty::before {
+        content: "Loading Booru Explorer...";
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: system-ui, -apple-system, sans-serif;
+        color: #666;
+      }
+    </style>
+    
+    <!-- Estilos Externos -->
+    <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet" />
   </head>
-  <!-- Ruffle Flash Emulator -->
-  <script src="https://unpkg.com/@ruffle-rs/ruffle"></script> 
+  
   <body>
-    <div id="app"></div>
+    <!-- Contenedor Vue -->
+    <div id="app" role="application" aria-label="Booru Explorer Application"></div>
+    
+    <!-- Fallback si JavaScript está deshabilitado -->
+    <noscript>
+      <div style="padding: 2rem; text-align: center; font-family: system-ui, sans-serif;">
+        <h1>JavaScript Required</h1>
+        <p>Booru Explorer requires JavaScript to function. Please enable JavaScript in your browser settings.</p>
+      </div>
+    </noscript>
+    
+    <!-- Scripts al final para no bloquear renderizado -->
     <script type="module" src="/src/main.js"></script>
+    
+    <!-- Ruffle Flash Emulator - Carga lazy ya que es para contenido legacy específico -->
+    <script src="https://unpkg.com/@ruffle-rs/ruffle" async defer></script>
   </body>
 </html>
