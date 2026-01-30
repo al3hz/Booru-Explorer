@@ -559,7 +559,7 @@ const navigatePost = async (direction) => {
     if (isMasonryMode.value) {
       isLoadingNextPage.value = true;
       try {
-        await searchPosts(currentPage.value + 1, true);
+        await searchPosts(currentPage.value + 1, false);
         if (posts.value.length > index + 1) {
           selectedPost.value = posts.value[index + 1];
           lastListPost.value = posts.value[index + 1];
@@ -569,26 +569,39 @@ const navigatePost = async (direction) => {
       }
     } else {
       const nextPage = currentPage.value + 1;
+      isLoadingNextPage.value = true;
       await handlePageChange(nextPage);
-      if (posts.value.length > 0) {
-        selectedPost.value = posts.value[0];
-        lastListPost.value = posts.value[0];
-      }
+      
+      // En modo paginado, esperar a que los nuevos posts carguen
+      const unwatch = watch(loading, (isLoading) => {
+        if (!isLoading) {
+          if (posts.value.length > 0) {
+            selectedPost.value = posts.value[0];
+            lastListPost.value = posts.value[0];
+          }
+          isLoadingNextPage.value = false;
+          unwatch();
+        }
+      });
     }
     return;
   }
 
   if (newIndex < 0 && currentPage.value > 1 && !loading.value) {
     isLoadingNextPage.value = true;
-    try {
-      await handlePageChange(currentPage.value - 1);
-      if (posts.value.length > 0) {
-        selectedPost.value = posts.value[posts.value.length - 1];
-        lastListPost.value = posts.value[posts.value.length - 1];
+    await handlePageChange(currentPage.value - 1);
+    
+    // Esperar a que cargue la página anterior
+    const unwatch = watch(loading, (isLoading) => {
+      if (!isLoading) {
+        if (posts.value.length > 0) {
+          selectedPost.value = posts.value[posts.value.length - 1];
+          lastListPost.value = posts.value[posts.value.length - 1];
+        }
+        isLoadingNextPage.value = false;
+        unwatch();
       }
-    } finally {
-      isLoadingNextPage.value = false;
-    }
+    });
   }
 };
 

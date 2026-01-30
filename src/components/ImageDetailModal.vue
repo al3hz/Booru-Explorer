@@ -735,19 +735,10 @@ export default {
     
     // Check if both are ready
     const checkLoading = () => {
-      // familyReady should now reflect the family query's success if post has family
-      const hasFamily = !!props.post.parent_id || !!props.post.has_children;
-      const isFamilyReady = hasFamily ? familyLoaded.value : true;
-
-      if (imageReady.value && isFamilyReady) {
+      if (imageReady.value) {
         loading.value = false;
       }
     };
-    
-    // Watch for familyLoaded to trigger checkLoading
-    watch(familyLoaded, (isLoaded) => {
-      if (isLoaded) checkLoading();
-    });
     
     const onImageLoad = () => {
        imageReady.value = true;
