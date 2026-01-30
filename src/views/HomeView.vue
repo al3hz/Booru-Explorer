@@ -59,7 +59,10 @@
 
         <!-- New Posts Notification -->
         <transition name="fade-up">
-          <div v-if="hasNewPosts && !loading" class="new-posts-notification">
+          <div
+            v-if="hasNewPosts && !loading && !selectedPost"
+            class="new-posts-notification"
+          >
             <button @click="handleRefresh" class="new-posts-btn">
               <span class="icon">✨</span> New images available
             </button>

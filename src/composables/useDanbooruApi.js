@@ -233,21 +233,32 @@ export function useDanbooruApi(
   // 2. Hay posts visibles
   // 3. El ID del poll es MAYOR AL PRIMER POST VISIBLE
   // 4. El ID es mayor al último acknowledge
+  /* FIX: Validez estricta para notificación de nuevos posts */
   const hasNewPosts = computed(() => {
-    // Validaciones básicas
+    // 1. Validaciones básicas de existencia
     if (!latestCheck.value?.[0] || !posts.value?.[0]) return false;
+
+    // 2. Modos incompatibles
     if (isRandomMode.value) return false;
+    if (currentPageRef?.value && currentPageRef.value > 1) return false; // Solo página 1
 
-    const newestId = latestCheck.value[0].id;
-    const currentFirstId = posts.value[0].id;
+    const newestPost = latestCheck.value[0];
+    const currentFirstPost = posts.value[0];
 
-    // Solo verdadero si:
-    // - El poll encontró un ID más reciente que el primero visible
-    // - Y no hemos reconocido ese ID aún
-    const hasNewer = newestId > currentFirstId;
-    const isUnacknowledged = newestId > lastAcknowledgedId.value;
+    // 3. Validación de ID: debe ser estrictamente mayor
+    if (newestPost.id <= currentFirstPost.id) return false;
+    if (newestPost.id <= lastAcknowledgedId.value) return false;
 
-    return hasNewer && isUnacknowledged;
+    // 4. Validación extra: Verificar que el post cumpla con el rating actual si existe
+    // Esto evita falsos positivos si la API devuelve algo inconsistente momentáneamente
+    if (ratingFilter.value) {
+      const requiredRating = RATING_MAP[ratingFilter.value];
+      if (requiredRating && newestPost.rating !== requiredRating) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   // Watcher para resetear acknowledge SÓLO cuando cambian los tags
