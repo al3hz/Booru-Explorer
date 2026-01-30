@@ -55,10 +55,29 @@ export function useDanbooruApi(
   const queryKey = computed(() => {
     let tags = initialTags.value?.trim() || "";
 
-    if (ratingFilter.value && RATING_MAP[ratingFilter.value]) {
-      const shortRating = RATING_MAP[ratingFilter.value];
-      if (!tags.includes(`rating:${shortRating}`)) {
-        tags = tags ? `${tags} rating:${shortRating}` : `rating:${shortRating}`;
+    if (ratingFilter.value) {
+      const selectedRatings = ratingFilter.value
+        .split(",")
+        .map((r) => RATING_MAP[r])
+        .filter(Boolean);
+
+      if (selectedRatings.length > 0) {
+        if (selectedRatings.length === 1) {
+          // Single rating: rating:g
+          const tag = `rating:${selectedRatings[0]}`;
+          if (!tags.includes(tag)) {
+            tags = tags ? `${tags} ${tag}` : tag;
+          }
+        } else {
+          // Multiple ratings: (rating:g OR rating:s)
+          // Danbooru logic needs parentheses for OR
+          const orQuery = `(${selectedRatings.map((r) => `rating:${r}`).join(" OR ")})`;
+
+          // Check if not already included (unlikely but safe)
+          if (!tags.includes(orQuery)) {
+            tags = tags ? `${tags} ${orQuery}` : orQuery;
+          }
+        }
       }
     }
 
@@ -159,8 +178,10 @@ export function useDanbooruApi(
       return allPages.length + 1;
     },
 
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 0, // Disable garbage collection cache (formerly cacheTime)
     refetchOnWindowFocus: false,
+    refetchOnMount: true,
     keepPreviousData: true,
     retry: 2,
     retryDelay: (attempt) => attempt * 1000,
@@ -221,6 +242,7 @@ export function useDanbooruApi(
 
     refetchIntervalInBackground: false,
     staleTime: 0,
+    gcTime: 0,
     enabled: computed(() => {
       // Solo habilitar query si cumple condiciones
       const isFirstPage = !currentPageRef?.value || currentPageRef.value === 1;
@@ -252,10 +274,18 @@ export function useDanbooruApi(
 
     // 4. Validación extra: Verificar que el post cumpla con el rating actual si existe
     // Esto evita falsos positivos si la API devuelve algo inconsistente momentáneamente
+    // 4. Validación extra: Verificar que el post cumpla con el rating actual si existe
     if (ratingFilter.value) {
-      const requiredRating = RATING_MAP[ratingFilter.value];
-      if (requiredRating && newestPost.rating !== requiredRating) {
-        return false;
+      const selectedRatings = ratingFilter.value
+        .split(",")
+        .map((r) => RATING_MAP[r])
+        .filter(Boolean);
+
+      if (selectedRatings.length > 0) {
+        // Post must match ONE of the selected ratings
+        if (!selectedRatings.includes(newestPost.rating)) {
+          return false;
+        }
       }
     }
 

@@ -37,6 +37,9 @@ class DanbooruService {
 
     url.searchParams.set('url', cleanPath);
 
+    // Aggressive Cache Busting
+    url.searchParams.set('_t', Date.now().toString());
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         url.searchParams.append(key, String(value));
@@ -81,6 +84,7 @@ class DanbooruService {
 
         const res = await fetch(url, {
           signal: controller.signal,
+          cache: 'no-store',
           headers: {
             'Accept': 'application/json',
             'X-Client-Version': '2.0'
@@ -152,7 +156,8 @@ class DanbooruService {
     options?: { signal?: AbortSignal }
   ): Promise<DanbooruPost[]> {
     const normalizedTags = this._normalizeTags(tags);
-    const tagList = normalizedTags.split(' ').filter(Boolean);
+    // Regex to split by space ignoring parentheses
+    const tagList = normalizedTags.match(/(?:[^\s(]+|\([^)]*\))+/g) || [];
 
     // Si hay pocos tags, búsqueda estándar directa
     if (tagList.length <= 2) {
@@ -184,14 +189,22 @@ class DanbooruService {
       'source:', 'parent:'
     ];
 
-    const contentTags = tagList.filter(t =>
-      !META_PREFIXES.some(p => t.startsWith(p)) && !t.startsWith('-')
-    );
-    const metaTags = tagList.filter(t =>
-      META_PREFIXES.some(p => t.startsWith(p)) || t.startsWith('-')
-    );
+    // Separate regular tags, meta tags, and complex groups
+    const contentTags: string[] = [];
+    const metaTags: string[] = [];
+    const complexTags: string[] = []; // (rating:g OR ...)
 
-    // Seleccionar máximo 2 tags prioritarios para la API
+    tagList.forEach(t => {
+      if (t.startsWith('(')) {
+        complexTags.push(t);
+      } else if (META_PREFIXES.some(p => t.startsWith(p)) || t.startsWith('-')) {
+        metaTags.push(t);
+      } else {
+        contentTags.push(t);
+      }
+    });
+
+    // Strategy: Prefer Content Tags > Meta Tags > Complex Tags (never)
     const priorityTags: string[] = [];
     const orderTag = metaTags.find(t => t.startsWith('order:'));
     if (orderTag) priorityTags.push(orderTag);
@@ -205,10 +218,12 @@ class DanbooruService {
     }
 
     const apiTags = priorityTags.join(' ');
+    // Filter tags = All original tags minus the ones we sent to API
     const filterTags = tagList.filter(t => !priorityTags.includes(t));
+
     const queryKey = `smart_${apiTags}_${filterTags.join('_')}`;
 
-    console.log(`[SmartSearch] API:"${apiTags}" | Filter:[${filterTags.join(',')}]`);
+    console.log(`[SmartSearch] API:"${apiTags}" | Filter:[${filterTags.join(', ')}]`);
 
     try {
       return await this._executeSmartSearch(
@@ -229,40 +244,52 @@ class DanbooruService {
     options?: { signal?: AbortSignal }
   ): Promise<DanbooruPost[]> {
     const cursorKey = `${queryKey}_${page - 1}`;
+    // Start where the previous page left off, or 1
     let currentApiPage = page === 1 ? 1 : (this._smartCursors.get(cursorKey) || page - 1) + 1;
 
     const accumulated: DanbooruPost[] = [];
-    const MAX_API_PAGES = 10;
+    // Safety break to prevent infinite loops
+    const MAX_API_PAGES = 15;
     let scannedPages = 0;
 
+    console.log(`[SmartSearch START] Page ${page} (Limit ${limit}) starting at API Page ${currentApiPage}`);
+
     while (accumulated.length < limit && scannedPages < MAX_API_PAGES) {
-      // Fetch en paralelo (batch de 5 páginas)
-      const batchSize = Math.min(5, MAX_API_PAGES - scannedPages);
-      const promises = Array.from({ length: batchSize }, (_, i) =>
-        this._fetchStandard(apiTags, 100, currentApiPage + i, options)
-          .then(posts => ({ page: currentApiPage + i, posts }))
-          .catch(() => ({ page: currentApiPage + i, posts: [] as DanbooruPost[] }))
-      );
+      if (options?.signal?.aborted) throw new Error('AbortError');
 
-      const results = await Promise.all(promises);
-      results.sort((a, b) => a.page - b.page);
-
-      for (const result of results) {
-        currentApiPage = result.page;
+      try {
+        const posts = await this._fetchStandard(apiTags, 100, currentApiPage, options);
         scannedPages++;
 
-        if (!result.posts?.length) continue;
+        if (posts.length === 0) {
+          console.log(`[SmartSearch] API Page ${currentApiPage} returned empty. End of results.`);
+          break; // End of results
+        }
 
-        const filtered = this._filterPosts(result.posts, filterTags);
+        if (scannedPages === 1) {
+          console.log(`[SmartSearch DEBUG] First Post ID from API Page ${currentApiPage}: ${posts[0]?.id}`);
+        }
+
+        const filtered = this._filterPosts(posts, filterTags);
         accumulated.push(...filtered);
 
+        console.log(`[SmartSearch PROGRESS] API Page ${currentApiPage}: Found ${filtered.length} matching posts. Total accumulated: ${accumulated.length}`);
+
         if (accumulated.length >= limit) {
+          // We have enough! Stop here.
           this._smartCursors.set(`${queryKey}_${page}`, currentApiPage);
           return accumulated.slice(0, limit);
         }
-      }
 
-      currentApiPage++;
+        currentApiPage++;
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') throw err;
+        console.error(`[SmartSearch] Error fetching API Page ${currentApiPage}`, err);
+        // If one page fails, we might want to try the next? 
+        // Or stop? usually better to stop or retry. 
+        // For now, let's increment and try to salvage the rest.
+        currentApiPage++;
+      }
     }
 
     this._smartCursors.set(`${queryKey}_${page}`, currentApiPage);
@@ -274,17 +301,37 @@ class DanbooruService {
       const postTags = post.tag_string.split(' ');
 
       return filterTags.every(ftag => {
-        // Tag negativo
+        // 1. Complex Group: (rating:g OR rating:s)
+        if (ftag.startsWith('(') && ftag.endsWith(')')) {
+          const inner = ftag.slice(1, -1); // Strip parens
+          const parts = inner.split(' OR ').map(p => p.trim());
+
+          // Must match AT LEAST ONE part
+          return parts.some(part => {
+            // Recursive-ish check for simple parts
+            if (part.startsWith('rating:')) return post.rating === part.slice(7);
+            if (part.startsWith('status:')) {
+              const val = part.slice(7);
+              if (val === 'active') return !post.is_deleted && !post.is_pending;
+              if (val === 'deleted') return post.is_deleted;
+              if (val === 'pending') return post.is_pending;
+              return true; // Unknown status
+            }
+            return postTags.includes(part);
+          });
+        }
+
+        // 2. Tag negativo
         if (ftag.startsWith('-')) {
           return !postTags.includes(ftag.slice(1));
         }
 
-        // Rating
+        // 3. Rating
         if (ftag.startsWith('rating:')) {
           return post.rating === ftag.slice(7);
         }
 
-        // Status
+        // 4. Status
         if (ftag.startsWith('status:')) {
           const val = ftag.slice(7);
           if (val === 'active') return !post.is_deleted && !post.is_pending;
@@ -293,7 +340,7 @@ class DanbooruService {
           return true;
         }
 
-        // Tag normal
+        // 5. Tag normal
         return postTags.includes(ftag);
       });
     });

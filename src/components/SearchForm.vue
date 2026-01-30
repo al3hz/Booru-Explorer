@@ -148,11 +148,11 @@
                     v-for="opt in ratingOptions"
                     :key="opt.value"
                     class="custom-option"
-                    :class="{ selected: ratingFilter === opt.value }"
+                    :class="{ selected: isSelected(opt.value) }"
                     @click="selectRating(opt.value)"
                   >
                     <span class="option-label">{{ opt.label }}</span>
-                    <span v-if="ratingFilter === opt.value" class="check"
+                    <span v-if="isSelected(opt.value)" class="check"
                       >✓</span
                     >
                   </li>
@@ -406,13 +406,45 @@ export default {
     };
 
     const selectRating = (value) => {
-      emit("update:rating-filter", value);
-      ratingDropdownOpen.value = false;
+      // Si el valor es vacío (All), limpiar todo
+      if (!value) {
+        emit("update:rating-filter", "");
+        ratingDropdownOpen.value = false;
+        return;
+      }
+
+      // Lógica de toggle para multi-select
+      let current = props.ratingFilter ? props.ratingFilter.split(",") : [];
+      
+      // Si "All" estaba seleccionado (vacío), current es []
+      // Si el valor ya está, quitarlo
+      if (current.includes(value)) {
+        current = current.filter((v) => v !== value);
+      } else {
+        // Si no está, añadirlo
+        current.push(value);
+      }
+
+      // Si nos quedamos sin nada, es "All"
+      const newVal = current.join(",");
+      emit("update:rating-filter", newVal);
+      // No cerramos el dropdown para permitir múltiple selección
     };
 
     const getRatingLabel = (value) => {
-      const opt = ratingOptions.find((o) => o.value === value);
-      return opt ? opt.label : value;
+      if (!value) return "All";
+      const selected = value.split(",");
+      if (selected.length === 1) {
+        const opt = ratingOptions.find((o) => o.value === selected[0]);
+        return opt ? opt.label : value;
+      }
+      return `${selected.length} Selected`;
+    };
+
+    const isSelected = (value) => {
+      if (!value && !props.ratingFilter) return true;
+      if (!value) return false;
+      return props.ratingFilter.split(",").includes(value);
     };
 
     // Close dropdown on click outside
@@ -596,6 +628,7 @@ export default {
       toggleRatingDropdown,
       selectRating,
       getRatingLabel,
+      isSelected,
       isSidebarVisible,
       toggleSidebar,
     };
