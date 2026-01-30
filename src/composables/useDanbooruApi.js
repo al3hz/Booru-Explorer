@@ -193,13 +193,14 @@ export function useDanbooruApi(
   const { data: latestCheck, refetch: checkForNewPosts } = useQuery({
     queryKey: computed(() => ["latest-check", queryKey.value[1]?.tags]),
 
-    queryFn: async ({ queryKey: [, params] }) => {
+    queryFn: async ({ queryKey }) => {
+      const tags = queryKey[1]; // FIX: El key contiene el string directo, no un objeto params
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       try {
         // Solo buscar 1 post el más reciente
-        return await DanbooruService.getPosts(params.tags, 1, 1, {
+        return await DanbooruService.getPosts(tags, 1, 1, {
           signal: controller.signal,
         });
       } finally {

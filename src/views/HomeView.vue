@@ -647,14 +647,8 @@ onMounted(() => {
   window.addEventListener("keydown", handleKeydown);
   window.addEventListener("scroll", handleScroll, { passive: true });
 
-  // FIX: Garantizar fetch inicial de counts, incluso sin tags (del primer código)
-  const initialTags = route.query.tags || "";
-  const normalized = initialTags
-    .split(/[,،\s]+/)
-    .filter((t) => t.trim())
-    .join(" ");
+  // La llamada a fetchRatingCounts(normalized) se maneja en el watcher con immediate: true
 
-  fetchRatingCounts(normalized);
 
   // Mantener el scroll automático después de navegación (del segundo código)
   removeAfterEach = router.afterEach(() => {

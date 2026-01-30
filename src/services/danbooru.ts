@@ -29,14 +29,14 @@ class DanbooruService {
    * Construye URL del proxy interno
    */
   private _buildUrl(
-    danbooruPath: string, 
+    danbooruPath: string,
     params: Record<string, string | number | boolean | undefined> = {}
   ): string {
     const cleanPath = danbooruPath.replace(/^\/+/, '');
     const url = new URL(API_BASE, window.location.origin);
-    
+
     url.searchParams.set('url', cleanPath);
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         url.searchParams.append(key, String(value));
@@ -50,13 +50,13 @@ class DanbooruService {
    * Fetch con retry, timeout y cancelación
    */
   private async _fetch<T>(
-    danbooruPath: string, 
+    danbooruPath: string,
     params: Record<string, string | number | boolean | undefined> = {},
     config: RequestConfig = {}
   ): Promise<T> {
     const { retries = MAX_RETRIES, timeout = 30000, signal } = config;
     const url = this._buildUrl(danbooruPath, params);
-    
+
     // Cancelar request anterior si existe (para evitar race conditions)
     const requestKey = `${danbooruPath}_${JSON.stringify(params)}`;
     if (this._pendingRequests.has(requestKey)) {
@@ -65,7 +65,7 @@ class DanbooruService {
 
     const controller = new AbortController();
     this._pendingRequests.set(requestKey, controller);
-    
+
     // Combinar señales si se pasó una externa
     if (signal) {
       signal.addEventListener('abort', () => controller.abort());
@@ -78,7 +78,7 @@ class DanbooruService {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         console.log(`[API] ${danbooruPath} (attempt ${attempt}/${retries})`);
-        
+
         const res = await fetch(url, {
           signal: controller.signal,
           headers: {
@@ -88,35 +88,35 @@ class DanbooruService {
         });
 
         clearTimeout(timeoutId);
-        
+
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
           throw new Error(errorData.message || `HTTP ${res.status}: ${res.statusText}`);
         }
 
         const data = await res.json();
-        
+
         // Si el proxy envuelve en { success, data, meta }, extraer data
         if (data && typeof data === 'object' && 'data' in data && 'success' in data) {
           return data.data as T;
         }
-        
+
         return data as T;
 
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         // No reintentar si fue cancelado por el usuario (AbortError)
         if (lastError.name === 'AbortError') {
           this._pendingRequests.delete(requestKey);
           throw lastError;
         }
-        
+
         // No reintentar errores 4xx (cliente)
         if (error instanceof Error && error.message.includes('HTTP 4')) {
           break;
         }
-        
+
         if (attempt < retries) {
           await new Promise(r => setTimeout(r, RETRY_DELAY * attempt)); // Backoff exponencial
         }
@@ -146,14 +146,14 @@ class DanbooruService {
   // ==========================================
 
   async getPosts(
-    tags: string = '', 
-    limit: number = 20, 
+    tags: string = '',
+    limit: number = 20,
     page: number = 1,
     options?: { signal?: AbortSignal }
   ): Promise<DanbooruPost[]> {
     const normalizedTags = this._normalizeTags(tags);
     const tagList = normalizedTags.split(' ').filter(Boolean);
-    
+
     // Si hay pocos tags, búsqueda estándar directa
     if (tagList.length <= 2) {
       return this._fetchStandard(normalizedTags, limit, page, options);
@@ -179,15 +179,15 @@ class DanbooruService {
     options?: { signal?: AbortSignal }
   ): Promise<DanbooruPost[]> {
     const META_PREFIXES = [
-      'rating:', 'order:', 'status:', 'date:', 'user:', 'fav:', 
-      'score:', 'id:', 'width:', 'height:', 'mpixels:', 'ratio:', 
+      'rating:', 'order:', 'status:', 'date:', 'user:', 'fav:',
+      'score:', 'id:', 'width:', 'height:', 'mpixels:', 'ratio:',
       'source:', 'parent:'
     ];
 
-    const contentTags = tagList.filter(t => 
+    const contentTags = tagList.filter(t =>
       !META_PREFIXES.some(p => t.startsWith(p)) && !t.startsWith('-')
     );
-    const metaTags = tagList.filter(t => 
+    const metaTags = tagList.filter(t =>
       META_PREFIXES.some(p => t.startsWith(p)) || t.startsWith('-')
     );
 
@@ -199,7 +199,7 @@ class DanbooruService {
     for (const t of contentTags) {
       if (priorityTags.length < 2) priorityTags.push(t);
     }
-    
+
     for (const t of metaTags) {
       if (t !== orderTag && priorityTags.length < 2) priorityTags.push(t);
     }
@@ -230,7 +230,7 @@ class DanbooruService {
   ): Promise<DanbooruPost[]> {
     const cursorKey = `${queryKey}_${page - 1}`;
     let currentApiPage = page === 1 ? 1 : (this._smartCursors.get(cursorKey) || page - 1) + 1;
-    
+
     const accumulated: DanbooruPost[] = [];
     const MAX_API_PAGES = 10;
     let scannedPages = 0;
@@ -238,7 +238,7 @@ class DanbooruService {
     while (accumulated.length < limit && scannedPages < MAX_API_PAGES) {
       // Fetch en paralelo (batch de 5 páginas)
       const batchSize = Math.min(5, MAX_API_PAGES - scannedPages);
-      const promises = Array.from({ length: batchSize }, (_, i) => 
+      const promises = Array.from({ length: batchSize }, (_, i) =>
         this._fetchStandard(apiTags, 100, currentApiPage + i, options)
           .then(posts => ({ page: currentApiPage + i, posts }))
           .catch(() => ({ page: currentApiPage + i, posts: [] as DanbooruPost[] }))
@@ -272,7 +272,7 @@ class DanbooruService {
   private _filterPosts(posts: DanbooruPost[], filterTags: string[]): DanbooruPost[] {
     return posts.filter(post => {
       const postTags = post.tag_string.split(' ');
-      
+
       return filterTags.every(ftag => {
         // Tag negativo
         if (ftag.startsWith('-')) {
@@ -300,8 +300,8 @@ class DanbooruService {
   }
 
   private async _fetchStandard(
-    tags: string, 
-    limit: number, 
+    tags: string,
+    limit: number,
     page: number,
     options?: { signal?: AbortSignal }
   ): Promise<DanbooruPost[]> {
@@ -329,7 +329,7 @@ class DanbooruService {
 
     console.log(`[SuperPagination] Fetching ${pagesNeeded} pages (${limit} posts)`);
 
-    const promises = Array.from({ length: pagesNeeded }, (_, i) => 
+    const promises = Array.from({ length: pagesNeeded }, (_, i) =>
       this._fetch<DanbooruPost[]>('posts.json', {
         tags,
         limit: perPage,
@@ -359,8 +359,8 @@ class DanbooruService {
 
     try {
       if (isSingleTag) {
-        const data = await this._fetch<DanbooruTag[]>('tags.json', { 
-          'search[name]': cleanTags 
+        const data = await this._fetch<DanbooruTag[]>('tags.json', {
+          'search[name]': cleanTags
         });
         return data?.[0]?.post_count || 0;
       } else {
@@ -368,6 +368,9 @@ class DanbooruService {
         return data?.counts?.posts || 0;
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error;
+      }
       console.error('[Count] Error fetching count:', error);
       return 0;
     }
@@ -376,8 +379,8 @@ class DanbooruService {
   // --- Pools ---
 
   async getPools(
-    query: string = '', 
-    page: number = 1, 
+    query: string = '',
+    page: number = 1,
     limit: number = 42,
     options?: { signal?: AbortSignal }
   ): Promise<DanbooruPool[]> {
@@ -397,8 +400,8 @@ class DanbooruService {
   // --- Comments ---
 
   async getComments(
-    postId: number, 
-    page: number = 1, 
+    postId: number,
+    page: number = 1,
     limit: number = 10,
     options?: { signal?: AbortSignal }
   ): Promise<DanbooruComment[]> {
@@ -419,31 +422,31 @@ class DanbooruService {
   // --- Artists ---
 
   async getArtistByName(name: string, options?: { signal?: AbortSignal }): Promise<DanbooruArtist | null> {
-    const data = await this._fetch<DanbooruArtist[]>('artists.json', { 
-      'search[name]': name 
+    const data = await this._fetch<DanbooruArtist[]>('artists.json', {
+      'search[name]': name
     }, options);
     return data?.[0] || null;
   }
 
   async getArtistUrls(artistId: number, options?: { signal?: AbortSignal }): Promise<any[]> {
-    return this._fetch('artist_urls.json', { 
-      'search[artist_id]': artistId 
+    return this._fetch('artist_urls.json', {
+      'search[artist_id]': artistId
     }, options);
   }
 
   // --- Wiki ---
 
   async getWikiPage(title: string, options?: { signal?: AbortSignal }): Promise<DanbooruWikiPage | null> {
-    const data = await this._fetch<DanbooruWikiPage[]>('wiki_pages.json', { 
-      'search[title]': title 
+    const data = await this._fetch<DanbooruWikiPage[]>('wiki_pages.json', {
+      'search[title]': title
     }, options);
     return data?.[0] || null;
   }
 
   async getWikiPages(
-    query: string = '', 
-    limit: number = 20, 
-    page: number = 1, 
+    query: string = '',
+    limit: number = 20,
+    page: number = 1,
     order: string = 'updated_at',
     options?: { signal?: AbortSignal }
   ): Promise<DanbooruWikiPage[]> {
@@ -467,12 +470,12 @@ class DanbooruService {
   // --- Autocomplete ---
 
   async getAutocomplete(
-    query: string, 
+    query: string,
     type: string = 'tag',
     options?: { signal?: AbortSignal }
   ): Promise<AutocompleteResult[]> {
     if (type !== 'tag') return [];
-    
+
     return this._fetch<AutocompleteResult[]>('autocomplete.json', {
       'search[query]': query,
       'search[type]': 'tag_query',
