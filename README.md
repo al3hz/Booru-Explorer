@@ -4,8 +4,10 @@ An image explorer for Danbooru built with Vue 3 and Vite.
 
 ## Features
 
-- **Smart Search (Advanced Tag Bypass)**: Allows searching with **more than 2 content tags** (overcoming Danbooru's limit for free users) using an "Oversample & Filter" strategy.
-- **Parallel Post-Fill Logic**: Optimized scanning that fetches API pages in **parallel batches** (up to 5 pages at once) to ensure full result pages even with complex filtered queries.
+- **Smart Search (Advanced Tag Bypass)**: Allows searching with **more than 2 content tags** (overcoming Danbooru's limit for free users) using an intelligent "Oversample & Filter" strategy.
+- **Sequential Smart Loading**: Optimized scanning that fetches API pages **sequentially** (1 by 1) to ensure 100% accurate temporal ordering and strictly respect tag limits, fixing "old posts" issues.
+- **Multi-Rating Selection**: Powerful rating filter that supports **complex combinations** (e.g., "General" AND "Safe") by automatically generating advanced boolean queries.
+- **Aggressive "Zero-Latency" Freshness**: Implements a "Nuclear" cache busting strategy (timestamped requests + `no-store`) to ensure you **always** interact with the absolute latest data from Danbooru, bypassing all browser/proxy caches.
 - **Super Pagination**: Support for custom result limits **above 100**, automatically aggregating multiple API calls into a single seamless gallery.
 - **Enhanced Search Tools**: Dedicated "Extra" actions for Likes, Favs, Deleted, and Trending posts, with integrated **time-range filters** (Day, Week, Month, Year, All Time).
 - **Advanced Navigation Views**:
@@ -14,11 +16,11 @@ An image explorer for Danbooru built with Vue 3 and Vite.
   - **Wiki Integration**: Full browsing of Danbooru Wiki pages with internal navigation.
 - **Intelligent Metadata & Analytics**:
   - **Artist Profiling**: Detailed information, URLs, and specialized commentary.
-  - **Rating Counts**: Real-time statistics of post ratings (General, Safe, etc.) for every search.
+  - **Rating Counts**: Real-time statistics of post ratings (General, Safe, etc.) that intelligently ignore current filters to give accurate global counts.
 - **Responsive Masonry Gallery**: High-performance layout with progressive pre-loading, infinite scroll, and a dedicated Masonry mode toggle.
 - **Stable Pagination & Persistence**: Intelligent UI controls that maintain 100% synchronization with the URL state, allowing for bookmarkable searches and filters.
 - **Enhanced Immersive Details**: Advanced modal with zoom/pan, keyboard shortcuts (A/D/Arrow Keys), and improved VideoPlayer with auto-rotation.
-- **Safety & Performance**: Default filtering for `status:active` and a Vercel-hosted proxy with `Cache-Control` optimization for maximum speed.
+- **Safety & Performance**: Default filtering for `status:active` and a Vercel-hosted proxy with strict `no-store` headers for maximum speed and freshness.
 
 ## Technologies Used
 
