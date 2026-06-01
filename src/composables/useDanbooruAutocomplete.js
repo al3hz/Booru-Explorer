@@ -172,9 +172,10 @@ export function useDanbooruAutocomplete() {
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const rawJson = await res.json();
+        const data = rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
 
-        const processed = data
+        const processed = (data || [])
           .map((tag) => {
             const cat = TAG_CATEGORIES[tag.category] || TAG_CATEGORIES[0];
             return {
@@ -243,8 +244,9 @@ export function useDanbooruAutocomplete() {
       );
       if (!res.ok) throw new Error("API Error");
 
-      const data = await res.json();
-      const popular = data.map((tag) => {
+      const rawJson = await res.json();
+      const data = rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
+      const popular = (data || []).map((tag) => {
         const cat = TAG_CATEGORIES[tag.category] || TAG_CATEGORIES[0];
         return {
           name: tag.name,

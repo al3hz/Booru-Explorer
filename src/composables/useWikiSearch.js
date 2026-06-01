@@ -23,7 +23,8 @@ export function useWikiSearch() {
       });
       const res = await fetch(`${apiBaseUrl}?url=autocomplete.json&${params.toString()}`);
       if (res.ok) {
-        return await res.json();
+        const rawJson = await res.json();
+        return rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
       }
       return [];
     } catch (e) {

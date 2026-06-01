@@ -378,7 +378,8 @@ export const getArtist = async (id) => {
   try {
     const res = await fetch(`/api/danbooru?url=artists/${id}.json`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    const rawJson = await res.json();
+    return rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
   } catch (e) {
     console.error("[useDanbooruApi] getArtist error:", e);
     return null;
@@ -391,7 +392,8 @@ export const getNotes = async (postId) => {
       `/api/danbooru?url=notes.json&search[post_id]=${postId}&search[is_active]=true`,
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    const rawJson = await res.json();
+    return rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
   } catch (e) {
     console.error("[useDanbooruApi] getNotes error:", e);
     return [];

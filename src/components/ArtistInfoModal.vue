@@ -149,10 +149,11 @@ export default {
             // Fetch more posts (20) to filter out banned/broken ones
             const res = await fetch(`/api/danbooru?url=posts.json&tags=${encodeURIComponent(normalizedTag)}&limit=20`);
             if (res.ok) {
-                const posts = await res.json();
+                const rawJson = await res.json();
+                const posts = rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
                 
                 // Filter posts that have a valid preview
-                const validPosts = posts.filter(p => {
+                const validPosts = (posts || []).filter(p => {
                     const preview = getPostPreview(p);
                     // Filter out banned/deleted if they have no displayable image
                     if ((p.is_banned || p.is_deleted) && !preview) return false;
@@ -198,8 +199,9 @@ export default {
         
         const urlsRes = await fetch(`/api/danbooru?url=artist_urls.json&search[artist_id]=${artist.value.id}`);
         if (urlsRes.ok) {
-            const urlsData = await urlsRes.json();
-            artistUrls.value = urlsData.sort((a, b) => {
+            const rawJson = await urlsRes.json();
+            const urlsData = rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
+            artistUrls.value = (urlsData || []).sort((a, b) => {
                 const score = (url) => {
                     if (url.includes('twitter') || url.includes('x.com')) return 3;
                     if (url.includes('pixiv')) return 2;
@@ -239,13 +241,14 @@ export default {
         try {
             const res = await fetch(`/api/danbooru?url=wiki_pages.json&search[title]=${encodeURIComponent(title)}`);
             if(!res.ok) throw new Error('Failed to load wiki');
-            const data = await res.json();
+            const rawJson = await res.json();
+            const data = rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
             
             // Fetch Previews for this tag/wiki
             // For wiki pages, the title is usually the tag
             const previews = await fetchPreviewPosts(title);
 
-            if(data.length > 0) {
+            if(data && data.length > 0) {
                 const page = data[0];
                 navigationStack.value.push({
                     type: 'wiki',
