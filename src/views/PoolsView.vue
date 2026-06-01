@@ -1,16 +1,14 @@
 <template>
   <div class="pools-view-layout">
-    <PoolsSidebar 
-      :filters="filters" 
+    <PoolsSidebar
+      :filters="filters"
       :loading="loading"
       @update:filters="filters = $event"
       @search="handleSearch"
     />
-    
+
     <div class="pools-main-content" :class="{ 'with-sidebar': filtersVisible }">
       <div class="pools-container">
-
-
         <!-- Loading State -->
         <div v-if="loading && pools.length === 0" class="loading-state">
           <div class="spinner"></div>
@@ -21,9 +19,7 @@
         <div v-else-if="error" class="error-state">
           <i class="lni lni-warning"></i>
           <p>{{ error }}</p>
-          <button @click="handleSearch" class="retry-btn">
-            Retry
-          </button>
+          <button @click="handleSearch" class="retry-btn">Retry</button>
         </div>
 
         <!-- Pools Grid -->
@@ -71,7 +67,10 @@
                     <i class="lni lni-gallery"></i>
                     {{ pool.post_count }} posts
                   </span>
-                  <span class="pool-category" :class="`category-${pool.category}`">
+                  <span
+                    class="pool-category"
+                    :class="`category-${pool.category}`"
+                  >
                     {{ formatCategory(pool.category) }}
                   </span>
                 </div>
@@ -131,91 +130,98 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { usePools } from '../composables/usePools';
-import { useDText } from '../composables/useDText';
-import { usePoolFilters } from '../composables/usePoolFilters';
-import SmartVideo from '../components/SmartVideo.vue';
-import PoolsSidebar from '../components/PoolsSidebar.vue';
+import { ref, onMounted, onUnmounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { usePools } from "../composables/usePools";
+import { useDText } from "../composables/useDText";
+import { usePoolFilters } from "../composables/usePoolFilters";
+import SmartVideo from "../components/SmartVideo.vue";
+import PoolsSidebar from "../components/PoolsSidebar.vue";
 
 export default {
-  name: 'PoolsView',
+  name: "PoolsView",
   components: {
     SmartVideo,
-    PoolsSidebar
+    PoolsSidebar,
   },
   setup() {
     const route = useRoute();
     const router = useRouter();
-    const { pools, loading, error, currentPage, hasNextPage, fetchPools } = usePools();
+    const { pools, loading, error, currentPage, hasNextPage, fetchPools } =
+      usePools();
     const { parseDText } = useDText();
     // Shared filters visibility state
     const { filtersVisible } = usePoolFilters();
-    
+
     const filters = ref({
-      name: '',
-      description: '',
-      category: '',
-      order: 'updated_at'
+      name: "",
+      description: "",
+      category: "",
+      order: "updated_at",
     });
 
     // Watch for URL changes AND initial load to handle browser navigation and sync state
-    watch(() => route.query, (newQuery) => {
-      const page = parseInt(newQuery.page) || 1;
-      
-      // Update filters from URL
-      if (newQuery['search[name_matches]']) {
-        filters.value.name = newQuery['search[name_matches]'].replace(/^\*/, '').replace(/\*$/, '');
-      } else {
-         filters.value.name = ''; // Reset if not in URL
-      }
+    watch(
+      () => route.query,
+      (newQuery) => {
+        const page = parseInt(newQuery.page) || 1;
 
-      if (newQuery['search[description_matches]']) {
-        filters.value.description = newQuery['search[description_matches]'];
-      } else {
-        filters.value.description = '';
-      }
+        // Update filters from URL
+        if (newQuery["search[name_matches]"]) {
+          filters.value.name = newQuery["search[name_matches]"]
+            .replace(/^\*/, "")
+            .replace(/\*$/, "");
+        } else {
+          filters.value.name = ""; // Reset if not in URL
+        }
 
-      if (newQuery['search[category]']) {
-        filters.value.category = newQuery['search[category]'];
-      } else {
-        filters.value.category = '';
-      }
+        if (newQuery["search[description_matches]"]) {
+          filters.value.description = newQuery["search[description_matches]"];
+        } else {
+          filters.value.description = "";
+        }
 
-      if (newQuery['search[order]']) {
-        filters.value.order = newQuery['search[order]'];
-      } else {
-        filters.value.order = 'updated_at';
-      }
+        if (newQuery["search[category]"]) {
+          filters.value.category = newQuery["search[category]"];
+        } else {
+          filters.value.category = "";
+        }
 
-      // Always update state and fetch
-      currentPage.value = page;
-      fetchPools(page, filters.value);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, { immediate: true });
+        if (newQuery["search[order]"]) {
+          filters.value.order = newQuery["search[order]"];
+        } else {
+          filters.value.order = "updated_at";
+        }
+
+        // Always update state and fetch
+        currentPage.value = page;
+        fetchPools(page, filters.value);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      },
+      { immediate: true },
+    );
 
     const handleKeydown = (e) => {
-       // Ignore if user is typing in input
-       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      // Ignore if user is typing in input
+      if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) return;
 
-       if (e.key === 'a' || e.key === 'A') {
-         if (currentPage.value > 1 && !loading.value) {
-           handlePageChange(currentPage.value - 1);
-         }
-       } else if (e.key === 'd' || e.key === 'D') {
-         if (hasNextPage.value && !loading.value) {
-           handlePageChange(currentPage.value + 1);
-         }
-       }
+      if (e.key === "a" || e.key === "A") {
+        if (currentPage.value > 1 && !loading.value) {
+          handlePageChange(currentPage.value - 1);
+        }
+      } else if (e.key === "d" || e.key === "D") {
+        if (hasNextPage.value && !loading.value) {
+          handlePageChange(currentPage.value + 1);
+        }
+      }
     };
 
     onMounted(() => {
-       window.addEventListener('keydown', handleKeydown);
+      window.addEventListener("keydown", handleKeydown);
     });
 
     onUnmounted(() => {
-       window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener("keydown", handleKeydown);
     });
 
     const handleSearch = () => {
@@ -233,23 +239,23 @@ export default {
 
     const updateURL = (queryOverride = null) => {
       const query = queryOverride || { page: currentPage.value };
-      
+
       if (filters.value.name) {
-        query['search[name_matches]'] = `*${filters.value.name}*`;
+        query["search[name_matches]"] = `*${filters.value.name}*`;
       }
-      
+
       if (filters.value.description) {
-        query['search[description_matches]'] = filters.value.description;
+        query["search[description_matches]"] = filters.value.description;
       }
-      
+
       if (filters.value.category) {
-        query['search[category]'] = filters.value.category;
+        query["search[category]"] = filters.value.category;
       }
-      
-      if (filters.value.order !== 'updated_at') {
-        query['search[order]'] = filters.value.order;
+
+      if (filters.value.order !== "updated_at") {
+        query["search[order]"] = filters.value.order;
       }
-      
+
       router.push({ query });
     };
 
@@ -262,25 +268,25 @@ export default {
     };
 
     const formatCategory = (cat) => {
-      if (!cat) return '';
+      if (!cat) return "";
       return cat.charAt(0).toUpperCase() + cat.slice(1);
     };
 
     const formatPoolName = (name) => {
-      return name.replace(/_/g, ' ');
+      return name.replace(/_/g, " ");
     };
 
     const formatDate = (dateStr) => {
       return new Date(dateStr).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
     };
 
     const handleDescriptionClick = (e) => {
       // If user clicks an internal link, stop propagation to prevent card navigation
-      if (e.target.tagName === 'A' || e.target.closest('a')) {
+      if (e.target.tagName === "A" || e.target.closest("a")) {
         e.stopPropagation();
         return;
       }
@@ -304,16 +310,20 @@ export default {
       formatDate,
       isAnimatedCover,
       handleDescriptionClick,
-      handleCardClick: (id) => router.push(`/pools/${id}`)
+      handleCardClick: (id) => router.push(`/pools/${id}`),
     };
-  }
+  },
 };
 </script>
 
 <style scoped>
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .pools-view-layout {
@@ -330,8 +340,6 @@ export default {
   min-width: 0; /* Standard flexbox text overflow fix */
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
-
 
 .pools-container {
   width: 100%;
@@ -378,7 +386,6 @@ export default {
   font-size: 14px;
   margin: 0;
 }
-
 
 /* Results Header */
 .results-header {
@@ -503,14 +510,13 @@ export default {
   transform: scale(1.06); /* Un poco más para compensar */
 }
 
-
 .pool-overlay {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
   padding: 12px;
-  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -551,7 +557,7 @@ export default {
 }
 
 .pool-name {
-  font-size: 16px; 
+  font-size: 16px;
   font-weight: 700;
   color: #fff;
   margin: 0 0 8px 0;
@@ -579,8 +585,13 @@ export default {
 }
 
 /* Styles for simple DText in preview */
-.pool-description :deep(b) { font-weight: 700; color: #cbd5e1; }
-.pool-description :deep(i) { font-style: italic; }
+.pool-description :deep(b) {
+  font-weight: 700;
+  color: #cbd5e1;
+}
+.pool-description :deep(i) {
+  font-style: italic;
+}
 
 .pool-meta {
   display: flex;
@@ -657,7 +668,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Pagination */
@@ -698,7 +711,7 @@ export default {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .pools-view-layout {
     flex-direction: column;
     padding: 0; /* Remove layout padding on mobile */
@@ -708,7 +721,7 @@ export default {
     width: 100%;
     padding: 10px 16px; /* Balanced padding for mobile */
   }
-  
+
   .pools-grid {
     grid-template-columns: 1fr; /* Single column on mobile */
   }

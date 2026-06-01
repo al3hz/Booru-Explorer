@@ -571,7 +571,7 @@ const navigatePost = async (direction) => {
       const nextPage = currentPage.value + 1;
       isLoadingNextPage.value = true;
       await handlePageChange(nextPage);
-      
+
       // En modo paginado, esperar a que los nuevos posts carguen
       const unwatch = watch(loading, (isLoading) => {
         if (!isLoading) {
@@ -590,7 +590,7 @@ const navigatePost = async (direction) => {
   if (newIndex < 0 && currentPage.value > 1 && !loading.value) {
     isLoadingNextPage.value = true;
     await handlePageChange(currentPage.value - 1);
-    
+
     // Esperar a que cargue la página anterior
     const unwatch = watch(loading, (isLoading) => {
       if (!isLoading) {
@@ -661,7 +661,6 @@ onMounted(() => {
   window.addEventListener("scroll", handleScroll, { passive: true });
 
   // La llamada a fetchRatingCounts(normalized) se maneja en el watcher con immediate: true
-
 
   // Mantener el scroll automático después de navegación (del segundo código)
   removeAfterEach = router.afterEach(() => {
@@ -889,7 +888,7 @@ if (typeof cleanupRatingCounts === "function") {
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar-backdrop {
     display: block;
   }
@@ -949,7 +948,7 @@ if (typeof cleanupRatingCounts === "function") {
 }
 
 /* Slide fade transition */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .search-title {
     font-size: 16px;
     gap: 6px;
@@ -1017,7 +1016,7 @@ if (typeof cleanupRatingCounts === "function") {
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .scroll-to-top-btn {
     bottom: 24px;
     right: 24px;

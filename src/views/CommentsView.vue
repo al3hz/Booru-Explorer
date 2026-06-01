@@ -2,7 +2,7 @@
   <div class="comments-view">
     <div class="comments-container">
       <h2>Recent Comments</h2>
-      
+
       <div v-if="loading" class="loading-state">
         <div class="spinner"></div>
         <span>Loading comments...</span>
@@ -14,25 +14,31 @@
 
       <div v-else class="comments-list">
         <transition-group name="list" tag="div" appear>
-          <div 
-            v-for="(comment, index) in comments" 
-            :key="comment.id" 
+          <div
+            v-for="(comment, index) in comments"
+            :key="comment.id"
             class="comment-card"
             :style="{ transitionDelay: `${index * 0.05}s` }"
           >
-            
             <!-- Post Preview Section -->
             <div class="post-preview-column">
-              <div 
-                v-if="postsMap[comment.post_id]" 
+              <div
+                v-if="postsMap[comment.post_id]"
                 class="preview-link"
-                :class="{ 'has-family': postsMap[comment.post_id].parent_id || postsMap[comment.post_id].has_children }"
+                :class="{
+                  'has-family':
+                    postsMap[comment.post_id].parent_id ||
+                    postsMap[comment.post_id].has_children,
+                }"
                 @click="openModal(postsMap[comment.post_id])"
                 title="View image details"
               >
                 <video
                   v-if="isVideo(postsMap[comment.post_id])"
-                  :src="postsMap[comment.post_id].large_file_url || postsMap[comment.post_id].file_url"
+                  :src="
+                    postsMap[comment.post_id].large_file_url ||
+                    postsMap[comment.post_id].file_url
+                  "
                   class="preview-image"
                   autoplay
                   loop
@@ -40,9 +46,9 @@
                   playsinline
                   disablePictureInPicture
                 ></video>
-                <img 
+                <img
                   v-else
-                  :src="getPostPreview(postsMap[comment.post_id])" 
+                  :src="getPostPreview(postsMap[comment.post_id])"
                   :alt="`Post #${comment.post_id}`"
                   class="preview-image"
                   loading="lazy"
@@ -58,43 +64,56 @@
             <!-- Comment Content Section -->
             <div class="comment-content-column">
               <div class="comment-header">
-                <span class="comment-author">User #{{ comment.creator_id }}</span>
+                <span class="comment-author"
+                  >User #{{ comment.creator_id }}</span
+                >
                 <span class="separator">•</span>
-                <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
-                <a :href="`https://danbooru.donmai.us/posts/${comment.post_id}`" target="_blank" class="post-link">
+                <span class="comment-date">{{
+                  formatDate(comment.created_at)
+                }}</span>
+                <a
+                  :href="`https://danbooru.donmai.us/posts/${comment.post_id}`"
+                  target="_blank"
+                  class="post-link"
+                >
                   On Post #{{ comment.post_id }}
                 </a>
               </div>
-              
+
               <div class="comment-body" v-html="formatBody(comment.body)"></div>
-              
+
               <div class="comment-footer">
-                <span class="score" :class="{ positive: comment.score > 0, negative: comment.score < 0 }">
+                <span
+                  class="score"
+                  :class="{
+                    positive: comment.score > 0,
+                    negative: comment.score < 0,
+                  }"
+                >
                   Score: {{ comment.score }}
                 </span>
               </div>
             </div>
-
           </div>
         </transition-group>
       </div>
 
       <!-- Pagination Controls -->
       <div class="pagination-controls" v-if="comments.length > 0 || page > 1">
-        <button 
-          class="page-btn" 
+        <button
+          class="page-btn"
           :disabled="page === 1 || loading"
           @click="changePage(page - 1)"
         >
           <i class="lni lni-arrow-left"></i> Previous
         </button>
         <span class="page-info">Page {{ page }}</span>
-        <button 
-          class="page-btn" 
+        <button
+          class="page-btn"
           :disabled="comments.length < 10 || loading"
           @click="changePage(page + 1)"
         >
-           Next <i class="lni lni-arrow-right"></i>
+          Next <i class="lni lni-arrow-right"></i>
         </button>
       </div>
 
@@ -113,15 +132,15 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import ImageDetailModal from '../components/ImageDetailModal.vue';
-import DanbooruService from '../services/danbooru';
+import { ref, onMounted, onUnmounted, watch } from "vue";
+import { useRouter } from "vue-router";
+import ImageDetailModal from "../components/ImageDetailModal.vue";
+import DanbooruService from "../services/danbooru";
 
 export default {
   name: "CommentsView",
   components: {
-    ImageDetailModal
+    ImageDetailModal,
   },
   setup() {
     const router = useRouter();
@@ -139,8 +158,8 @@ export default {
     const handleTagSearch = (tag) => {
       selectedPost.value = null; // Close modal
       // Scroll to top before navigation
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      router.push({ path: '/', query: { tags: tag } });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      router.push({ path: "/", query: { tags: tag } });
     };
 
     const fetchCommentsAndPosts = async () => {
@@ -150,27 +169,33 @@ export default {
       error.value = null;
 
       try {
-        const commentsData = await DanbooruService.getComments(null, page.value, 10);
+        const commentsData = await DanbooruService.getComments(
+          null,
+          page.value,
+          10,
+        );
         comments.value = commentsData;
 
-        const postIds = [...new Set(commentsData.map(c => c.post_id))];
-        
-        if (postIds.length > 0) {
-           const idsQuery = postIds.join(',');
-           const postsData = await DanbooruService.getPosts(`id:${idsQuery}`, postIds.length);
-           
-           const map = {};
-           postsData.forEach(post => {
-             map[post.id] = post;
-           });
-           postsMap.value = map;
-        }
+        const postIds = [...new Set(commentsData.map((c) => c.post_id))];
 
+        if (postIds.length > 0) {
+          const idsQuery = postIds.join(",");
+          const postsData = await DanbooruService.getPosts(
+            `id:${idsQuery}`,
+            postIds.length,
+          );
+
+          const map = {};
+          postsData.forEach((post) => {
+            map[post.id] = post;
+          });
+          postsMap.value = map;
+        }
       } catch (err) {
         error.value = err.message;
       } finally {
         loading.value = false;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     };
 
@@ -182,16 +207,17 @@ export default {
 
     const handleKeydown = (e) => {
       // Ignore if user is typing in an input (though currently none exist, good practice)
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")
+        return;
+
       // Ignore if modal is open
       if (selectedPost.value) return;
 
-      if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
+      if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") {
         if (page.value > 1 && !loading.value) {
           changePage(page.value - 1);
         }
-      } else if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
+      } else if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") {
         // Simple check for next page availability (assuming < 10 items means end)
         if (comments.value.length >= 10 && !loading.value) {
           changePage(page.value + 1);
@@ -201,35 +227,45 @@ export default {
 
     const formatDate = (dateString) => {
       return new Date(dateString).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     };
 
     const formatBody = (body) => {
-      if (!body) return '';
-      let formatted = body
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      
+      if (!body) return "";
+      let formatted = body.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
       // Handle [quote] tags
-      formatted = formatted.replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, '<blockquote>$1</blockquote>');
-      
+      formatted = formatted.replace(
+        /\[quote\]([\s\S]*?)\[\/quote\]/gi,
+        "<blockquote>$1</blockquote>",
+      );
+
       // Handle newlines after quotes (and general newlines)
-      formatted = formatted.replace(/\n/g, '<br>');
-        
-      formatted = formatted.replace(/post #(\d+)/gi, '<a href="https://danbooru.donmai.us/posts/$1" target="_blank" class="text-link">post #$1</a>');
-      formatted = formatted.replace(/"(.*?)"\[(.*?)\]/g, '<a href="$2" target="_blank" class="text-link">$1</a>');
-      
+      formatted = formatted.replace(/\n/g, "<br>");
+
+      formatted = formatted.replace(
+        /post #(\d+)/gi,
+        '<a href="https://danbooru.donmai.us/posts/$1" target="_blank" class="text-link">post #$1</a>',
+      );
+      formatted = formatted.replace(
+        /"(.*?)"\[(.*?)\]/g,
+        '<a href="$2" target="_blank" class="text-link">$1</a>',
+      );
+
       // Handle {{tag}} - use data attribute for internal navigation
-      formatted = formatted.replace(/\{\{(.*?)\}\}/g, '<span class="tag-link" data-tag="$1" style="cursor: pointer; color: #a78bfa; text-decoration: underline;">$1</span>');
-      
+      formatted = formatted.replace(
+        /\{\{(.*?)\}\}/g,
+        '<span class="tag-link" data-tag="$1" style="cursor: pointer; color: #a78bfa; text-decoration: underline;">$1</span>',
+      );
+
       // Handle [[wiki]] or [[wiki|label]]
       formatted = formatted.replace(/\[\[(.*?)\]\]/g, (match, content) => {
-        const [page, text] = content.split('|');
+        const [page, text] = content.split("|");
         return `<a href="https://danbooru.donmai.us/wiki_pages/${page}" target="_blank" class="text-link">${text || page}</a>`;
       });
 
@@ -237,20 +273,25 @@ export default {
     };
 
     const handleImageError = (e) => {
-      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj4/PC90ZXh0Pjwvc3ZnPg==';
+      e.target.src =
+        "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj4/PC90ZXh0Pjwvc3ZnPg==";
     };
 
     const getPostPreview = (post) => {
-      if (!post) return '';
-      
+      if (!post) return "";
+
       // If video, use preview_file_url or find a jpg/webp variant in media_asset
-      const isVideo = ['mp4', 'webm', 'zip', 'rar'].includes(post.file_ext);
-      
+      const isVideo = ["mp4", "webm", "zip", "rar"].includes(post.file_ext);
+
       if (isVideo) {
         // Try to find a larger preview from variants if available (e.g. 720x720 webp/jpg)
         if (post.media_asset && post.media_asset.variants) {
-           const preferred = post.media_asset.variants.find(v => (v.type === '720x720' || v.type === '360x360') && ['jpg', 'webp', 'png'].includes(v.file_ext));
-           if (preferred) return preferred.url;
+          const preferred = post.media_asset.variants.find(
+            (v) =>
+              (v.type === "720x720" || v.type === "360x360") &&
+              ["jpg", "webp", "png"].includes(v.file_ext),
+          );
+          if (preferred) return preferred.url;
         }
         return post.preview_file_url;
       }
@@ -261,13 +302,13 @@ export default {
 
     const isVideo = (post) => {
       if (!post) return false;
-      return ['mp4', 'webm', 'gifv'].includes(post.file_ext);
+      return ["mp4", "webm", "gifv"].includes(post.file_ext);
     };
 
     // Optimize background videos when modal is open
     watch(selectedPost, (newPost) => {
-      const videos = document.querySelectorAll('.comments-list video');
-      videos.forEach(video => {
+      const videos = document.querySelectorAll(".comments-list video");
+      videos.forEach((video) => {
         if (newPost) {
           video.pause();
         } else {
@@ -282,7 +323,7 @@ export default {
 
     // Handle tag link clicks via event delegation
     const handleTagClick = (e) => {
-      if (e.target.classList.contains('tag-link')) {
+      if (e.target.classList.contains("tag-link")) {
         const tag = e.target.dataset.tag;
         if (tag) {
           handleTagSearch(tag);
@@ -292,13 +333,13 @@ export default {
 
     onMounted(() => {
       fetchCommentsAndPosts();
-      window.addEventListener('keydown', handleKeydown);
-      document.addEventListener('click', handleTagClick);
+      window.addEventListener("keydown", handleKeydown);
+      document.addEventListener("click", handleTagClick);
     });
 
     onUnmounted(() => {
-      window.removeEventListener('keydown', handleKeydown);
-      document.removeEventListener('click', handleTagClick);
+      window.removeEventListener("keydown", handleKeydown);
+      document.removeEventListener("click", handleTagClick);
     });
 
     return {
@@ -315,9 +356,9 @@ export default {
       openModal,
       handleTagSearch,
       getPostPreview,
-      isVideo
+      isVideo,
     };
-  }
+  },
 };
 </script>
 
@@ -338,7 +379,8 @@ export default {
   color: #a78bfa;
 }
 
-.loading-state, .error-state {
+.loading-state,
+.error-state {
   text-align: center;
   padding: 40px;
   color: #94a3b8;
@@ -384,7 +426,7 @@ export default {
   overflow: hidden;
   border: 2px solid transparent;
   transition: border-color 0.2s;
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .preview-link:hover {
@@ -413,7 +455,7 @@ export default {
 .preview-placeholder {
   width: 100%;
   height: 120px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -438,11 +480,11 @@ export default {
   font-size: 13px;
   color: #64748b;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .separator {
-  color: rgba(255,255,255,0.2);
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .comment-author {
@@ -455,7 +497,7 @@ export default {
   color: #64748b;
   text-decoration: none;
   font-size: 12px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   padding: 2px 8px;
   border-radius: 4px;
   transition: all 0.2s;
@@ -506,13 +548,18 @@ export default {
 .score {
   font-weight: 600;
   color: #94a3b8;
-  background: rgba(0,0,0,0.2);
+  background: rgba(0, 0, 0, 0.2);
   padding: 2px 8px;
   border-radius: 4px;
 }
 
-.score.positive { text-shadow: 0 0 10px rgba(74, 222, 128, 0.2); color: #4ade80; }
-.score.negative { color: #f87171; }
+.score.positive {
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+.score.negative {
+  color: #f87171;
+}
 
 /* Pagination */
 .pagination-controls {
@@ -522,7 +569,7 @@ export default {
   gap: 20px;
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .page-btn {
@@ -541,7 +588,7 @@ export default {
 .page-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  border-color: rgba(255,255,255,0.1);
+  border-color: rgba(255, 255, 255, 0.1);
   color: #64748b;
 }
 
@@ -559,7 +606,7 @@ export default {
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(255,255,255,0.1);
+  border: 3px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
   border-top-color: #a78bfa;
   animation: spin 1s ease-in-out infinite;
@@ -567,19 +614,21 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .comments-container {
     padding: 0;
   }
-  
+
   .comment-card {
     flex-direction: column;
     gap: 12px;
   }
-  
+
   .post-preview-column {
     width: 100%;
     max-width: none;
@@ -607,7 +656,7 @@ export default {
     margin-top: 4px;
     display: inline-block;
   }
-  
+
   .separator {
     display: none;
   }

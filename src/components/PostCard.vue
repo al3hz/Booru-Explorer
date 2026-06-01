@@ -3,8 +3,8 @@
     class="art-card"
     :class="{
       'has-family': post.parent_id || post.has_children,
-      'loading': !isLoaded && !hasError,
-      'masonry-optimized': masonry && isMobile
+      loading: !isLoaded && !hasError,
+      'masonry-optimized': masonry && isMobile,
     }"
     @click="handleClick"
     @keydown.enter="handleClick"
@@ -27,7 +27,7 @@
           :aria-label="`Video: ${post.tag_string_general}`"
         />
       </template>
-      
+
       <template v-else>
         <SmartImage
           :src="currentSrc"
@@ -51,8 +51,8 @@
       <div class="card-overlay">
         <div class="top-badges">
           <span class="id-badge">#{{ post.id }}</span>
-          <span 
-            class="rating-badge" 
+          <span
+            class="rating-badge"
             :class="getRatingClass(post.rating)"
             :title="`Rating: ${getRatingText(post.rating)}`"
           >
@@ -61,9 +61,15 @@
         </div>
 
         <div class="status-indicators">
-          <span v-if="post.is_pending" class="status-badge pending">PENDING</span>
-          <span v-if="post.is_deleted" class="status-badge deleted">DELETED</span>
-          <span v-if="post.is_flagged" class="status-badge flagged">FLAGGED</span>
+          <span v-if="post.is_pending" class="status-badge pending"
+            >PENDING</span
+          >
+          <span v-if="post.is_deleted" class="status-badge deleted"
+            >DELETED</span
+          >
+          <span v-if="post.is_flagged" class="status-badge flagged"
+            >FLAGGED</span
+          >
         </div>
       </div>
     </div>
@@ -75,17 +81,24 @@
           <i class="lni lni-frame-expand spec-icon"></i>
           {{ getDimensions(post) }}
         </div>
-        <div class="spec-pill" :title="`File size: ${formatFileSize(post.file_size)}`">
+        <div
+          class="spec-pill"
+          :title="`File size: ${formatFileSize(post.file_size)}`"
+        >
           <i class="lni lni-files spec-icon"></i>
           {{ formatFileSize(post.file_size) }}
         </div>
         <div class="spec-pill format" :class="getExtensionClass(post.file_ext)">
-          {{ (post.file_ext || '').toUpperCase() }}
+          {{ (post.file_ext || "").toUpperCase() }}
         </div>
       </div>
 
       <div class="stats-row">
-        <div class="stat" :class="getScoreClass(post.score || 0)" :title="`Score: ${post.score || 0}`">
+        <div
+          class="stat"
+          :class="getScoreClass(post.score || 0)"
+          :title="`Score: ${post.score || 0}`"
+        >
           <i class="lni lni-heart stat-icon"></i>
           <span class="stat-value">{{ post.score || 0 }}</span>
         </div>
@@ -93,7 +106,11 @@
           <i class="lni lni-star-fill stat-icon"></i>
           <span class="stat-value">{{ post.fav_count || 0 }}</span>
         </div>
-        <div v-if="post.comment_count" class="stat comments" :title="`Comments: ${post.comment_count}`">
+        <div
+          v-if="post.comment_count"
+          class="stat comments"
+          :title="`Comments: ${post.comment_count}`"
+        >
           <i class="lni lni-comments stat-icon"></i>
           <span class="stat-value">{{ post.comment_count }}</span>
         </div>
@@ -106,8 +123,8 @@
           <i class="lni lni-timer icon"></i>
           {{ formatTimeAgo(post.created_at) }}
         </div>
-        
-        <div 
+
+        <div
           v-if="post.source"
           class="source-link"
           @click.stop="openSource(post.source)"
@@ -125,37 +142,37 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
-import SmartVideo from './SmartVideo.vue';
-import SmartImage from './SmartImage.vue';
+import { ref, watch, onMounted } from "vue";
+import SmartVideo from "./SmartVideo.vue";
+import SmartImage from "./SmartImage.vue";
 
 const props = defineProps({
   post: {
     type: Object,
-    required: true
+    required: true,
   },
   priority: {
     type: Boolean,
-    default: false
+    default: false,
   },
   pauseAnimations: {
     type: Boolean,
-    default: false
+    default: false,
   },
   masonry: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 });
 
-const emit = defineEmits(['click']);
+const emit = defineEmits(["click"]);
 
 const isMobile = ref(false);
 
 onMounted(() => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     isMobile.value = window.innerWidth <= 640;
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
       isMobile.value = window.innerWidth <= 640;
     });
   }
@@ -164,8 +181,8 @@ onMounted(() => {
 // State
 const hasError = ref(false);
 const isLoaded = ref(false);
-const currentSrc = ref('');
-const posterSrc = ref('');
+const currentSrc = ref("");
+const posterSrc = ref("");
 
 // Helper methods (extracted from PostGallery)
 const isAnimatedVideo = (post) => {
@@ -189,7 +206,7 @@ const getInitialImageUrl = (post) => {
   }
   if (post.file_ext === "gif") {
     if (props.pauseAnimations) {
-        return post.preview_url || post.preview_file_url || ""; 
+      return post.preview_url || post.preview_file_url || "";
     }
     return post.file_url || post.sample_url || post.preview_url || "";
   }
@@ -208,40 +225,52 @@ const getInitialImageUrl = (post) => {
 const getVideoPoster = (post) => {
   if (post.media_asset && post.media_asset.variants) {
     const variants = post.media_asset.variants;
-    const bestVariant = variants.find(v => v.type === '720x720' && ['webp', 'jpg'].includes(v.file_ext)) ||
-                        variants.find(v => v.type === '360x360' && ['webp', 'jpg'].includes(v.file_ext)) ||
-                        variants.find(v => v.type === 'sample');
-    
+    const bestVariant =
+      variants.find(
+        (v) => v.type === "720x720" && ["webp", "jpg"].includes(v.file_ext),
+      ) ||
+      variants.find(
+        (v) => v.type === "360x360" && ["webp", "jpg"].includes(v.file_ext),
+      ) ||
+      variants.find((v) => v.type === "sample");
+
     if (bestVariant) return bestVariant.url;
   }
   return post.preview_file_url || post.preview_url || "";
 };
 
 // Initialize sources
-watch(() => props.post, (newPost) => {
-  currentSrc.value = getInitialImageUrl(newPost);
-  posterSrc.value = getVideoPoster(newPost);
-  hasError.value = false;
-  isLoaded.value = false;
-}, { immediate: true });
+watch(
+  () => props.post,
+  (newPost) => {
+    currentSrc.value = getInitialImageUrl(newPost);
+    posterSrc.value = getVideoPoster(newPost);
+    hasError.value = false;
+    isLoaded.value = false;
+  },
+  { immediate: true },
+);
 
 // React to pauseAnimations
-watch(() => props.pauseAnimations, () => {
-  if (props.post.file_ext === 'gif') {
-    currentSrc.value = getInitialImageUrl(props.post);
-  }
-});
+watch(
+  () => props.pauseAnimations,
+  () => {
+    if (props.post.file_ext === "gif") {
+      currentSrc.value = getInitialImageUrl(props.post);
+    }
+  },
+);
 
 const handleError = () => {
   const fallbackSources = [
     props.post.sample_url,
     props.post.preview_file_url,
-    props.post.preview_url
+    props.post.preview_url,
   ];
 
   // Try to find a new source that isn't the current one
-  const nextSource = fallbackSources.find(src => 
-    src && src !== currentSrc.value && !currentSrc.value.includes(src)
+  const nextSource = fallbackSources.find(
+    (src) => src && src !== currentSrc.value && !currentSrc.value.includes(src),
   );
 
   if (nextSource) {
@@ -256,7 +285,7 @@ const handleLoad = () => {
 };
 
 const handleClick = () => {
-  emit('click', props.post);
+  emit("click", props.post);
 };
 
 // Formatters
@@ -327,7 +356,7 @@ const formatUploadDate = (createdAt) => {
 };
 
 const formatTimeAgo = (createdAt) => {
-  if (!createdAt) return 'Unknown';
+  if (!createdAt) return "Unknown";
   const date = new Date(createdAt);
   const now = new Date();
   const diffMs = now - date;
@@ -337,20 +366,25 @@ const formatTimeAgo = (createdAt) => {
   const diffSeconds = Math.floor(diffMs / 1000);
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  
-  if (diffSeconds < 60) return 'Just now';
-  if (diffMinutes < 60) return diffMinutes === 1 ? '1 minute ago' : `${diffMinutes} minutes ago`;
-  if (diffHours < 24) return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
-  if (diffDays < 7) return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
-  
+
+  if (diffSeconds < 60) return "Just now";
+  if (diffMinutes < 60)
+    return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
+  if (diffHours < 24)
+    return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
+  if (diffDays < 7)
+    return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
+
   const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 4) return diffWeeks === 1 ? '1 week ago' : `${diffWeeks} weeks ago`;
-  
+  if (diffWeeks < 4)
+    return diffWeeks === 1 ? "1 week ago" : `${diffWeeks} weeks ago`;
+
   const diffMonths = Math.floor(diffDays / 30);
-  if (diffMonths < 12) return diffMonths === 1 ? '1 month ago' : `${diffMonths} months ago`;
-  
+  if (diffMonths < 12)
+    return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
+
   const diffYears = Math.floor(diffDays / 365);
-  return diffYears === 1 ? '1 year ago' : `${diffYears} years ago`;
+  return diffYears === 1 ? "1 year ago" : `${diffYears} years ago`;
 };
 
 const truncateSource = (source) => {
@@ -390,7 +424,9 @@ const openSource = (source) => {
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   contain: layout style paint;
   transform: translateZ(0);
@@ -398,8 +434,14 @@ const openSource = (source) => {
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .art-card:hover {
@@ -416,7 +458,9 @@ const openSource = (source) => {
 
 .art-card.has-family:hover {
   border-color: rgba(34, 211, 238, 0.8);
-  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.4), 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.4),
+    0 20px 25px -5px rgba(0, 0, 0, 0.2);
 }
 
 .card-image-wrapper {
@@ -451,7 +495,12 @@ const openSource = (source) => {
   left: 0;
   width: 100%;
   padding: 16px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.4) 40%,
+    transparent 100%
+  );
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -459,19 +508,24 @@ const openSource = (source) => {
   transition: opacity 0.3s ease;
 }
 
-.top-badges, .status-indicators {
+.top-badges,
+.status-indicators {
   display: flex;
   gap: 6px;
 }
-.status-indicators { gap: 4px; }
+.status-indicators {
+  gap: 4px;
+}
 
-.id-badge, .rating-badge, .status-badge {
+.id-badge,
+.rating-badge,
+.status-badge {
   backdrop-filter: blur(4px);
   color: white;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .id-badge {
@@ -489,10 +543,18 @@ const openSource = (source) => {
   text-transform: uppercase;
 }
 
-.rating-explicit { background: rgba(220, 38, 38, 0.85); }
-.rating-questionable { background: rgba(217, 119, 6, 0.85); }
-.rating-safe { background: rgba(22, 163, 74, 0.85); }
-.rating-general { background: rgba(37, 99, 235, 0.85); }
+.rating-explicit {
+  background: rgba(220, 38, 38, 0.85);
+}
+.rating-questionable {
+  background: rgba(217, 119, 6, 0.85);
+}
+.rating-safe {
+  background: rgba(22, 163, 74, 0.85);
+}
+.rating-general {
+  background: rgba(37, 99, 235, 0.85);
+}
 
 .status-badge {
   font-size: 9px;
@@ -500,12 +562,18 @@ const openSource = (source) => {
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
 }
 
-.status-badge.pending { background: rgba(217, 119, 6, 0.9); }
-.status-badge.deleted { background: rgba(220, 38, 38, 0.9); }
-.status-badge.flagged { background: rgba(147, 51, 234, 0.9); }
+.status-badge.pending {
+  background: rgba(217, 119, 6, 0.9);
+}
+.status-badge.deleted {
+  background: rgba(220, 38, 38, 0.9);
+}
+.status-badge.flagged {
+  background: rgba(147, 51, 234, 0.9);
+}
 
 .card-content {
   padding: 16px;
@@ -535,16 +603,31 @@ const openSource = (source) => {
 }
 
 .spec-pill:hover {
-    background: rgba(255,255,255,0.1);
-    color: #e4e4e7;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e4e4e7;
 }
 
-.spec-pill.format { font-weight: 700; letter-spacing: 0.5px; }
+.spec-pill.format {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
 
-.format-image { color: #60a5fa; border-color: rgba(96, 165, 250, 0.2); }
-.format-video { color: #a78bfa; border-color: rgba(167, 139, 250, 0.2); }
-.format-animated { color: #34d399; border-color: rgba(52, 211, 153, 0.2); }
-.format-flash { color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
+.format-image {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.2);
+}
+.format-video {
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.2);
+}
+.format-animated {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.2);
+}
+.format-flash {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.2);
+}
 
 .stats-row {
   display: flex;
@@ -563,15 +646,31 @@ const openSource = (source) => {
   color: #cbd5e1;
 }
 
-.stat.score-high { color: #4ade80; }
-.stat.score-medium { color: #fbbf24; }
-.stat.favs .stat-value { color: #f87171; }
-.stat.comments .stat-value { color: #93c5fd; }
-.stat-icon { opacity: 0.8; font-size: 14px; }
+.stat.score-high {
+  color: #4ade80;
+}
+.stat.score-medium {
+  color: #fbbf24;
+}
+.stat.favs .stat-value {
+  color: #f87171;
+}
+.stat.comments .stat-value {
+  color: #93c5fd;
+}
+.stat-icon {
+  opacity: 0.8;
+  font-size: 14px;
+}
 
 .divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
   margin: 4px 0;
 }
 
@@ -594,8 +693,14 @@ const openSource = (source) => {
   outline-offset: 2px;
 }
 
-.icon { font-size: 14px; opacity: 0.9; }
-.icon-external { font-size: 10px; opacity: 0.7; }
+.icon {
+  font-size: 14px;
+  opacity: 0.9;
+}
+.icon-external {
+  font-size: 10px;
+  opacity: 0.7;
+}
 
 .image-error {
   position: absolute;
@@ -612,8 +717,14 @@ const openSource = (source) => {
   gap: 8px;
 }
 
-.error-icon { font-size: 24px; opacity: 0.7; }
-.error-text { font-size: 12px; font-weight: 500; }
+.error-icon {
+  font-size: 24px;
+  opacity: 0.7;
+}
+.error-text {
+  font-size: 12px;
+  font-weight: 500;
+}
 
 /* Mobile Masonry Optimization */
 .masonry-optimized .card-content {
@@ -651,19 +762,28 @@ const openSource = (source) => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .art-card, .card-image {
+  .art-card,
+  .card-image {
     animation-duration: 0.001s !important;
     transition-duration: 0.001s !important;
   }
-  .art-card:hover { transform: none; }
+  .art-card:hover {
+    transform: none;
+  }
 }
 
 @media (hover: none) and (pointer: coarse) {
-  .art-card:hover { transform: none; }
-  .art-card:active { transform: scale(0.98); }
+  .art-card:hover {
+    transform: none;
+  }
+  .art-card:active {
+    transform: scale(0.98);
+  }
 }
 
-.card-footer, .tech-specs, .stats-row {
+.card-footer,
+.tech-specs,
+.stats-row {
   font-size: clamp(11px, 1.5vw, 13px);
 }
 </style>

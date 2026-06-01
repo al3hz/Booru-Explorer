@@ -1,7 +1,7 @@
 <template>
-  <div 
-    class="video-container" 
-    @mouseenter="showControls = true" 
+  <div
+    class="video-container"
+    @mouseenter="showControls = true"
     @mouseleave="handleMouseLeave"
     @mousemove="handleMouseMove"
     @touchstart="handleTouchStart"
@@ -22,7 +22,11 @@
 
     <!-- Center Play Button (animation) -->
     <transition name="fade">
-      <div v-if="!isPlaying && showCenterPlay" class="center-play-btn" @click="togglePlay">
+      <div
+        v-if="!isPlaying && showCenterPlay"
+        class="center-play-btn"
+        @click="togglePlay"
+      >
         <i class="lni lni-play"></i>
       </div>
     </transition>
@@ -34,52 +38,79 @@
         <div class="progress-container" @click="seek">
           <div class="progress-bg">
             <div class="progress-fill" :style="{ width: progress + '%' }"></div>
-            <div class="progress-handle" :style="{ left: progress + '%' }"></div>
+            <div
+              class="progress-handle"
+              :style="{ left: progress + '%' }"
+            ></div>
           </div>
         </div>
 
         <div class="controls-row">
           <div class="left-controls">
-            <button class="control-btn" @click="togglePlay" title="Play/Pause (Space)">
+            <button
+              class="control-btn"
+              @click="togglePlay"
+              title="Play/Pause (Space)"
+            >
               <i class="lni" :class="isPlaying ? 'lni-pause' : 'lni-play'"></i>
             </button>
-            
-            <div class="volume-control" @mouseenter="isVolumeHovered = true" @mouseleave="isVolumeHovered = false">
-              <button class="control-btn" @click="toggleMute" title="Mute/Unmute (M)">
+
+            <div
+              class="volume-control"
+              @mouseenter="isVolumeHovered = true"
+              @mouseleave="isVolumeHovered = false"
+            >
+              <button
+                class="control-btn"
+                @click="toggleMute"
+                title="Mute/Unmute (M)"
+              >
                 <i class="lni" :class="volumeIcon"></i>
               </button>
               <transition name="width-grow">
-                <div v-if="isVolumeHovered || isDraggingVolume" class="volume-slider-container">
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="1" 
-                      step="0.05" 
-                      :value="isMuted ? 0 : volume" 
-                      @input="handleVolumeChange"
-                      @mousedown="isDraggingVolume = true"
-                      @mouseup="isDraggingVolume = false"
-                      class="volume-slider"
-                    >
+                <div
+                  v-if="isVolumeHovered || isDraggingVolume"
+                  class="volume-slider-container"
+                >
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    :value="isMuted ? 0 : volume"
+                    @input="handleVolumeChange"
+                    @mousedown="isDraggingVolume = true"
+                    @mouseup="isDraggingVolume = false"
+                    class="volume-slider"
+                  />
                 </div>
               </transition>
             </div>
 
-            <span class="time-display">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
+            <span class="time-display"
+              >{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span
+            >
           </div>
 
           <div class="right-controls">
-            <button 
-              class="control-btn" 
-              :class="{ 'active': isLooping }" 
-              @click="toggleLoop" 
+            <button
+              class="control-btn"
+              :class="{ active: isLooping }"
+              @click="toggleLoop"
               title="Toggle Loop"
             >
               <i class="lni lni-reload"></i>
             </button>
-            
-            <button class="control-btn" @click="toggleFullscreen" title="Fullscreen (F)">
-               <i class="lni" :class="isFullscreen ? 'lni-close' : 'lni-full-screen'"></i>
+
+            <button
+              class="control-btn"
+              @click="toggleFullscreen"
+              title="Fullscreen (F)"
+            >
+              <i
+                class="lni"
+                :class="isFullscreen ? 'lni-close' : 'lni-full-screen'"
+              ></i>
             </button>
           </div>
         </div>
@@ -89,21 +120,21 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from "vue";
 
 export default {
-  name: 'VideoPlayer',
+  name: "VideoPlayer",
   props: {
     src: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
-  emits: ['error', 'loaded'],
+  emits: ["error", "loaded"],
   setup(props, { emit }) {
     const videoRef = ref(null);
     const containerRef = ref(null);
-    
+
     // State
     const isPlaying = ref(false);
     const currentTime = ref(0);
@@ -113,7 +144,7 @@ export default {
     const volume = ref(1);
     const isLooping = ref(true); // User requested default
     const isFullscreen = ref(false);
-    
+
     // UI State
     const showControls = ref(true);
     const showCenterPlay = ref(true);
@@ -123,17 +154,17 @@ export default {
 
     // Computed
     const volumeIcon = computed(() => {
-      if (isMuted.value || volume.value === 0) return 'lni-volume-mute';
-      if (volume.value < 0.5) return 'lni-volume-low';
-      return 'lni-volume-high';
+      if (isMuted.value || volume.value === 0) return "lni-volume-mute";
+      if (volume.value < 0.5) return "lni-volume-low";
+      return "lni-volume-high";
     });
 
     // Formatting
     const formatTime = (seconds) => {
-      if (!seconds) return '0:00';
+      if (!seconds) return "0:00";
       const m = Math.floor(seconds / 60);
       const s = Math.floor(seconds % 60);
-      return `${m}:${s < 10 ? '0' + s : s}`;
+      return `${m}:${s < 10 ? "0" + s : s}`;
     };
 
     // Actions
@@ -144,7 +175,7 @@ export default {
         startHideTimer();
       } else {
         videoRef.value.pause();
-        showCenterPlay.value = true; 
+        showCenterPlay.value = true;
         showControls.value = true;
         clearTimeout(controlsTimeout);
       }
@@ -179,16 +210,17 @@ export default {
       try {
         if (!document.fullscreenElement) {
           await containerRef.value.requestFullscreen();
-          
+
           // Smart Orientation Lock
           if (screen.orientation && screen.orientation.lock && videoRef.value) {
-            const ratio = videoRef.value.videoWidth / videoRef.value.videoHeight;
-            const orientation = ratio >= 1 ? 'landscape' : 'portrait';
+            const ratio =
+              videoRef.value.videoWidth / videoRef.value.videoHeight;
+            const orientation = ratio >= 1 ? "landscape" : "portrait";
             try {
               await screen.orientation.lock(orientation);
             } catch (err) {
               // Lock might fail on some devices/browsers, ignore
-              console.warn('Orientation lock failed:', err);
+              console.warn("Orientation lock failed:", err);
             }
           }
         } else {
@@ -204,21 +236,21 @@ export default {
 
     // Persistence
     const saveVolumeSettings = () => {
-      localStorage.setItem('booru-video-volume', volume.value);
-      localStorage.setItem('booru-video-muted', isMuted.value);
+      localStorage.setItem("booru-video-volume", volume.value);
+      localStorage.setItem("booru-video-muted", isMuted.value);
     };
 
     const loadSettings = () => {
-      const savedVol = localStorage.getItem('booru-video-volume');
-      const savedMute = localStorage.getItem('booru-video-muted');
-      
+      const savedVol = localStorage.getItem("booru-video-volume");
+      const savedMute = localStorage.getItem("booru-video-muted");
+
       if (savedVol !== null) {
         volume.value = parseFloat(savedVol);
         if (videoRef.value) videoRef.value.volume = volume.value;
       }
-      
+
       if (savedMute !== null) {
-        isMuted.value = savedMute === 'true';
+        isMuted.value = savedMute === "true";
         if (videoRef.value) videoRef.value.muted = isMuted.value;
       }
     };
@@ -227,14 +259,15 @@ export default {
     const onTimeUpdate = () => {
       if (!videoRef.value) return;
       currentTime.value = videoRef.value.currentTime;
-      progress.value = (videoRef.value.currentTime / videoRef.value.duration) * 100;
+      progress.value =
+        (videoRef.value.currentTime / videoRef.value.duration) * 100;
       isPlaying.value = !videoRef.value.paused;
     };
 
     const onLoadedMetadata = () => {
       if (!videoRef.value) return;
       duration.value = videoRef.value.duration;
-      emit('loaded');
+      emit("loaded");
       attemptAutoplay();
     };
 
@@ -248,10 +281,10 @@ export default {
 
     const attemptAutoplay = async () => {
       if (!videoRef.value) return;
-      
+
       // Ensure settings are applied before playing
       videoRef.value.loop = isLooping.value; // Force loop true default
-      
+
       try {
         await videoRef.value.play();
         isPlaying.value = true;
@@ -268,7 +301,7 @@ export default {
           showCenterPlay.value = false;
           startHideTimer();
         } catch (e2) {
-           console.error("Autoplay failed completely", e2);
+          console.error("Autoplay failed completely", e2);
         }
       }
     };
@@ -276,7 +309,7 @@ export default {
     const seek = (e) => {
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
-      const clickedValue = (x / rect.width);
+      const clickedValue = x / rect.width;
       if (videoRef.value && !isNaN(videoRef.value.duration)) {
         videoRef.value.currentTime = clickedValue * videoRef.value.duration;
       }
@@ -311,50 +344,55 @@ export default {
     };
 
     const handleMouseLeave = () => {
-       if (isPlaying.value && !isVolumeHovered.value && !isDraggingVolume.value) {
-           showControls.value = false;
-       }
+      if (
+        isPlaying.value &&
+        !isVolumeHovered.value &&
+        !isDraggingVolume.value
+      ) {
+        showControls.value = false;
+      }
     };
 
     // Keyboard Shortcuts
     const handleKeydown = (e) => {
       // Don't interfere if user is typing in an input
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-      
+      if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName))
+        return;
+
       switch (e.code) {
-        case 'Space':
-        case 'k':
+        case "Space":
+        case "k":
           e.preventDefault();
           togglePlay();
           break;
-        case 'KeyM':
+        case "KeyM":
           toggleMute();
           break;
-        case 'KeyF':
+        case "KeyF":
           toggleFullscreen();
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           e.preventDefault();
           if (videoRef.value) videoRef.value.currentTime += 5;
           break;
-        case 'ArrowLeft':
-            e.preventDefault();
+        case "ArrowLeft":
+          e.preventDefault();
           if (videoRef.value) videoRef.value.currentTime -= 5;
           break;
       }
     };
-    
+
     // Setup & Cleanup
     onMounted(() => {
       loadSettings();
-      window.addEventListener('keydown', handleKeydown);
-      document.addEventListener('fullscreenchange', () => {
+      window.addEventListener("keydown", handleKeydown);
+      document.addEventListener("fullscreenchange", () => {
         isFullscreen.value = !!document.fullscreenElement;
       });
     });
 
     onUnmounted(() => {
-      window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener("keydown", handleKeydown);
       clearTimeout(controlsTimeout);
     });
 
@@ -386,9 +424,9 @@ export default {
       seek,
       handleMouseMove,
       handleMouseLeave,
-      handleTouchStart
+      handleTouchStart,
     };
-  }
+  },
 };
 </script>
 
@@ -429,7 +467,7 @@ export default {
   font-size: 32px;
   cursor: pointer;
   backdrop-filter: blur(4px);
-  border: 2px solid rgba(255,255,255,0.2);
+  border: 2px solid rgba(255, 255, 255, 0.2);
   transition: all 0.2s;
   padding-left: 5px; /* Visual fix for icon center */
   z-index: 10;
@@ -446,7 +484,7 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
   padding: 20px 20px 10px 20px;
   display: flex;
   flex-direction: column;
@@ -467,7 +505,7 @@ export default {
 .progress-bg {
   width: 100%;
   height: 4px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 2px;
   position: relative;
   transition: height 0.1s;
@@ -510,7 +548,8 @@ export default {
   width: 100%;
 }
 
-.left-controls, .right-controls {
+.left-controls,
+.right-controls {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -533,7 +572,7 @@ export default {
 
 .control-btn:hover {
   opacity: 1;
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .control-btn.active {
@@ -558,10 +597,10 @@ export default {
 }
 
 .volume-slider-container {
-    width: 60px;
-    display: flex;
-    align-items: center;
-    overflow: hidden;
+  width: 60px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
 }
 
 .volume-slider {
@@ -583,7 +622,9 @@ export default {
 
 .slide-up-enter-active,
 .slide-up-leave-active {
-  transition: transform 0.3s, opacity 0.3s;
+  transition:
+    transform 0.3s,
+    opacity 0.3s;
 }
 .slide-up-enter-from,
 .slide-up-leave-to {
@@ -593,11 +634,13 @@ export default {
 
 .width-grow-enter-active,
 .width-grow-leave-active {
-    transition: width 0.3s ease, opacity 0.3s ease;
+  transition:
+    width 0.3s ease,
+    opacity 0.3s ease;
 }
 .width-grow-enter-from,
 .width-grow-leave-to {
-    width: 0;
-    opacity: 0;
+  width: 0;
+  opacity: 0;
 }
 </style>

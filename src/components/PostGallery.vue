@@ -262,10 +262,24 @@ const updateColumns = () => {
 const columns = computed(() => {
   if (!props.masonry) return [];
 
-  const cols = Array.from({ length: masonryColumns.value }, () => []);
-  props.posts.forEach((post, index) => {
-    cols[index % masonryColumns.value].push(post);
+  const numCols = masonryColumns.value;
+  const cols = Array.from({ length: numCols }, () => []);
+  // Track estimated height of each column (aspect ratio + constant card overhead)
+  const heights = Array(numCols).fill(0);
+  const CARD_OVERHEAD = 0.25; // Approximate metadata/padding fraction
+
+  props.posts.forEach((post) => {
+    // Use image dimensions if available, otherwise assume 1:1 square
+    const aspectRatio =
+      post.image_width && post.image_height
+        ? post.image_height / post.image_width
+        : 1;
+    // Find the shortest column
+    const shortestCol = heights.indexOf(Math.min(...heights));
+    cols[shortestCol].push(post);
+    heights[shortestCol] += aspectRatio + CARD_OVERHEAD;
   });
+
   return cols;
 });
 
@@ -695,7 +709,7 @@ const formatCount = (val) => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .gallery-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
@@ -730,7 +744,7 @@ const formatCount = (val) => {
   min-width: 0; /* Fix flex overflow issues */
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .masonry-grid,
   .masonry-column {
     gap: 16px;

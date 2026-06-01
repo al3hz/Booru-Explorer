@@ -1,5 +1,83 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
+/* ==========================================
+   DESIGN TOKENS — Global CSS Custom Properties
+   ========================================== */
+:root {
+  /* --- Backgrounds --- */
+  --bg-base: #0f0f17;
+  --bg-primary: #1e1e24;
+  --bg-secondary: #16213e;
+  --bg-card: rgba(30, 30, 36, 0.85);
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+  --bg-glass: rgba(30, 30, 30, 0.65);
+  --bg-glass-heavy: rgba(20, 20, 20, 0.85);
+
+  /* --- Accent Colors --- */
+  --accent-primary: #a78bfa;
+  --accent-secondary: #8b5cf6;
+  --accent-bright: #c084fc;
+  --accent-glow: rgba(167, 139, 250, 0.35);
+
+  /* --- Text --- */
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  /* --- Tag Category Colors --- */
+  --tag-general: #3b82f6;
+  --tag-artist: #8b5cf6;
+  --tag-copyright: #10b981;
+  --tag-character: #ef4444;
+  --tag-meta: #f59e0b;
+
+  /* --- Rating Colors --- */
+  --rating-general: #3b82f6;
+  --rating-safe: #22c55e;
+  --rating-questionable: #f59e0b;
+  --rating-explicit: #ef4444;
+
+  /* --- Status Colors --- */
+  --status-success: #4ade80;
+  --status-warning: #fbbf24;
+  --status-error: #f87171;
+  --status-info: #60a5fa;
+
+  /* --- Borders --- */
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-accent: rgba(167, 139, 250, 0.30);
+
+  /* --- Border Radius --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* --- Shadows --- */
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --shadow-accent: 0 0 20px var(--accent-glow);
+
+  /* --- Transitions --- */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* --- Spacing --- */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+
+  /* --- Glass Effects --- */
+  --glass-blur: blur(16px);
+  --glass-blur-heavy: blur(20px);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -161,7 +239,7 @@ div {
   font-size: 18px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .container {
     padding: 10px;
   }

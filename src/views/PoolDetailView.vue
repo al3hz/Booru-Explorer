@@ -4,7 +4,8 @@
     <div v-if="loading" class="loading-container">
       <div class="spinner"></div>
       <p v-if="loadingProgress.total > 0">
-        Loading {{ loadingProgress.current.toLocaleString() }} of {{ loadingProgress.total.toLocaleString() }} posts...
+        Loading {{ loadingProgress.current.toLocaleString() }} of
+        {{ loadingProgress.total.toLocaleString() }} posts...
       </p>
       <p v-else>Loading pool...</p>
     </div>
@@ -41,8 +42,8 @@
           </div>
         </div>
 
-        <div 
-          v-if="pool.description" 
+        <div
+          v-if="pool.description"
           class="pool-description"
           v-html="parseDText(pool.description)"
           @click="handleDescriptionClick"
@@ -53,7 +54,11 @@
             <i class="lni lni-calendar"></i>
             Updated: {{ formatDate(pool.updated_at) }}
           </span>
-          <a :href="`https://danbooru.donmai.us/pools/${pool.id}`" target="_blank" class="meta-item danbooru-link">
+          <a
+            :href="`https://danbooru.donmai.us/pools/${pool.id}`"
+            target="_blank"
+            class="meta-item danbooru-link"
+          >
             <i class="lni lni-link"></i>
             View on Danbooru
           </a>
@@ -83,7 +88,7 @@
               :alt="`Post ${index + 1}`"
               className="post-thumbnail-media"
             />
-            
+
             <!-- Static Image or GIF -->
             <img
               v-else
@@ -138,7 +143,9 @@
             <div class="pool-nav-info">
               <i class="lni lni-layers"></i>
               <span>{{ pool.name }}</span>
-              <span class="nav-position">{{ currentPostIndex + 1 }} / {{ poolPosts.length }}</span>
+              <span class="nav-position"
+                >{{ currentPostIndex + 1 }} / {{ poolPosts.length }}</span
+              >
             </div>
             <div class="pool-nav-controls">
               <button
@@ -166,27 +173,34 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { usePoolDetail } from '../composables/usePools';
-import { useDText } from '../composables/useDText';
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { usePoolDetail } from "../composables/usePools";
+import { useDText } from "../composables/useDText";
 
-import ImageDetailModal from '../components/ImageDetailModal.vue';
-import SmartVideo from '../components/SmartVideo.vue';
-import DanbooruService from '../services/danbooru';
+import ImageDetailModal from "../components/ImageDetailModal.vue";
+import SmartVideo from "../components/SmartVideo.vue";
+import DanbooruService from "../services/danbooru";
 
 export default {
-  name: 'PoolDetailView',
+  name: "PoolDetailView",
   components: {
     ImageDetailModal,
-    SmartVideo
+    SmartVideo,
   },
   setup() {
     const route = useRoute();
     const router = useRouter();
-    const { pool, poolPosts, loading, loadingProgress, error, fetchPoolDetail } = usePoolDetail();
+    const {
+      pool,
+      poolPosts,
+      loading,
+      loadingProgress,
+      error,
+      fetchPoolDetail,
+    } = usePoolDetail();
     const { parseDText } = useDText();
-    
+
     const selectedPost = ref(null);
     const currentPostIndex = ref(-1);
 
@@ -199,7 +213,10 @@ export default {
     const canGoNext = computed(() => {
       // Don't allow navigation if post was opened from external link
       if (currentPostIndex.value === -1) return false;
-      return selectedPost.value && currentPostIndex.value < poolPosts.value.length - 1;
+      return (
+        selectedPost.value &&
+        currentPostIndex.value < poolPosts.value.length - 1
+      );
     });
 
     const openPost = (index) => {
@@ -217,65 +234,65 @@ export default {
 
     const handleTagSearch = (tag) => {
       selectedPost.value = null;
-      router.push({ path: '/', query: { tags: tag } });
+      router.push({ path: "/", query: { tags: tag } });
     };
 
     const formatCategory = (cat) => {
-      if (!cat) return 'Unknown';
+      if (!cat) return "Unknown";
       return cat.charAt(0).toUpperCase() + cat.slice(1);
     };
 
     const formatDate = (dateString) => {
-      if (!dateString) return '';
+      if (!dateString) return "";
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     };
 
     const formatRating = (rating) => {
       const map = {
-        'g': 'G',
-        's': 'S',
-        'q': 'Q',
-        'e': 'E'
+        g: "G",
+        s: "S",
+        q: "Q",
+        e: "E",
       };
       return map[rating] || rating;
     };
 
     const formatPoolName = (name) => {
-      if (!name) return '';
+      if (!name) return "";
       // Replace underscores with spaces
-      return name.replace(/_/g, ' ');
+      return name.replace(/_/g, " ");
     };
 
     const handleDescriptionClick = async (e) => {
       const target = e.target;
-      
+
       // Handle wiki links
-      if (target.classList.contains('wiki-link')) {
+      if (target.classList.contains("wiki-link")) {
         e.preventDefault();
         const wikiPage = target.dataset.link;
         if (wikiPage) {
-          router.push({ name: 'wiki', params: { query: wikiPage } });
+          router.push({ name: "wiki", params: { query: wikiPage } });
         }
       }
-      
+
       // Handle pool links
-      if (target.classList.contains('pool-link')) {
+      if (target.classList.contains("pool-link")) {
         e.preventDefault();
         const poolId = target.dataset.poolId;
         if (poolId) {
-          router.push({ name: 'pool-detail', params: { id: poolId } });
+          router.push({ name: "pool-detail", params: { id: poolId } });
         }
       }
 
       // Handle post links
-      if (target.classList.contains('post-link')) {
+      if (target.classList.contains("post-link")) {
         e.preventDefault();
         const postId = target.dataset.postId;
         if (postId) {
@@ -288,7 +305,7 @@ export default {
               currentPostIndex.value = -1; // Not part of pool navigation
             }
           } catch (err) {
-            console.error('Error fetching post:', err);
+            console.error("Error fetching post:", err);
           }
         }
       }
@@ -296,8 +313,10 @@ export default {
 
     const isAnimatedVideo = (post) => {
       return (
-        ['webm', 'mp4'].includes(post.file_ext) ||
-        (post.file_ext === 'zip' && post.large_file_url && post.large_file_url.endsWith('.webm'))
+        ["webm", "mp4"].includes(post.file_ext) ||
+        (post.file_ext === "zip" &&
+          post.large_file_url &&
+          post.large_file_url.endsWith(".webm"))
       );
     };
 
@@ -307,7 +326,7 @@ export default {
         post.file_url ||
         post.sample_url ||
         post.preview_url ||
-        ''
+        ""
       );
     };
 
@@ -315,15 +334,20 @@ export default {
       // Try to get high quality thumbnail from variants
       if (post.media_asset && post.media_asset.variants) {
         const variants = post.media_asset.variants;
-        const bestVariant = variants.find(v => v.type === '720x720' && ['webp', 'jpg'].includes(v.file_ext)) ||
-                            variants.find(v => v.type === '360x360' && ['webp', 'jpg'].includes(v.file_ext)) ||
-                            variants.find(v => v.type === 'sample');
-        
+        const bestVariant =
+          variants.find(
+            (v) => v.type === "720x720" && ["webp", "jpg"].includes(v.file_ext),
+          ) ||
+          variants.find(
+            (v) => v.type === "360x360" && ["webp", "jpg"].includes(v.file_ext),
+          ) ||
+          variants.find((v) => v.type === "sample");
+
         if (bestVariant) return bestVariant.url;
       }
-      
+
       // Fallback
-      return post.preview_file_url || post.preview_url || '';
+      return post.preview_file_url || post.preview_url || "";
     };
 
     const getThumbnailUrl = (post) => {
@@ -331,23 +355,27 @@ export default {
       if (post.media_asset && post.media_asset.variants) {
         const variants = post.media_asset.variants;
         // Prefer 720x720 webp for best quality/size ratio
-        const thumbnail = variants.find(v => v.type === '720x720' && v.file_ext === 'webp') ||
-                         variants.find(v => v.type === '720x720') ||
-                         variants.find(v => v.type === '360x360');
-        
+        const thumbnail =
+          variants.find((v) => v.type === "720x720" && v.file_ext === "webp") ||
+          variants.find((v) => v.type === "720x720") ||
+          variants.find((v) => v.type === "360x360");
+
         if (thumbnail) return thumbnail.url;
       }
-      
+
       // Fallback to preview URL
-      return post.preview_file_url || post.large_file_url || post.file_url || '';
+      return (
+        post.preview_file_url || post.large_file_url || post.file_url || ""
+      );
     };
 
     const isVideo = (post) => {
-      return ['mp4', 'webm', 'gifv'].includes(post.file_ext);
+      return ["mp4", "webm", "gifv"].includes(post.file_ext);
     };
 
     const handleImageError = (e) => {
-      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj4/PC90ZXh0Pjwvc3ZnPg==';
+      e.target.src =
+        "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj4/PC90ZXh0Pjwvc3ZnPg==";
     };
 
     const goBack = () => {
@@ -358,14 +386,14 @@ export default {
     const handleKeydown = (e) => {
       // Only handle if modal is open
       if (!selectedPost.value) return;
-      
+
       // Ignore if user is typing in input/textarea
-      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      
-      if (e.key === 'a' || e.key === 'A') {
+      if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) return;
+
+      if (e.key === "a" || e.key === "A") {
         e.preventDefault();
         navigatePost(-1);
-      } else if (e.key === 'd' || e.key === 'D') {
+      } else if (e.key === "d" || e.key === "D") {
         e.preventDefault();
         navigatePost(1);
       }
@@ -376,14 +404,14 @@ export default {
       if (poolId) {
         fetchPoolDetail(poolId);
       }
-      
+
       // Add keyboard listener
-      window.addEventListener('keydown', handleKeydown);
+      window.addEventListener("keydown", handleKeydown);
     });
 
     onUnmounted(() => {
       // Remove keyboard listener
-      window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener("keydown", handleKeydown);
     });
 
     return {
@@ -411,9 +439,9 @@ export default {
       getThumbnailUrl,
       isVideo,
       handleImageError,
-      goBack
+      goBack,
     };
-  }
+  },
 };
 </script>
 
@@ -434,7 +462,7 @@ export default {
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(255,255,255,0.1);
+  border: 3px solid rgba(255, 255, 255, 0.1);
   border-top-color: #a78bfa;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -442,7 +470,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error-container i {
@@ -714,7 +744,7 @@ export default {
 .post-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -861,7 +891,7 @@ export default {
 }
 
 /* Mobile Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .pool-detail-view {
     padding: 12px;
   }

@@ -139,7 +139,7 @@
   background: rgba(167, 139, 250, 0.1);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .app-footer {
     margin-top: 40px;
     padding: 20px 0;

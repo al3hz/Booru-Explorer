@@ -152,9 +152,7 @@
                     @click="selectRating(opt.value)"
                   >
                     <span class="option-label">{{ opt.label }}</span>
-                    <span v-if="isSelected(opt.value)" class="check"
-                      >✓</span
-                    >
+                    <span v-if="isSelected(opt.value)" class="check">✓</span>
                   </li>
                 </ul>
               </transition>
@@ -327,7 +325,6 @@ export default {
 
       // Sync Rating from URL logic removed to prevent overwriting 'general' default
 
-
       // Sync Time Range
       if (tags.includes("age:<1d")) selectedTimeRange.value = "day";
       else if (tags.includes("age:<1w")) selectedTimeRange.value = "week";
@@ -415,7 +412,7 @@ export default {
 
       // Lógica de toggle para multi-select
       let current = props.ratingFilter ? props.ratingFilter.split(",") : [];
-      
+
       // Si "All" estaba seleccionado (vacío), current es []
       // Si el valor ya está, quitarlo
       if (current.includes(value)) {
@@ -1304,7 +1301,7 @@ export default {
 }
 
 /* === ESTILOS MÓVIL - TRANSICIÓN LIMPIA === */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar-container {
     position: fixed;
     top: 0;
@@ -1741,7 +1738,7 @@ export default {
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar-backdrop {
     display: block;
   }
@@ -1766,22 +1763,9 @@ export default {
   border-color: rgba(167, 139, 250, 0.4);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .mobile-close-btn {
     display: flex;
   }
 }
 </style>
-
-/* Switch Toggle Styles */ .switch { position: relative; display: inline-block;
-width: 40px; height: 22px; } .switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0;
-bottom: 0; background-color: rgba(255, 255, 255, 0.1); transition: .4s; border:
-1px solid rgba(255, 255, 255, 0.2); } .slider:before { position: absolute;
-content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px;
-background-color: #cbd5e1; transition: .4s; } input:checked + .slider {
-background-color: rgba(167, 139, 250, 0.3); border-color: #a78bfa; } input:focus
-+ .slider { box-shadow: 0 0 1px #a78bfa; } input:checked + .slider:before {
-transform: translateX(18px); background-color: #fff; } /* Rounded sliders */
-.slider.round { border-radius: 22px; } .slider.round:before { border-radius:
-50%; }

@@ -72,17 +72,11 @@ export function usePools() {
   };
 
   const pools = computed(() => {
-    // Enrich with covers logic from before?
-    // The previous `queryFn` did manual cover fetching.
-    // I should probably keep that logic but inside the queryFn ABOVE.
+
     return poolsData.value || [];
   });
 
-  // Re-add cover enrichment if needed? 
-  // It was in the previous file content. I should check line 18-47 of original.
-  // I'll leave it as a TODO or implicitly assume DanbooruService might handle it (it doesn't).
-  // I will move the enrichment logic to a watcher or subsequent effect, OR put it back in `queryFn`.
-  // Putting it in `queryFn` is best.
+
 
   return {
     pools,

@@ -602,7 +602,7 @@ onMounted(() => {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .not-found-content {
     padding: 30px 20px;
   }

@@ -1,14 +1,15 @@
-
 <template>
-  <div 
-    class="smart-image-container" 
-    :style="{ paddingBottom: aspectRatio ? `${(1 / aspectRatio) * 100}%` : undefined }"
+  <div
+    class="smart-image-container"
+    :style="{
+      paddingBottom: aspectRatio ? `${(1 / aspectRatio) * 100}%` : undefined,
+    }"
     ref="container"
   >
     <!-- Placeholder / Thumb -->
-    <div 
-      v-if="!isLoaded && !error" 
-      class="placeholder" 
+    <div
+      v-if="!isLoaded && !error"
+      class="placeholder"
       :style="{ backgroundColor: placeholderColor || '#1e293b' }"
     >
       <div v-if="loading" class="spinner"></div>
@@ -35,36 +36,36 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from "vue";
 
 const props = defineProps({
   src: {
     type: String,
-    required: true
+    required: true,
   },
   alt: {
     type: String,
-    default: ''
+    default: "",
   },
   aspectRatio: {
     type: Number,
-    default: 1
+    default: 1,
   },
   placeholderColor: {
     type: String,
-    default: null
+    default: null,
   },
   priority: {
     type: Boolean,
-    default: false
+    default: false,
   },
   threshold: {
     type: Number,
-    default: 0.1
-  }
+    default: 0.1,
+  },
 });
 
-const emit = defineEmits(['load', 'error']);
+const emit = defineEmits(["load", "error"]);
 
 const container = ref(null);
 const img = ref(null);
@@ -78,13 +79,13 @@ let observer = null;
 const onLoad = () => {
   isLoaded.value = true;
   loading.value = false;
-  emit('load');
+  emit("load");
 };
 
 const onError = () => {
   error.value = true;
   loading.value = false;
-  emit('error');
+  emit("error");
 };
 
 onMounted(() => {
@@ -93,17 +94,20 @@ onMounted(() => {
     return;
   }
 
-  if (typeof IntersectionObserver !== 'undefined') {
-    observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        shouldLoad.value = true;
-        observer.disconnect();
-      }
-    }, {
-      rootMargin: '200px', // Load before it comes into view
-      threshold: props.threshold
-    });
-    
+  if (typeof IntersectionObserver !== "undefined") {
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          shouldLoad.value = true;
+          observer.disconnect();
+        }
+      },
+      {
+        rootMargin: "200px", // Load before it comes into view
+        threshold: props.threshold,
+      },
+    );
+
     if (container.value) {
       observer.observe(container.value);
     }
@@ -117,14 +121,17 @@ onUnmounted(() => {
   if (observer) observer.disconnect();
 });
 
-watch(() => props.src, () => {
-  if (props.src) {
-    isLoaded.value = false;
-    error.value = false;
-    loading.value = true;
-    if (props.priority) shouldLoad.value = true;
-  }
-});
+watch(
+  () => props.src,
+  () => {
+    if (props.src) {
+      isLoaded.value = false;
+      error.value = false;
+      loading.value = true;
+      if (props.priority) shouldLoad.value = true;
+    }
+  },
+);
 </script>
 
 <style scoped>
@@ -189,6 +196,8 @@ watch(() => props.src, () => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

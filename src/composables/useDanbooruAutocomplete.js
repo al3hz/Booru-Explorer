@@ -1,5 +1,6 @@
 // composables/useDanbooruAutocomplete.js
 import { ref, computed } from "vue";
+import DanbooruService from "../services/danbooru";
 
 /**
  * Composable para sistema de autocomplete de tags de Danbooru.
@@ -160,20 +161,12 @@ export function useDanbooruAutocomplete() {
       error.value = "";
 
       try {
-        const params = new URLSearchParams({
+        const data = await DanbooruService.getTags({
           "search[name_matches]": `${lastTerm}*`,
           "search[order]": "count",
           "search[post_count]": ">0",
-          limit: "15",
-        });
-
-        const res = await fetch(`/api/danbooru?url=tags.json&${params}`, {
-          signal: abortController.signal,
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const rawJson = await res.json();
-        const data = rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
+          limit: 15,
+        }, { signal: abortController.signal });
 
         const processed = (data || [])
           .map((tag) => {
@@ -239,13 +232,10 @@ export function useDanbooruAutocomplete() {
     }
 
     try {
-      const res = await fetch(
-        "/api/danbooru?url=tags.json&search[order]=count&limit=20",
-      );
-      if (!res.ok) throw new Error("API Error");
-
-      const rawJson = await res.json();
-      const data = rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
+      const data = await DanbooruService.getTags({
+        "search[order]": "count",
+        limit: 20,
+      });
       const popular = (data || []).map((tag) => {
         const cat = TAG_CATEGORIES[tag.category] || TAG_CATEGORIES[0];
         return {

@@ -1583,7 +1583,7 @@ export default {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .wiki-view {
     padding: 10px;
   }
@@ -1796,7 +1796,7 @@ export default {
 }
 
 /* Mobile Optimization */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .wiki-view {
     padding: 10px;
   }

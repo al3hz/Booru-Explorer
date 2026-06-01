@@ -8,101 +8,101 @@
     muted
     loop
     playsinline
-    :preload="isMobileDevice ? 'metadata' : 'none'" 
+    :preload="isMobileDevice ? 'metadata' : 'none'"
     @error="onError"
     @loadeddata="onLoaded"
   ></video>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from "vue";
 
 export default {
-  name: 'SmartVideo',
+  name: "SmartVideo",
   props: {
     src: {
       type: String,
-      required: true
+      required: true,
     },
     poster: {
       type: String,
-      default: ''
+      default: "",
     },
     alt: {
       type: String,
-      default: ''
+      default: "",
     },
     className: {
       type: String,
-      default: ''
+      default: "",
     },
     shouldPause: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
-  emits: ['error', 'loaded'],
+  emits: ["error", "loaded"],
   setup(props, { emit }) {
     const videoRef = ref(null);
     let observer = null;
     let isVisible = false;
-    
+
     // Detect if device is mobile
     const isMobileDevice = window.innerWidth <= 768;
 
     const startObserving = () => {
       if (!videoRef.value) return;
-      
+
       // Skip IntersectionObserver entirely on mobile devices
       // This prevents autoplay after closing modal
       if (isMobileDevice) {
         return;
       }
 
-      observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          isVisible = entry.isIntersecting;
-          
-          if (entry.isIntersecting) {
-            // Only autoplay on desktop AND if not paused externally
-            if (!props.shouldPause) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            isVisible = entry.isIntersecting;
+
+            if (entry.isIntersecting) {
+              // Only autoplay on desktop AND if not paused externally
+              if (!props.shouldPause) {
                 videoRef.value.play().catch(() => {
-                    // Auto-play might be blocked or failed
-                    // console.warn('Autoplay prevented', e);
+                  // Auto-play might be blocked or failed
+                  // console.warn('Autoplay prevented', e);
                 });
+              }
+            } else {
+              videoRef.value.pause();
             }
-          } else {
-            videoRef.value.pause();
-          }
-        });
-      }, {
-        rootMargin: '50px 0px', // Preload/play slightly before entering viewport
-        threshold: 0.25 // Play when 25% visible
-      });
+          });
+        },
+        {
+          rootMargin: "50px 0px", // Preload/play slightly before entering viewport
+          threshold: 0.25, // Play when 25% visible
+        },
+      );
 
       observer.observe(videoRef.value);
     };
 
     const onError = (e) => {
-      emit('error', e);
+      emit("error", e);
     };
-    
+
     const onLoaded = (e) => {
-        emit('loaded', e);
+      emit("loaded", e);
     };
 
     onMounted(() => {
       startObserving();
-      
+
       // Strict autoplay watchdog for mobile
       if (videoRef.value && isMobileDevice) {
-        videoRef.value.addEventListener('play', (e) => {
-           // If we are on mobile, and play is triggered, we check if we should allow it.
-           // In card view (which SmartVideo usually is), we generally want NO playback on mobile.
-           // Force pause.
-           e.preventDefault();
-           e.target.pause();
-           // console.log("Blocked autoplay on mobile");
+        videoRef.value.addEventListener("play", (e) => {
+          e.preventDefault();
+          e.target.pause();
+          // console.log("Blocked autoplay on mobile");
         });
       }
     });
@@ -114,34 +114,40 @@ export default {
     });
 
     // Re-observe if src changes meaningfully (though keying usually handles this in lists)
-    watch(() => props.src, () => {
-       if(videoRef.value) {
-           videoRef.value.pause();
-           videoRef.value.load();
-       }
-    });
+    watch(
+      () => props.src,
+      () => {
+        if (videoRef.value) {
+          videoRef.value.pause();
+          videoRef.value.load();
+        }
+      },
+    );
 
     // Watch for external pause signal
-    watch(() => props.shouldPause, (shouldPause) => {
+    watch(
+      () => props.shouldPause,
+      (shouldPause) => {
         if (!videoRef.value) return;
-        
+
         if (shouldPause) {
-            videoRef.value.pause();
+          videoRef.value.pause();
         } else {
-            // Resume if visible and not on mobile
-            if (isVisible && !isMobileDevice) {
-                videoRef.value.play().catch(() => {});
-            }
+          // Resume if visible and not on mobile
+          if (isVisible && !isMobileDevice) {
+            videoRef.value.play().catch(() => {});
+          }
         }
-    });
+      },
+    );
 
     return {
       videoRef,
       isMobileDevice,
       onError,
-      onLoaded
+      onLoaded,
     };
-  }
+  },
 };
 </script>
 

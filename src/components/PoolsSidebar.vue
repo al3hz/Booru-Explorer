@@ -3,41 +3,45 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <h2 class="title">Pool Filters</h2>
-        <button class="mobile-close-btn" @click="toggleSidebar" v-if="filtersVisible && isMobile">
+        <button
+          class="mobile-close-btn"
+          @click="toggleSidebar"
+          v-if="filtersVisible && isMobile"
+        >
           <i class="lni lni-close"></i>
         </button>
       </div>
 
-      <div class="sidebar-content" :class="{ 'faded': !filtersVisible }">
+      <div class="sidebar-content" :class="{ faded: !filtersVisible }">
         <!-- Search Queries -->
         <div class="search-section">
           <div class="section-label-wrapper">
             <label class="section-label">Search</label>
           </div>
-          
+
           <div class="input-wrapper">
             <i class="lni lni-search-alt"></i>
-            <input 
+            <input
               id="search-name"
               name="search-name"
               aria-label="Search by name"
-              v-model="localFilters.name" 
-              @keyup.enter="applyFilters" 
-              placeholder="Search by name..." 
+              v-model="localFilters.name"
+              @keyup.enter="applyFilters"
+              placeholder="Search by name..."
               type="text"
               class="search-input"
             />
           </div>
-          
+
           <div class="input-wrapper mt-2">
             <i class="lni lni-text-align-left"></i>
-            <input 
+            <input
               id="search-description"
               name="search-description"
               aria-label="Search by description"
-              v-model="localFilters.description" 
-              @keyup.enter="applyFilters" 
-              placeholder="Description..." 
+              v-model="localFilters.description"
+              @keyup.enter="applyFilters"
+              placeholder="Description..."
               type="text"
               class="search-input"
             />
@@ -49,13 +53,16 @@
         <!-- Category Filter -->
         <div class="options-section">
           <h3 class="section-label">Category</h3>
-          
+
           <div class="filter-options">
-            <button 
-              v-for="cat in ['series', 'collection']" 
+            <button
+              v-for="cat in ['series', 'collection']"
               :key="cat"
               class="filter-chip tag-chip"
-              :class="{ active: localFilters.category === cat, disabled: loading }"
+              :class="{
+                active: localFilters.category === cat,
+                disabled: loading,
+              }"
               @click="toggleCategory(cat)"
               :disabled="loading"
             >
@@ -69,13 +76,16 @@
         <!-- Order Filter -->
         <div class="options-section">
           <h3 class="section-label">Sort Order</h3>
-          
+
           <div class="filter-options">
-            <button 
-              v-for="opt in sortOptions" 
+            <button
+              v-for="opt in sortOptions"
               :key="opt.value"
               class="filter-chip tag-chip"
-              :class="{ active: localFilters.order === opt.value, disabled: loading }"
+              :class="{
+                active: localFilters.order === opt.value,
+                disabled: loading,
+              }"
               @click="setOrder(opt.value)"
               :disabled="loading"
             >
@@ -86,16 +96,19 @@
 
         <!-- Apply Button -->
         <div class="divider"></div>
-        
+
         <div class="actions-section">
-          <button 
-            class="action-btn primary" 
-            @click="applyFilters" 
-            :disabled="loading" 
+          <button
+            class="action-btn primary"
+            @click="applyFilters"
+            :disabled="loading"
             :style="{ opacity: loading ? 0.7 : 1 }"
           >
-            <i class="lni" :class="loading ? 'lni-spinner lni-spin' : 'lni-funnel'"></i>
-            {{ loading ? 'Updating...' : 'Apply Filters' }}
+            <i
+              class="lni"
+              :class="loading ? 'lni-spinner lni-spin' : 'lni-funnel'"
+            ></i>
+            {{ loading ? "Updating..." : "Apply Filters" }}
           </button>
         </div>
       </div>
@@ -104,44 +117,49 @@
 </template>
 
 <script>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
-import { usePoolFilters } from '../composables/usePoolFilters';
+import { ref, watch, onMounted, onUnmounted } from "vue";
+import { usePoolFilters } from "../composables/usePoolFilters";
 
 export default {
-  name: 'PoolsSidebar',
+  name: "PoolsSidebar",
   props: {
     filters: {
       type: Object,
-      required: true
+      required: true,
     },
     loading: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
-  emits: ['update:filters', 'search'],
+  emits: ["update:filters", "search"],
   setup(props, { emit }) {
     const { filtersVisible, toggleFilters } = usePoolFilters();
     const isMobile = ref(false);
-    
+
     // Local copy for editing
     const localFilters = ref({ ...props.filters });
-    
+
     // Sync when props change
-    watch(() => props.filters, (newVal) => {
-      localFilters.value = { ...newVal };
-    }, { deep: true });
+    watch(
+      () => props.filters,
+      (newVal) => {
+        localFilters.value = { ...newVal };
+      },
+      { deep: true },
+    );
 
     const sortOptions = [
-      { label: 'Updated', value: 'updated_at' },
-      { label: 'Created', value: 'created_at' },
-      { label: 'Name', value: 'name' },
-      { label: 'Post Count', value: 'post_count' },
+      { label: "Updated", value: "updated_at" },
+      { label: "Created", value: "created_at" },
+      { label: "Name", value: "name" },
+      { label: "Post Count", value: "post_count" },
     ];
 
     const toggleCategory = (cat) => {
       if (props.loading) return;
-      localFilters.value.category = localFilters.value.category === cat ? '' : cat;
+      localFilters.value.category =
+        localFilters.value.category === cat ? "" : cat;
       applyFilters();
     };
 
@@ -152,8 +170,8 @@ export default {
     };
 
     const applyFilters = () => {
-      emit('update:filters', localFilters.value);
-      emit('search');
+      emit("update:filters", localFilters.value);
+      emit("search");
       closeSidebarOnMobile();
     };
 
@@ -173,11 +191,11 @@ export default {
 
     onMounted(() => {
       checkMobile();
-      window.addEventListener('resize', checkMobile);
+      window.addEventListener("resize", checkMobile);
     });
 
     onUnmounted(() => {
-      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener("resize", checkMobile);
     });
 
     return {
@@ -188,10 +206,10 @@ export default {
       toggleCategory,
       setOrder,
       applyFilters,
-      toggleSidebar
+      toggleSidebar,
     };
-  }
-}
+  },
+};
 </script>
 
 <style scoped>
@@ -332,31 +350,31 @@ export default {
 }
 
 /* Custom Scrollbar */
-.sidebar::-webkit-scrollbar { 
-  width: 6px; 
+.sidebar::-webkit-scrollbar {
+  width: 6px;
 }
 
-.sidebar::-webkit-scrollbar-track { 
-  background: rgba(0, 0, 0, 0.2); 
-  border-radius: 4px; 
+.sidebar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
 
-.sidebar::-webkit-scrollbar-thumb { 
-  background: rgba(255,255,255,0.15); 
-  border-radius: 4px; 
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
 }
 
-.sidebar::-webkit-scrollbar-thumb:hover { 
-  background: rgba(255,255,255,0.25); 
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
-.sidebar-content::-webkit-scrollbar { 
-  width: 4px; 
+.sidebar-content::-webkit-scrollbar {
+  width: 4px;
 }
 
-.sidebar-content::-webkit-scrollbar-thumb { 
-  background: rgba(255,255,255,0.1); 
-  border-radius: 4px; 
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
 /* Secciones */
@@ -479,7 +497,9 @@ export default {
   background: linear-gradient(135deg, #8b5cf6, #7c3aed);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 4px 15px rgba(124, 58, 237, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   text-transform: uppercase;
   letter-spacing: 1px;
   font-weight: 700;
@@ -487,7 +507,9 @@ export default {
 
 .action-btn.primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 25px rgba(124, 58, 237, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   filter: brightness(1.1);
 }
 
@@ -522,7 +544,7 @@ export default {
 }
 
 /* === ESTILOS MÓVIL - TRANSICIÓN LIMPIA === */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar-container {
     position: fixed;
     top: 0;
@@ -536,14 +558,15 @@ export default {
     transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     opacity: 1 !important;
   }
-  
+
   .sidebar-container:not(.is-collapsed) {
     transform: translateX(0);
-    box-shadow: 15px 0 40px rgba(0,0,0,0.3);
-    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                box-shadow 0.3s ease 0.1s;
+    box-shadow: 15px 0 40px rgba(0, 0, 0, 0.3);
+    transition:
+      transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      box-shadow 0.3s ease 0.1s;
   }
-  
+
   .sidebar-container.is-collapsed {
     transform: translateX(-100%);
     box-shadow: none;
@@ -557,7 +580,7 @@ export default {
     border: none !important;
     background: transparent !important;
   }
-  
+
   .sidebar {
     width: 100% !important;
     height: 100% !important;
@@ -575,7 +598,7 @@ export default {
     box-shadow: none !important;
     overflow-y: auto !important;
   }
-  
+
   .sidebar-header {
     width: auto !important;
     height: auto !important;
@@ -586,7 +609,7 @@ export default {
     min-height: 60px !important;
     flex-shrink: 0 !important;
   }
-  
+
   .sidebar-content {
     opacity: 1 !important;
     visibility: visible !important;
@@ -602,7 +625,7 @@ export default {
     overflow-y: auto !important;
     overflow-x: hidden !important;
   }
-  
+
   .sidebar-content.faded {
     opacity: 1 !important;
     visibility: visible !important;
@@ -610,7 +633,7 @@ export default {
     transform: none !important;
     transition: none !important;
   }
-  
+
   .sidebar-container.is-collapsed .sidebar-content {
     opacity: 1 !important;
     visibility: visible !important;
@@ -621,24 +644,24 @@ export default {
     overflow: hidden !important;
     transition: none !important;
   }
-  
+
   .title {
     opacity: 1 !important;
     transition: none !important;
   }
-  
+
   .mobile-close-btn {
     display: flex;
   }
-  
+
   .sidebar::-webkit-scrollbar {
     width: 4px;
   }
-  
+
   .sidebar::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.2);
   }
-  
+
   .sidebar::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
@@ -650,7 +673,7 @@ export default {
   .sidebar-container {
     animation: sidebarEntranceDesktop 0.5s ease-out;
   }
-  
+
   @keyframes sidebarEntranceDesktop {
     from {
       opacity: 0;
@@ -664,5 +687,7 @@ export default {
 }
 
 /* Clases de utilidad */
-.mt-2 { margin-top: 8px; }
+.mt-2 {
+  margin-top: 8px;
+}
 </style>

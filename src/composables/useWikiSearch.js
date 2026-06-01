@@ -14,19 +14,8 @@ export function useWikiSearch() {
   const fetchWikiAutocomplete = async (query) => {
     if (!query || query.length < 2) return [];
     try {
-      const apiBaseUrl = '/api/danbooru';
-      const params = new URLSearchParams({
-        'search[query]': query,
-        'search[type]': 'wiki_page',
-        'version': '3',
-        'limit': '10'
-      });
-      const res = await fetch(`${apiBaseUrl}?url=autocomplete.json&${params.toString()}`);
-      if (res.ok) {
-        const rawJson = await res.json();
-        return rawJson && typeof rawJson === "object" && "data" in rawJson && "success" in rawJson ? rawJson.data : rawJson;
-      }
-      return [];
+      const data = await DanbooruService.getAutocomplete(query, 'wiki_page', 10);
+      return data || [];
     } catch (e) {
       console.error("Failed to fetch wiki autocomplete:", e);
       return [];

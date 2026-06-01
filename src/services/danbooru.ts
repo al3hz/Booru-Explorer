@@ -518,16 +518,34 @@ class DanbooruService {
 
   async getAutocomplete(
     query: string,
-    type: string = 'tag',
+    type: string = 'tag_query',
+    limit: number = 10,
     options?: { signal?: AbortSignal }
   ): Promise<AutocompleteResult[]> {
-    if (type !== 'tag') return [];
-
     return this._fetch<AutocompleteResult[]>('autocomplete.json', {
       'search[query]': query,
-      'search[type]': 'tag_query',
-      limit: 10
+      'search[type]': type,
+      limit,
+      version: '3'
     }, options).catch(() => []);
+  }
+
+  async getTags(
+    params: Record<string, string | number | boolean | undefined> = {},
+    options?: RequestConfig
+  ): Promise<DanbooruTag[]> {
+    return this._fetch<DanbooruTag[]>('tags.json', params, options);
+  }
+
+  async getArtistById(id: number, options?: { signal?: AbortSignal }): Promise<DanbooruArtist> {
+    return this._fetch<DanbooruArtist>(`artists/${id}.json`, {}, options);
+  }
+
+  async getNotes(postId: number, options?: { signal?: AbortSignal }): Promise<any[]> {
+    return this._fetch<any[]>('notes.json', {
+      'search[post_id]': postId,
+      'search[is_active]': true
+    }, options);
   }
 
   // --- Media Assets ---
