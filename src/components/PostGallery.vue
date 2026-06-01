@@ -270,9 +270,9 @@ const columns = computed(() => {
 });
 
 const setupIntersectionObserver = () => {
-  if (!props.infiniteScroll || !props.hasNextPage || props.loading) return;
-
   if (observer) observer.disconnect();
+
+  if (!props.infiniteScroll || !props.hasNextPage || props.loading) return;
 
   observer = new IntersectionObserver(
     (entries) => {
@@ -281,7 +281,7 @@ const setupIntersectionObserver = () => {
       }
     },
     {
-      rootMargin: "5000px",
+      rootMargin: "1000px",
       threshold: 0.1,
     },
   );

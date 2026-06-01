@@ -447,7 +447,7 @@ const handlePageChange = async (page) => {
 
 const handleLoadMore = async () => {
   if (loading.value || !hasNextPage.value) return;
-  await searchPosts(currentPage.value + 1, true);
+  await searchPosts(currentPage.value + 1, false);
 };
 
 const setExample = (example) => {
