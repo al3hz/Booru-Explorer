@@ -161,6 +161,21 @@ body::after {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+  body::after {
+    animation: none;
+  }
+  .sidebar-toggle {
+    transition: none;
+  }
+  .sidebar-toggle:hover {
+    transform: none;
+  }
+}
+
 /* Color base para todo el texto - blanco */
 p,
 h1,
@@ -248,8 +263,8 @@ div {
 .sidebar-toggle {
   width: 40px;
   height: 40px;
-  background: #a78bfa;
-  border: 2px solid #c084fc;
+  background: var(--accent-primary);
+  border: 2px solid var(--accent-bright);
   border-radius: 8px;
   color: white;
   cursor: pointer;
@@ -263,8 +278,8 @@ div {
 }
 
 .sidebar-toggle:hover {
-  background: #c084fc;
-  border-color: #a78bfa;
+  background: var(--accent-bright);
+  border-color: var(--accent-primary);
   transform: scale(1.1);
 }
 

@@ -37,9 +37,6 @@ class DanbooruService {
 
     url.searchParams.set('url', cleanPath);
 
-    // Aggressive Cache Busting
-    url.searchParams.set('_t', Date.now().toString());
-
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         url.searchParams.append(key, String(value));
@@ -80,11 +77,10 @@ class DanbooruService {
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        console.log(`[API] ${danbooruPath} (attempt ${attempt}/${retries})`);
+        if (import.meta.env.DEV) console.log(`[API] ${danbooruPath} (attempt ${attempt}/${retries})`);
 
         const res = await fetch(url, {
           signal: controller.signal,
-          cache: 'no-store',
           headers: {
             'Accept': 'application/json',
             'X-Client-Version': '2.0'
@@ -223,7 +219,7 @@ class DanbooruService {
 
     const queryKey = `smart_${apiTags}_${filterTags.join('_')}`;
 
-    console.log(`[SmartSearch] API:"${apiTags}" | Filter:[${filterTags.join(', ')}]`);
+    if (import.meta.env.DEV) console.log(`[SmartSearch] API:"${apiTags}" | Filter:[${filterTags.join(', ')}]`);
 
     try {
       return await this._executeSmartSearch(
@@ -252,7 +248,7 @@ class DanbooruService {
     const MAX_API_PAGES = 15;
     let scannedPages = 0;
 
-    console.log(`[SmartSearch START] Page ${page} (Limit ${limit}) starting at API Page ${currentApiPage}`);
+    if (import.meta.env.DEV) console.log(`[SmartSearch START] Page ${page} (Limit ${limit}) starting at API Page ${currentApiPage}`);
 
     while (accumulated.length < limit && scannedPages < MAX_API_PAGES) {
       if (options?.signal?.aborted) throw new Error('AbortError');
@@ -262,18 +258,18 @@ class DanbooruService {
         scannedPages++;
 
         if (posts.length === 0) {
-          console.log(`[SmartSearch] API Page ${currentApiPage} returned empty. End of results.`);
+          if (import.meta.env.DEV) console.log(`[SmartSearch] API Page ${currentApiPage} returned empty. End of results.`);
           break; // End of results
         }
 
         if (scannedPages === 1) {
-          console.log(`[SmartSearch DEBUG] First Post ID from API Page ${currentApiPage}: ${posts[0]?.id}`);
+          if (import.meta.env.DEV) console.log(`[SmartSearch DEBUG] First Post ID from API Page ${currentApiPage}: ${posts[0]?.id}`);
         }
 
         const filtered = this._filterPosts(posts, filterTags);
         accumulated.push(...filtered);
 
-        console.log(`[SmartSearch PROGRESS] API Page ${currentApiPage}: Found ${filtered.length} matching posts. Total accumulated: ${accumulated.length}`);
+        if (import.meta.env.DEV) console.log(`[SmartSearch PROGRESS] API Page ${currentApiPage}: Found ${filtered.length} matching posts. Total accumulated: ${accumulated.length}`);
 
         if (accumulated.length >= limit) {
           // We have enough! Stop here.
@@ -374,7 +370,7 @@ class DanbooruService {
     const pagesNeeded = Math.ceil(limit / perPage);
     const startPage = ((page - 1) * Math.ceil(limit / perPage)) + 1;
 
-    console.log(`[SuperPagination] Fetching ${pagesNeeded} pages (${limit} posts)`);
+    if (import.meta.env.DEV) console.log(`[SuperPagination] Fetching ${pagesNeeded} pages (${limit} posts)`);
 
     const promises = Array.from({ length: pagesNeeded }, (_, i) =>
       this._fetch<DanbooruPost[]>('posts.json', {

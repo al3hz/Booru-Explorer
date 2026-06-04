@@ -1,7 +1,7 @@
 import { createApp } from "vue";
 import { VueQueryPlugin, QueryClient } from "@tanstack/vue-query";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import { persistQueryClient } from "@tanstack/query-persist-client-core";
 
 import "./styles/global.css";
 import App from "./App.vue";
@@ -113,23 +113,6 @@ if (typeof window !== "undefined") {
     buster: "v2", // Versión del caché (cambiar para invalidar todo)
   });
 
-  // Limpieza proactiva de queries antiguas (cada 5 min)
-  setInterval(
-    () => {
-      const cache = queryClient.getQueryCache();
-      const now = Date.now();
-      const queries = cache.getAll();
-
-      queries.forEach((query) => {
-        const lastUpdated = query.state.dataUpdatedAt;
-        // Limpiar queries no usadas en 24h
-        if (now - lastUpdated > MAX_CACHE_AGE) {
-          cache.remove(query);
-        }
-      });
-    },
-    5 * 60 * 1000,
-  );
 }
 
 // ==========================================

@@ -272,7 +272,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useDanbooruAutocomplete } from "../composables/useDanbooruAutocomplete";
 import { useDanbooruTrending } from "../composables/useDanbooruTrending";
@@ -445,19 +445,25 @@ export default {
     };
 
     // Close dropdown on click outside
+    const handleClickOutside = (e) => {
+      const target = e.target;
+      if (!target.closest(".custom-select")) {
+        ratingDropdownOpen.value = false;
+      }
+      if (!target.closest(".limit-input-wrapper")) {
+        showLimitTooltip.value = false;
+      }
+      if (!target.closest(".section-label-wrapper")) {
+        showSearchTooltip.value = false;
+      }
+    };
+
     onMounted(() => {
-      document.addEventListener("click", (e) => {
-        const target = e.target;
-        if (!target.closest(".custom-select")) {
-          ratingDropdownOpen.value = false;
-        }
-        if (!target.closest(".limit-input-wrapper")) {
-          showLimitTooltip.value = false;
-        }
-        if (!target.closest(".section-label-wrapper")) {
-          showSearchTooltip.value = false;
-        }
-      });
+      document.addEventListener("click", handleClickOutside);
+    });
+
+    onUnmounted(() => {
+      document.removeEventListener("click", handleClickOutside);
     });
 
     onMounted(() => {

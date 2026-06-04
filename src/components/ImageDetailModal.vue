@@ -603,7 +603,6 @@ export default {
     const {
       data: familyData,
       isFetching: familyLoading,
-      isSuccess: familyLoaded,
     } = usePostFamily(postId, parentId, hasChildren);
     const {
       data: commentsData,
@@ -778,6 +777,7 @@ export default {
 
     // Safety timeout for loading
     let loadingTimeout = null;
+    let clickOutsideCleanup = null;
 
     // Ruffle logic
     const ruffleContainer = ref(null);
@@ -1060,11 +1060,13 @@ export default {
       }
 
       // Close dropdown when clicking outside
-      document.addEventListener("click", (e) => {
+      const handleClickOutside = (e) => {
         if (!e.target.closest(".reverse-search-dropdown")) {
           searchDropdownOpen.value = false;
         }
-      });
+      };
+      document.addEventListener("click", handleClickOutside);
+      clickOutsideCleanup = handleClickOutside;
 
       document.body.style.overflow = "hidden";
     });
@@ -1261,6 +1263,9 @@ export default {
       if (loadingTimeout) clearTimeout(loadingTimeout);
       window.removeEventListener("keydown", handleKeydown);
       document.body.style.overflow = "";
+      if (clickOutsideCleanup) {
+        document.removeEventListener("click", clickOutsideCleanup);
+      }
     });
 
     return {

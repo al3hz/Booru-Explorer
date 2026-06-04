@@ -178,11 +178,8 @@ export function useDanbooruApi(
       return allPages.length + 1;
     },
 
-    staleTime: 0,
-    gcTime: 0, // Disable garbage collection cache (formerly cacheTime)
     refetchOnWindowFocus: false,
     refetchOnMount: true,
-    keepPreviousData: true,
     retry: 2,
     retryDelay: (attempt) => attempt * 1000,
   });
@@ -297,7 +294,7 @@ export function useDanbooruApi(
     () => queryKey.value[1]?.tags,
     (newTags, oldTags) => {
       if (newTags !== oldTags) {
-        console.log("[DanbooruApi] Tags changed, resetting acknowledge");
+        if (import.meta.env.DEV) console.log("[DanbooruApi] Tags changed, resetting acknowledge");
         lastAcknowledgedId.value = 0;
       }
     },

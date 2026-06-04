@@ -142,7 +142,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, onMounted, onUnmounted } from "vue";
 import SmartVideo from "./SmartVideo.vue";
 import SmartImage from "./SmartImage.vue";
 
@@ -169,13 +169,19 @@ const emit = defineEmits(["click"]);
 
 const isMobile = ref(false);
 
+const onResize = () => {
+  isMobile.value = window.innerWidth <= 640;
+};
+
 onMounted(() => {
   if (typeof window !== "undefined") {
     isMobile.value = window.innerWidth <= 640;
-    window.addEventListener("resize", () => {
-      isMobile.value = window.innerWidth <= 640;
-    });
+    window.addEventListener("resize", onResize);
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", onResize);
 });
 
 // State
@@ -406,7 +412,7 @@ const openSource = (source) => {
   if (!source || source.startsWith("file://")) return;
   try {
     new URL(source);
-    window.open(source, "_blank");
+    window.open(source, "_blank", "noopener,noreferrer");
   } catch {
     console.log("Source no es una URL válida:", source);
   }

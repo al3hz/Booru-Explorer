@@ -114,11 +114,6 @@ router.beforeEach((to, from, next) => {
   // Aquí puedes agregar lógica de autenticación si es necesario
   // Ejemplo: if (to.meta.requiresAuth && !isAuthenticated) next('/login')
 
-  // Scroll to top basado en meta
-  if (to.meta.scrollToTop) {
-    window.scrollTo(0, 0);
-  }
-
   next();
 });
 
@@ -129,9 +124,8 @@ router.afterEach((to, from) => {
   document.title = title;
 
   // Optional: Analytics tracking
-  if (import.meta.env.PROD) {
+  if (import.meta.env.DEV) {
     console.log(`Route change: ${from.path} -> ${to.path}`);
-    // Aquí podrías integrar Google Analytics, etc.
   }
 
   // Optional: Update meta tags dinámicamente

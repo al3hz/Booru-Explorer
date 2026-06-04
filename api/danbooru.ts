@@ -165,14 +165,14 @@ const generateRequestId = (): string =>
 const validateTargetPath = (path: string | null): AllowedPath => {
   if (!path) return CONFIG.DEFAULT_PATH;
 
-  const dangerousPatterns = /^(https?:\/\/|\/\/|\.{2,})|[<>\"']/;
+  const dangerousPatterns = /^(https?:\/\/|\/\/|\.{2,})|[<>"']/;
   if (dangerousPatterns.test(path)) {
     throw new ValidationError('Invalid path format: potential security risk');
   }
 
   const cleanPath = path.replace(/^\/+/, '');
   const isAllowed = CONFIG.ALLOWED_PATHS.some(allowed =>
-    cleanPath === allowed || cleanPath.startsWith(`${allowed}/`)
+    cleanPath === allowed || cleanPath.startsWith(`${allowed}/?`) || cleanPath.startsWith(`${allowed}&`)
   );
 
   if (!isAllowed) {
