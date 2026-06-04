@@ -57,25 +57,25 @@ class DanbooruService {
     const { retries = MAX_RETRIES, timeout = 30000, signal } = config;
     const url = this._buildUrl(danbooruPath, params);
 
-    // Cancelar request anterior si existe (para evitar race conditions)
     const requestKey = `${danbooruPath}_${JSON.stringify(params)}`;
-    if (this._pendingRequests.has(requestKey)) {
-      this._pendingRequests.get(requestKey)?.abort();
-    }
-
     const controller = new AbortController();
     this._pendingRequests.set(requestKey, controller);
 
-    // Combinar señales si se pasó una externa
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const cleanup = () => {
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      this._pendingRequests.delete(requestKey);
+    };
+
     if (signal) {
       signal.addEventListener('abort', () => controller.abort());
     }
 
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
     let lastError: Error | undefined;
 
     for (let attempt = 1; attempt <= retries; attempt++) {
+      timeoutId = setTimeout(() => controller.abort(), timeout);
       try {
         if (import.meta.env.DEV) console.log(`[API] ${danbooruPath} (attempt ${attempt}/${retries})`);
 
@@ -96,7 +96,8 @@ class DanbooruService {
 
         const data = await res.json();
 
-        // Si el proxy envuelve en { success, data, meta }, extraer data
+        cleanup();
+
         if (data && typeof data === 'object' && 'data' in data && 'success' in data) {
           return data.data as T;
         }
@@ -104,26 +105,25 @@ class DanbooruService {
         return data as T;
 
       } catch (error) {
+        clearTimeout(timeoutId);
         lastError = error instanceof Error ? error : new Error(String(error));
 
-        // No reintentar si fue cancelado por el usuario (AbortError)
         if (lastError.name === 'AbortError') {
-          this._pendingRequests.delete(requestKey);
+          cleanup();
           throw lastError;
         }
 
-        // No reintentar errores 4xx (cliente)
         if (error instanceof Error && error.message.includes('HTTP 4')) {
           break;
         }
 
         if (attempt < retries) {
-          await new Promise(r => setTimeout(r, RETRY_DELAY * attempt)); // Backoff exponencial
+          await new Promise(r => setTimeout(r, RETRY_DELAY * attempt));
         }
       }
     }
 
-    this._pendingRequests.delete(requestKey);
+    cleanup();
     throw lastError || new Error('Request failed after retries');
   }
 
@@ -226,7 +226,8 @@ class DanbooruService {
         queryKey, apiTags, filterTags, limit, page, options
       );
     } catch (error) {
-      console.error('[SmartSearch] Failed, falling back to standard:', error);
+      if (error instanceof Error && error.name === 'AbortError') throw error;
+      console.warn('[SmartSearch] Failed, falling back to standard:', error);
       return this._fetchStandard(fullTags, limit, page, options);
     }
   }
@@ -251,7 +252,7 @@ class DanbooruService {
     if (import.meta.env.DEV) console.log(`[SmartSearch START] Page ${page} (Limit ${limit}) starting at API Page ${currentApiPage}`);
 
     while (accumulated.length < limit && scannedPages < MAX_API_PAGES) {
-      if (options?.signal?.aborted) throw new Error('AbortError');
+      if (options?.signal?.aborted) throw new DOMException('The operation was aborted', 'AbortError');
 
       try {
         const posts = await this._fetchStandard(apiTags, 100, currentApiPage, options);
