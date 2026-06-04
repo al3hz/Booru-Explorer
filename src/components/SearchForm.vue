@@ -645,7 +645,7 @@ export default {
   top: 20px;
   align-self: flex-start;
   max-height: calc(100vh - 40px);
-  width: 300px;
+  width: 260px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
   overflow: visible;
@@ -683,7 +683,7 @@ export default {
 /* Enfoque simple - Eliminar complejidad */
 .title {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   background: linear-gradient(90deg, #fff, #a78bfa);
   -webkit-background-clip: text;
@@ -727,24 +727,24 @@ export default {
 }
 
 .sidebar-header {
-  padding: 16px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  min-height: 60px;
+  min-height: 44px;
 }
 
 /* 5. Asegurar que el contenido también tenga timing sincronizado */
 .sidebar-content {
-  padding: 20px;
+  padding: 12px;
   overflow-y: auto;
   overflow-x: hidden;
   opacity: 1;
   transform: translateY(0);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex: 1;
-  max-height: calc(100vh - 140px);
+  max-height: calc(100vh - 90px);
 }
 
 .sidebar-content.faded {
@@ -799,7 +799,7 @@ export default {
   text-transform: uppercase;
   letter-spacing: 1px;
   color: #64748b;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   font-weight: 700;
 }
 
@@ -809,7 +809,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  padding: 12px 0;
+  padding: 8px 0;
   user-select: none;
   transition: color 0.2s;
 }
@@ -850,7 +850,7 @@ export default {
 .open .accordion-content {
   grid-template-rows: 1fr;
   opacity: 1;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .accordion-content > div {
@@ -862,8 +862,8 @@ export default {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 4px;
+  margin-bottom: 6px;
 }
 
 .section-label-wrapper .section-label {
@@ -906,7 +906,7 @@ export default {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(167, 139, 250, 0.3);
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   font-size: 11px;
   color: #e2e8f0;
   white-space: nowrap;
@@ -917,7 +917,7 @@ export default {
 
 .input-wrapper {
   position: relative;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .search-wrapper {
@@ -926,14 +926,14 @@ export default {
 
 .search-input {
   width: 100%;
-  padding: 12px 45px 12px 12px; /* Extra padding for button */
+  padding: 8px 40px 8px 10px;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px; /* More rounded */
+  border-radius: 10px;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s;
-  height: 48px;
+  height: 38px;
 }
 
 .search-input:focus {
@@ -945,11 +945,11 @@ export default {
 
 .search-btn-icon {
   position: absolute;
-  right: 6px;
+  right: 4px;
   top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border: none;
   background: rgba(167, 139, 250, 0.1);
   color: #a78bfa;
@@ -958,14 +958,14 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   transition: all 0.2s;
 }
 
 .search-btn-icon:hover:not(:disabled) {
   background: #a78bfa;
   color: white;
-  transform: translateY(-50%) scale(1.05); /* Keep vertical centering */
+  transform: translateY(-50%) scale(1.05);
 }
 
 .search-btn-icon:active:not(:disabled) {
@@ -995,7 +995,7 @@ export default {
 .hint {
   font-size: 10px;
   color: #64748b;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .limit-input-wrapper {
@@ -1039,7 +1039,7 @@ export default {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(167, 139, 250, 0.3);
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   font-size: 11px;
   color: #e2e8f0;
   white-space: nowrap;
@@ -1071,11 +1071,11 @@ export default {
 
 .action-btn {
   width: 100%;
-  padding: 10px;
-  border-radius: 8px;
+  padding: 8px;
+  border-radius: 6px;
   border: none;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1089,7 +1089,7 @@ export default {
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   text-transform: uppercase;
   letter-spacing: 1px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1108,8 +1108,8 @@ export default {
 
 .btn-loader {
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   border-top-color: #fff;
@@ -1119,18 +1119,18 @@ export default {
 .divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.05);
-  margin: 20px 0;
+  margin: 12px 0;
 }
 
 .option-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .opt-text {
-  font-size: 13px;
+  font-size: 12px;
   color: #cbd5e1;
 }
 
@@ -1141,8 +1141,8 @@ export default {
 }
 
 .limit-input {
-  width: 60px;
-  padding: 6px;
+  width: 55px;
+  padding: 4px 6px;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
@@ -1152,8 +1152,8 @@ export default {
 }
 
 .rating-select {
-  width: 140px;
-  padding: 6px;
+  width: 130px;
+  padding: 4px 6px;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
@@ -1167,8 +1167,8 @@ export default {
 }
 
 .popular-section {
-  margin-top: 25px;
-  padding-top: 20px;
+  margin-top: 16px;
+  padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -1176,7 +1176,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .shuffle-btn {
@@ -1184,7 +1184,7 @@ export default {
   border: none;
   color: #a78bfa;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   padding: 0;
   transition: transform 0.3s;
 }
@@ -1196,12 +1196,12 @@ export default {
 .tags-cloud {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px;
 }
 
 .tag-chip {
-  font-size: 13px; /* Increased from 12px */
-  padding: 5px 10px; /* Increased from 4px 8px */
+  font-size: 12px;
+  padding: 3px 8px;
   border-radius: 6px;
   cursor: pointer;
   background: rgba(255, 255, 255, 0.03);
@@ -1233,10 +1233,10 @@ export default {
   border: 1px solid rgba(167, 139, 250, 0.2);
   border-radius: 8px;
   margin-top: 4px;
-  padding: 4px 0;
+  padding: 2px 0;
   list-style: none;
   z-index: 1000;
-  max-height: 250px;
+  max-height: 200px;
   overflow-y: auto;
   overflow-x: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
@@ -1261,10 +1261,10 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center; /* Center vertically */
-  padding: 8px 12px;
+  padding: 6px 10px;
   cursor: pointer;
   transition: background 0.1s;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .suggestion-item:hover,
@@ -1376,9 +1376,9 @@ export default {
     height: auto !important;
     display: flex !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-    padding: 16px !important;
+    padding: 10px 14px !important;
     margin: 0 !important;
-    min-height: 60px !important;
+    min-height: 44px !important;
     flex-shrink: 0 !important;
   }
 
@@ -1393,10 +1393,10 @@ export default {
     transition: none !important;
 
     /* Layout */
-    height: calc(100% - 60px); /* 100% menos el header */
+    height: calc(100% - 44px);
     max-height: none !important;
-    padding: 20px !important;
-    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+    padding: 12px !important;
+    padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
     display: flex !important;
     flex-direction: column !important;
     overflow-y: auto !important;
@@ -1418,7 +1418,7 @@ export default {
     visibility: visible !important;
     pointer-events: none !important; /* Solo desactivar clicks durante animación */
     max-height: none !important;
-    padding: 20px !important;
+    padding: 12px !important;
     margin: 0 !important;
     overflow: hidden !important;
     transition: none !important;
@@ -1428,7 +1428,7 @@ export default {
   .actions-section {
     position: relative;
     flex-shrink: 0;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
 
   .actions-section .accordion-header {
@@ -1451,13 +1451,13 @@ export default {
 
   /* Asegurar que ocupe espacio mínimo necesario */
   .actions-grid {
-    min-height: 120px;
+    min-height: 100px;
   }
 
   /* El último elemento empuja hacia abajo */
   .actions-section:last-child {
     margin-top: auto;
-    padding-bottom: 10px;
+    padding-bottom: 6px;
   }
 
   /* === TÍTULO Y BOTÓN === */
@@ -1508,7 +1508,7 @@ export default {
 .loading-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px;
 }
 
 .tag-skeleton {
@@ -1539,7 +1539,7 @@ export default {
 
 .select-trigger {
   width: 100%;
-  padding: 8px 12px;
+  padding: 6px 10px;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
@@ -1578,15 +1578,15 @@ export default {
   border: 1px solid rgba(167, 139, 250, 0.2);
   border-radius: 8px;
   margin-top: 4px;
-  padding: 4px;
+  padding: 2px;
   list-style: none;
   z-index: 1000;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .custom-option {
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 6px 10px;
+  font-size: 12px;
   color: #cbd5e1;
   cursor: pointer;
   border-radius: 6px;
@@ -1626,10 +1626,10 @@ export default {
 
 /* Time Range Selector */
 .time-range-selector {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .range-label {
@@ -1655,7 +1655,7 @@ export default {
   color: #64748b;
   font-size: 10px;
   font-weight: 600;
-  padding: 6px 0;
+  padding: 4px 0;
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.2s;
@@ -1677,7 +1677,7 @@ export default {
 .actions-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
 .actions-grid .quick-action-btn:last-child {
@@ -1694,12 +1694,12 @@ export default {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  padding: 10px 4px;
+  padding: 6px 4px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   transition: all 0.2s;
   color: #cbd5e1;
 }
@@ -1723,7 +1723,7 @@ export default {
 }
 
 .action-icon {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .action-label {
