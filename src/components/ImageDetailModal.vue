@@ -773,6 +773,8 @@ export default {
       }
     };
 
+    const PLACEHOLDER_IMAGE = "/noDisplay.png";
+
     const loading = ref(true);
 
     // Safety timeout for loading
@@ -893,13 +895,12 @@ export default {
     };
 
     const handleImageError = (e) => {
-      imageReady.value = true; // Treat error as ready to show fallback
+      imageReady.value = true;
       checkLoading();
-      loading.value = false; // Ensure fallback shows
+      loading.value = false;
       const target = e.target;
-      if (target) {
-        // Simple fallback or hide
-        target.style.opacity = "0.5";
+      if (target && !target.src?.includes(PLACEHOLDER_IMAGE)) {
+        target.src = PLACEHOLDER_IMAGE;
       }
     };
 
@@ -1022,6 +1023,9 @@ export default {
           if (loading.value) {
             console.warn("Content loading timed out - forcing display");
             loading.value = false;
+            if (imageElement.value) {
+              imageElement.value.src = PLACEHOLDER_IMAGE;
+            }
           }
         }, 5000);
 

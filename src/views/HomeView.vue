@@ -89,7 +89,7 @@
       <ImageDetailModal
         v-if="selectedPost"
         :post="selectedPost"
-        @close="selectedPost = null"
+        @close="closeModal"
         @next="navigatePost(1)"
         @prev="navigatePost(-1)"
         @search-tag="handleTagSearch"
@@ -538,6 +538,17 @@ const openModal = (post) => {
   isRandomMode.value = false;
   selectedPost.value = post;
   lastListPost.value = post;
+  history.pushState(null, "");
+};
+
+const closeModal = () => {
+  selectedPost.value = null;
+};
+
+const handlePopState = () => {
+  if (selectedPost.value) {
+    selectedPost.value = null;
+  }
 };
 
 const navigatePost = async (direction) => {
@@ -661,10 +672,8 @@ let removeAfterEach = null;
 onMounted(() => {
   window.addEventListener("keydown", handleKeydown);
   window.addEventListener("scroll", handleScroll, { passive: true });
+  window.addEventListener("popstate", handlePopState);
 
-  // La llamada a fetchRatingCounts(normalized) se maneja en el watcher con immediate: true
-
-  // Mantener el scroll automático después de navegación (del segundo código)
   removeAfterEach = router.afterEach(() => {
     nextTick(() => {
       if (!selectedPost.value) {
@@ -677,6 +686,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener("keydown", handleKeydown);
   window.removeEventListener("scroll", handleScroll);
+  window.removeEventListener("popstate", handlePopState);
   if (removeAfterEach) removeAfterEach();
   clearTimeout(scrollTimeout);
 });
