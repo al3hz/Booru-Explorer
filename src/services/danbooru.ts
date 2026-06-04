@@ -14,6 +14,7 @@ import type {
 const API_BASE = '/api/danbooru';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
+export const BAN_IMAGE = '/ban.png';
 
 interface RequestConfig {
   retries?: number;
@@ -152,16 +153,16 @@ class DanbooruService {
     options?: { signal?: AbortSignal }
   ): Promise<DanbooruPost[]> {
     const normalizedTags = this._normalizeTags(tags);
-    // Regex to split by space ignoring parentheses
     const tagList = normalizedTags.match(/(?:[^\s(]+|\([^)]*\))+/g) || [];
 
-    // Si hay pocos tags, búsqueda estándar directa
+    let posts: DanbooruPost[];
     if (tagList.length <= 2) {
-      return this._fetchStandard(normalizedTags, limit, page, options);
+      posts = await this._fetchStandard(normalizedTags, limit, page, options);
+    } else {
+      posts = await this._smartSearch(normalizedTags, tagList, limit, page, options);
     }
 
-    // Smart Search: > 2 tags
-    return this._smartSearch(normalizedTags, tagList, limit, page, options);
+    return posts;
   }
 
   private _normalizeTags(tags: string): string {

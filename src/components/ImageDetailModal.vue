@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-backdrop">
+  <div class="modal-backdrop" @click="triggerArrows" @touchstart="triggerArrows">
     <!-- Fullscreen Zoom Overlay (Mobile) -->
     <transition name="fade">
       <div
@@ -39,7 +39,7 @@
     <!-- Nav Buttons -->
     <transition name="fade-arrow">
       <button
-        v-if="canGoPrev && !isMobileFullscreen"
+        v-if="canGoPrev && showArrows && !isMobileFullscreen"
         class="nav-arrow prev"
         @click.stop="triggerPrev"
         title="Previous image"
@@ -150,6 +150,7 @@
                   :alt="`Post ${post.id}`"
                   class="detail-image"
                   ref="imageElement"
+                  referrerpolicy="no-referrer"
                   @load="onImageLoad"
                   @error="handleImageError"
                   @click="toggleMobileFullscreen"
@@ -221,6 +222,9 @@
                 >
                 <span v-if="post.is_flagged" class="status-badge flagged"
                   >FLAGGED</span
+                >
+                <span v-if="post.is_banned" class="status-badge banned"
+                  >BANNED</span
                 >
               </div>
             </div>
@@ -364,6 +368,10 @@
                 >
               </div>
               <!-- Parent/Children removed as requested -->
+            </div>
+
+            <div v-if="post.is_banned" class="banned-notice">
+              This post has been banned from Danbooru and is no longer available on the site.
             </div>
 
             <!-- Artist Commentary -->
@@ -534,7 +542,7 @@
 
     <transition name="fade-arrow">
       <button
-        v-if="canGoNext && !isMobileFullscreen"
+        v-if="canGoNext && showArrows && !isMobileFullscreen"
         class="nav-arrow next"
         @click.stop="triggerNext"
         title="Next image"
@@ -613,7 +621,10 @@ export default {
 
     const notes = computed(() => notesData.value || []);
     const commentary = computed(() => commentaryData.value);
-    const familyPosts = computed(() => familyData.value || []);
+    const familyPosts = computed(() => {
+      if (!props.post.parent_id && !props.post.has_children) return [];
+      return familyData.value || [];
+    });
     const comments = computed(
       () => commentsData.value?.pages.flatMap((p) => p) || [],
     );
@@ -774,6 +785,7 @@ export default {
     };
 
     const PLACEHOLDER_IMAGE = "/noDisplay.png";
+    const BAN_IMAGE = "/ban.png";
 
     const loading = ref(true);
 
@@ -899,7 +911,18 @@ export default {
       checkLoading();
       loading.value = false;
       const target = e.target;
-      if (target && !target.src?.includes(PLACEHOLDER_IMAGE)) {
+      if (!target) return;
+      // Intentar fallbacks antes del placeholder
+      const currentSrc = target.currentSrc || target.src;
+      if (currentSrc === props.post.file_url && props.post.large_file_url) {
+        target.src = props.post.large_file_url;
+        return;
+      }
+      if ((currentSrc === props.post.large_file_url || currentSrc === props.post.file_url) && props.post.preview_file_url) {
+        target.src = props.post.preview_file_url;
+        return;
+      }
+      if (!currentSrc?.includes(PLACEHOLDER_IMAGE)) {
         target.src = PLACEHOLDER_IMAGE;
       }
     };
@@ -960,13 +983,14 @@ export default {
 
     // Smart media source selection
     const mediaSource = computed(() => {
+      if (props.post.is_banned) return BAN_IMAGE;
       // For ZIP files (Ugoira animations), browsers can't play the ZIP directly
       // Use the converted video (large_file_url) instead
       if (props.post.file_ext === "zip") {
-        return props.post.large_file_url || props.post.file_url || "";
+        return props.post.large_file_url || props.post.file_url || PLACEHOLDER_IMAGE;
       }
       // For everything else, prioritize original quality
-      return props.post.file_url || props.post.large_file_url || "";
+      return props.post.file_url || props.post.large_file_url || PLACEHOLDER_IMAGE;
     });
 
     const isVideo = computed(() => {
@@ -1142,6 +1166,19 @@ export default {
       handleSwipe();
     };
 
+    // Auto-hide arrows on mobile (show briefly on interaction)
+    const showArrows = ref(window.innerWidth > 1024);
+    let arrowTimeout = null;
+
+    const triggerArrows = () => {
+      if (window.innerWidth > 1024) return;
+      showArrows.value = true;
+      if (arrowTimeout) clearTimeout(arrowTimeout);
+      arrowTimeout = setTimeout(() => {
+        showArrows.value = false;
+      }, 1500);
+    };
+
     // Mobile Fullscreen & Zoom Logic
     const isMobileFullscreen = ref(false);
     const imageScale = ref(1);
@@ -1265,6 +1302,7 @@ export default {
 
     onUnmounted(() => {
       if (loadingTimeout) clearTimeout(loadingTimeout);
+      if (arrowTimeout) clearTimeout(arrowTimeout);
       window.removeEventListener("keydown", handleKeydown);
       document.body.style.overflow = "";
       if (clickOutsideCleanup) {
@@ -1309,6 +1347,8 @@ export default {
       transitionName,
       canGoNext,
       canGoPrev,
+      showArrows,
+      triggerArrows,
       triggerNext,
       triggerPrev,
       handleBannerClick,
@@ -1839,6 +1879,10 @@ export default {
   background: rgba(147, 51, 234, 0.9);
   color: #fff;
 }
+.status-badge.banned {
+  background: rgba(127, 29, 29, 0.95);
+  color: #fff;
+}
 
 .header-actions {
   display: flex;
@@ -1918,6 +1962,17 @@ export default {
   font-size: 14px;
   color: #e2e8f0;
   font-weight: 500;
+}
+
+.banned-notice {
+  background: rgba(127, 29, 29, 0.3);
+  border: 1px solid rgba(220, 38, 38, 0.5);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #fca5a5;
+  margin-bottom: 20px;
+  line-height: 1.5;
 }
 
 .rating-pill {

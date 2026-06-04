@@ -70,6 +70,9 @@
           <span v-if="post.is_flagged" class="status-badge flagged"
             >FLAGGED</span
           >
+          <span v-if="post.is_banned" class="status-badge banned"
+            >BANNED</span
+          >
         </div>
       </div>
     </div>
@@ -200,7 +203,10 @@ const isAnimatedVideo = (post) => {
   );
 };
 
+const BAN_IMAGE = "/ban.png";
+
 const getInitialImageUrl = (post) => {
+  if (post.is_banned) return BAN_IMAGE;
   if (isAnimatedVideo(post)) {
     return (
       post.large_file_url ||
@@ -579,6 +585,9 @@ const openSource = (source) => {
 }
 .status-badge.flagged {
   background: rgba(147, 51, 234, 0.9);
+}
+.status-badge.banned {
+  background: rgba(127, 29, 29, 0.95);
 }
 
 .card-content {
