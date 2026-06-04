@@ -89,11 +89,19 @@ const CONFIG = {
     'tags.json',
     'pools.json',
     'comments.json',
+    'notes.json',
+    'artist_commentaries.json',
+    'artists.json',
+    'artist_urls.json',
+    'wiki_pages.json',
+    'autocomplete.json',
+    'media_assets.json',
+    'counts/posts.json',
     'posts',
     'tags',
     'pools',
     'comments',
-    'counts/posts.json',
+    'artists',
     'counts/posts'
   ] as const
 } as const;
@@ -172,7 +180,10 @@ const validateTargetPath = (path: string | null): AllowedPath => {
 
   const cleanPath = path.replace(/^\/+/, '');
   const isAllowed = CONFIG.ALLOWED_PATHS.some(allowed =>
-    cleanPath === allowed || cleanPath.startsWith(`${allowed}/?`) || cleanPath.startsWith(`${allowed}&`)
+    cleanPath === allowed ||
+    cleanPath.startsWith(`${allowed}/`) ||
+    cleanPath.startsWith(`${allowed}/?`) ||
+    cleanPath.startsWith(`${allowed}&`)
   );
 
   if (!isAllowed) {
