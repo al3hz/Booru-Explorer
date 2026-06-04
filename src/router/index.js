@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "../views/HomeView.vue";
+import HomeView from "@/views/HomeView.vue";
 
 // Configuración centralizada
 const APP_TITLE = "Booru Explorer";
@@ -52,7 +52,7 @@ const router = createRouter({
     {
       path: "/comments",
       name: "comments",
-      component: () => import("../views/CommentsView.vue"),
+      component: () => import("@/views/CommentsView.vue"),
       meta: {
         title: `Comments | ${APP_TITLE}`,
         transition: "slide",
@@ -63,7 +63,7 @@ const router = createRouter({
     {
       path: "/wiki/:query",
       name: "wiki",
-      component: () => import("../views/WikiView.vue"),
+      component: () => import("@/views/WikiView.vue"),
       props: true, // Pasar params como props
       meta: {
         title: `Wiki | ${APP_TITLE}`,
@@ -75,7 +75,7 @@ const router = createRouter({
     {
       path: "/pools",
       name: "pools",
-      component: () => import("../views/PoolsView.vue"),
+      component: () => import("@/views/PoolsView.vue"),
       meta: {
         title: `Pools | ${APP_TITLE}`,
         transition: "slide",
@@ -86,7 +86,7 @@ const router = createRouter({
     {
       path: "/pools/:id",
       name: "pool-detail",
-      component: () => import("../views/PoolDetailView.vue"),
+      component: () => import("@/views/PoolDetailView.vue"),
       props: true, // Pasar params como props
       meta: {
         title: `Pool | ${APP_TITLE}`,
@@ -99,7 +99,7 @@ const router = createRouter({
     {
       path: "/:pathMatch(.*)*",
       name: "not-found",
-      component: () => import("../views/NotFoundView.vue"),
+      component: () => import("@/views/NotFoundView.vue"),
       meta: {
         title: `Page Not Found | ${APP_TITLE}`,
         transition: "fade",

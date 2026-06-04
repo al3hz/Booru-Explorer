@@ -1,4 +1,4 @@
-import DanbooruService from '../services/danbooru';
+import DanbooruService from '@/services/danbooru';
 
 export function useWikiSearch() {
   const fetchRecentWikiPages = async (limit = 20) => {

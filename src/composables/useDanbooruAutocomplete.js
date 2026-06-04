@@ -1,6 +1,6 @@
 // composables/useDanbooruAutocomplete.js
 import { ref, computed } from "vue";
-import DanbooruService from "../services/danbooru";
+import DanbooruService from "@/services/danbooru";
 
 /**
  * Composable para sistema de autocomplete de tags de Danbooru.

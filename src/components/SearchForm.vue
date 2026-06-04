@@ -274,9 +274,9 @@
 <script>
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { useDanbooruAutocomplete } from "../composables/useDanbooruAutocomplete";
-import { useDanbooruTrending } from "../composables/useDanbooruTrending";
-import { useLayout } from "../composables/useLayout";
+import { useDanbooruAutocomplete } from "@/composables/useDanbooruAutocomplete";
+import { useDanbooruTrending } from "@/composables/useDanbooruTrending";
+import { useLayout } from "@/composables/useLayout";
 
 export default {
   name: "SearchForm",

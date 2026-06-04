@@ -237,10 +237,10 @@
 <script>
 import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useDText } from "../composables/useDText";
-import ImageDetailModal from "../components/ImageDetailModal.vue";
-import { useWikiSearch } from "../composables/useWikiSearch";
-import DanbooruService from "../services/danbooru";
+import { useDText } from "@/composables/useDText";
+import ImageDetailModal from "@/components/ImageDetailModal.vue";
+import { useWikiSearch } from "@/composables/useWikiSearch";
+import DanbooruService from "@/services/danbooru";
 
 export default {
   name: "WikiView",

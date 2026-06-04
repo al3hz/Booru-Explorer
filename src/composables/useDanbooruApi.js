@@ -1,7 +1,7 @@
 // composables/useDanbooruApi.js
 import { ref, computed, watch } from "vue";
 import { useQuery, useInfiniteQuery } from "@tanstack/vue-query";
-import DanbooruService from "../services/danbooru";
+import DanbooruService from "@/services/danbooru";
 
 /**
  * Composable principal para gestión de posts de Danbooru.

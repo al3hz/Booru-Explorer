@@ -187,7 +187,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from "vue";
-import { useLayout } from "../composables/useLayout";
+import { useLayout } from "@/composables/useLayout";
 import PostCard from "./PostCard.vue";
 
 const props = defineProps({

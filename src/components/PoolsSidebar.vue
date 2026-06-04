@@ -118,7 +118,7 @@
 
 <script>
 import { ref, watch, onMounted, onUnmounted } from "vue";
-import { usePoolFilters } from "../composables/usePoolFilters";
+import { usePoolFilters } from "@/composables/usePoolFilters";
 
 export default {
   name: "PoolsSidebar",

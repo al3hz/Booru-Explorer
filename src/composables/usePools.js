@@ -1,7 +1,7 @@
 
 import { ref, computed } from 'vue';
 import { useQuery, useInfiniteQuery } from '@tanstack/vue-query';
-import DanbooruService from '../services/danbooru';
+import DanbooruService from '@/services/danbooru';
 
 // --- Pool List Logic ---
 export function usePools() {

@@ -175,12 +175,11 @@
 <script>
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { usePoolDetail } from "../composables/usePools";
-import { useDText } from "../composables/useDText";
-
-import ImageDetailModal from "../components/ImageDetailModal.vue";
-import SmartVideo from "../components/SmartVideo.vue";
-import DanbooruService from "../services/danbooru";
+import { usePoolDetail } from "@/composables/usePools";
+import { useDText } from "@/composables/useDText";
+import ImageDetailModal from "@/components/ImageDetailModal.vue";
+import SmartVideo from "@/components/SmartVideo.vue";
+import DanbooruService from "@/services/danbooru";
 
 export default {
   name: "PoolDetailView",

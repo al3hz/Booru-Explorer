@@ -132,11 +132,11 @@
 <script>
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { usePools } from "../composables/usePools";
-import { useDText } from "../composables/useDText";
-import { usePoolFilters } from "../composables/usePoolFilters";
-import SmartVideo from "../components/SmartVideo.vue";
-import PoolsSidebar from "../components/PoolsSidebar.vue";
+import { usePools } from "@/composables/usePools";
+import { useDText } from "@/composables/useDText";
+import { usePoolFilters } from "@/composables/usePoolFilters";
+import SmartVideo from "@/components/SmartVideo.vue";
+import PoolsSidebar from "@/components/PoolsSidebar.vue";
 
 export default {
   name: "PoolsView",

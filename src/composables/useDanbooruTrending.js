@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import DanbooruService from '../services/danbooru';
+import DanbooruService from '@/services/danbooru';
 
 // Global cache to persist across component mounts
 const cache = {

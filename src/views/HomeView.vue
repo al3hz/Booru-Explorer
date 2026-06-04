@@ -116,14 +116,14 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import SearchForm from "../components/SearchForm.vue";
-import PostGallery from "../components/PostGallery.vue";
-import ImageDetailModal from "../components/ImageDetailModal.vue";
-import ModeBanner from "../components/ModeBanner.vue";
-import { useDanbooruApi } from "../composables/useDanbooruApi";
-import { useRatingCounts } from "../composables/useRatingCounts";
-import { useLayout } from "../composables/useLayout";
-import DanbooruService from "../services/danbooru";
+import SearchForm from "@/components/SearchForm.vue";
+import PostGallery from "@/components/PostGallery.vue";
+import ImageDetailModal from "@/components/ImageDetailModal.vue";
+import ModeBanner from "@/components/ModeBanner.vue";
+import { useDanbooruApi } from "@/composables/useDanbooruApi";
+import { useRatingCounts } from "@/composables/useRatingCounts";
+import { useLayout } from "@/composables/useLayout";
+import DanbooruService from "@/services/danbooru";
 
 // ==========================================
 // ROUTER Y ESTADO GLOBAL
@@ -295,6 +295,7 @@ watch(
     }
 
     const tagsChanged = newTags !== appliedQuery.value;
+    const ratingChanged = oldQuery && newRating !== oldQuery.rating;
 
     if (tagsChanged) {
       appliedQuery.value = newTags;
@@ -313,16 +314,17 @@ watch(
         inputQuery.value = newTags;
       }
 
-      // FIX: Normalización mejorada soportando coma arabe (،) y coma estandar
+      if (oldQuery) {
+        await searchPosts(1, true);
+      }
+    }
+
+    if (tagsChanged || ratingChanged) {
       const normalized = newTags
         .split(/[,،\s]+/)
         .filter((t) => t.trim())
         .join(" ");
       fetchRatingCounts(normalized);
-
-      if (oldQuery && tagsChanged) {
-        await searchPosts(1, true);
-      }
     }
 
     if (oldQuery && newPage !== currentPage.value && !loading.value) {

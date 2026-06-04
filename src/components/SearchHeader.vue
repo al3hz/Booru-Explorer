@@ -71,8 +71,8 @@
 <script>
 import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
-import { useLayout } from "../composables/useLayout";
-import { usePoolFilters } from "../composables/usePoolFilters";
+import { useLayout } from "@/composables/useLayout";
+import { usePoolFilters } from "@/composables/usePoolFilters";
 import packageJson from "../../package.json";
 
 export default {

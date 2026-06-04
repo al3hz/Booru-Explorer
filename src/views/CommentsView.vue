@@ -134,8 +134,8 @@
 <script>
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import { useRouter } from "vue-router";
-import ImageDetailModal from "../components/ImageDetailModal.vue";
-import DanbooruService from "../services/danbooru";
+import ImageDetailModal from "@/components/ImageDetailModal.vue";
+import DanbooruService from "@/services/danbooru";
 
 export default {
   name: "CommentsView",

@@ -554,7 +554,7 @@ import {
   usePostFamily,
   usePostComments,
 } from "../composables/useDanbooruApi";
-import { useDText } from "../composables/useDText";
+import { useDText } from "@/composables/useDText";
 import VideoPlayer from "./VideoPlayer.vue";
 
 export default {

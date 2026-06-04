@@ -126,7 +126,7 @@
 
 <script>
 import { ref, computed, onMounted } from "vue";
-import DanbooruService from "../services/danbooru";
+import DanbooruService from "@/services/danbooru";
 
 export default {
   name: "ArtistInfoModal",
