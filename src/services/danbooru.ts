@@ -262,12 +262,18 @@ class DanbooruService {
     const accumulated: DanbooruPost[] = [];
     // Safety break to prevent infinite loops
     const MAX_API_PAGES = 15;
+    const SMART_TIMEOUT_MS = 15000;
+    const startTime = Date.now();
     let scannedPages = 0;
 
     if (import.meta.env.DEV) console.log(`[SmartSearch START] Page ${page} (Limit ${limit}) starting at API Page ${currentApiPage}`);
 
     while (accumulated.length < limit && scannedPages < MAX_API_PAGES) {
       if (options?.signal?.aborted) throw new DOMException('The operation was aborted', 'AbortError');
+      if (Date.now() - startTime > SMART_TIMEOUT_MS) {
+        if (import.meta.env.DEV) console.log(`[SmartSearch] Timeout reached after ${scannedPages} pages. Returning ${accumulated.length} results.`);
+        break;
+      }
 
       try {
         const posts = await this._fetchStandard(apiTags, 100, currentApiPage, options);

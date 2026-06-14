@@ -42,7 +42,7 @@
               <!-- Left: Total Count -->
               <div class="rating-bar-left">
                 <span v-if="ratingCounts.all > 0" class="total-badge">
-                  Total: {{ formatCount(ratingCounts.all) }}
+                  Total: {{ formattedCounts.all }}
                 </span>
               </div>
 
@@ -51,22 +51,22 @@
                 <div class="rating-stat general" title="General">
                   <span class="r-dot"></span>
                   <span class="r-label">General</span>
-                  <span class="r-count">{{ formatCount(ratingCounts.g) }}</span>
+                  <span class="r-count">{{ formattedCounts.g }}</span>
                 </div>
                 <div class="rating-stat safe" title="Safe">
                   <span class="r-dot"></span>
                   <span class="r-label">Safe</span>
-                  <span class="r-count">{{ formatCount(ratingCounts.s) }}</span>
+                  <span class="r-count">{{ formattedCounts.s }}</span>
                 </div>
                 <div class="rating-stat questionable" title="Questionable">
                   <span class="r-dot"></span>
                   <span class="r-label">Questionable</span>
-                  <span class="r-count">{{ formatCount(ratingCounts.q) }}</span>
+                  <span class="r-count">{{ formattedCounts.q }}</span>
                 </div>
                 <div class="rating-stat explicit" title="Explicit">
                   <span class="r-dot"></span>
                   <span class="r-label">Explicit</span>
-                  <span class="r-count">{{ formatCount(ratingCounts.e) }}</span>
+                  <span class="r-count">{{ formattedCounts.e }}</span>
                 </div>
               </div>
 
@@ -241,6 +241,17 @@ const isLoadingCounts = computed(() => {
     (k) => (counts[k] || 0) > 0,
   );
   return !hasAnyCount;
+});
+
+const formattedCounts = computed(() => {
+  const c = props.ratingCounts || {};
+  return {
+    all: formatCount(c.all),
+    g: formatCount(c.g),
+    s: formatCount(c.s),
+    q: formatCount(c.q),
+    e: formatCount(c.e),
+  };
 });
 
 // Masonry Logic
