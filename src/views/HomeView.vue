@@ -19,6 +19,7 @@
         :infinite-scroll="infiniteScroll"
         :masonry-mode="isMasonryMode"
         :active-extra-action="activeExtraAction"
+        :loading-random="loadingRandom"
         @update:search-query="inputQuery = $event"
         @update:limit="updateLimit"
         @update:rating-filter="updateRatingFilter"
@@ -140,6 +141,7 @@ const appliedQuery = ref("");
 const selectedPost = ref(null);
 const error = ref(null);
 const isRandomMode = ref(false);
+const loadingRandom = ref(false);
 const isLoadingNextPage = ref(false);
 const showScrollToTop = ref(false);
 
@@ -205,25 +207,30 @@ const {
 // ==========================================
 const showSearchTitle = computed(() => {
   if (!appliedQuery.value) return false;
-  const excluded = ["status:deleted", "order:score", "order:favcount"];
+  const excluded = ["status:deleted", "order:score", "order:favcount", "order:rank", "order:change", "order:comment", "order:mpixels"];
   return !excluded.some((tag) => appliedQuery.value.includes(tag));
 });
 
 const currentRangeFriendlyName = computed(() => {
   const q = appliedQuery.value;
-  if (q.includes("age:<1d")) return "day";
-  if (q.includes("age:<1w")) return "week";
-  if (q.includes("age:<1month") || q.includes("age:<1m")) return "month";
-  if (q.includes("age:<1y")) return "year";
+  const m = q.match(/age:<(\d+)([dwm]|month|y)\b/);
+  if (m) {
+    const map = { d: 'day', w: 'week', m: 'month', month: 'month', y: 'year' };
+    return map[m[2]] || 'all time';
+  }
   return "all time";
 });
 
 const activeExtraAction = computed(() => {
+  if (isRandomMode.value) return "random";
   const q = appliedQuery.value;
   if (q.includes("status:deleted")) return "deleted";
   if (q.includes("order:score")) return "most-liked";
   if (q.includes("order:favcount")) return "most-favorited";
   if (q.includes("order:rank")) return "hot";
+  if (q.includes("order:change")) return "changed";
+  if (q.includes("order:comment")) return "commented";
+  if (q.includes("order:mpixels")) return "largest";
   return null;
 });
 
@@ -251,6 +258,21 @@ const modeBannerConfig = computed(() => {
       icon: "🔥",
       text: `Showing trending posts of the ${currentRangeFriendlyName.value}`,
       type: "trending",
+    },
+    "order:change": {
+      icon: "🔄",
+      text: `Showing most changed posts of the ${currentRangeFriendlyName.value}`,
+      type: "changed",
+    },
+    "order:comment": {
+      icon: "💬",
+      text: `Showing most commented posts of the ${currentRangeFriendlyName.value}`,
+      type: "commented",
+    },
+    "order:mpixels": {
+      icon: "📐",
+      text: `Showing largest posts of the ${currentRangeFriendlyName.value}`,
+      type: "largest",
     },
   };
 
@@ -314,6 +336,9 @@ watch(
         "order:score",
         "order:favcount",
         "order:rank",
+        "order:change",
+        "order:comment",
+        "order:mpixels",
       ].some((tag) => newTags.includes(tag));
 
       if (isSpecialMode) {
@@ -441,6 +466,9 @@ const handleSearch = async (overrideQuery) => {
     "order:score",
     "order:favcount",
     "order:rank",
+    "order:change",
+    "order:comment",
+    "order:mpixels",
   ].some((tag) => finalQuery.includes(tag));
 
   if (isSpecialMode) {
@@ -495,6 +523,7 @@ const handleAction = async (action, timeRange) => {
 
   if (action === "random") {
     isRandomMode.value = true;
+    loadingRandom.value = true;
     inputQuery.value = "";
     try {
       const post = await DanbooruService.getRandomPost();
@@ -502,6 +531,8 @@ const handleAction = async (action, timeRange) => {
     } catch (e) {
       console.error("Error fetching random post", e);
       error.value = "Failed to load random post";
+    } finally {
+      loadingRandom.value = false;
     }
     return;
   }
@@ -511,6 +542,9 @@ const handleAction = async (action, timeRange) => {
     "most-liked": `order:score ${ageFilter}`,
     "most-favorited": `order:favcount ${ageFilter}`,
     hot: `order:rank ${ageFilter}`,
+    changed: `order:change ${ageFilter}`,
+    commented: `order:comment ${ageFilter}`,
+    largest: `order:mpixels ${ageFilter}`,
   };
 
   const searchQuery = actionMap[action]?.trim();

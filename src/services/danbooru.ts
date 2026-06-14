@@ -12,7 +12,7 @@ import type {
 } from '../types/danbooru';
 
 const API_BASE = '/api/danbooru';
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000;
 export const BAN_IMAGE = '/ban.png';
 
@@ -124,6 +124,7 @@ class DanbooruService {
         if (
           error instanceof Error &&
           (error.message.includes('HTTP 4') ||
+           error.message.includes('HTTP 5') ||
            error.message.includes('database timed out') ||
            error.message.includes('QueryCanceled'))
         ) {

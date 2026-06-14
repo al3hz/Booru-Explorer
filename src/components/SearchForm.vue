@@ -247,12 +247,43 @@
               </button>
               <button
                 class="quick-action-btn"
-                :class="{ active: activeExtraAction === 'random' }"
-                @click="$emit('trigger-action', 'random')"
+                :class="{
+                  active: activeExtraAction === 'random',
+                  loading: loadingRandom,
+                }"
+                @click="onExtraAction('random')"
                 title="Random Post"
+                :disabled="loadingRandom"
               >
-                <span class="action-icon">🎲</span>
-                <span class="action-label">Random</span>
+                <span class="action-icon">{{ loadingRandom ? '⏳' : '🎲' }}</span>
+                <span class="action-label">{{ loadingRandom ? 'Loading' : 'Random' }}</span>
+              </button>
+              <button
+                class="quick-action-btn"
+                :class="{ active: activeExtraAction === 'changed' }"
+                @click="onExtraAction('changed')"
+                title="Most Changed"
+              >
+                <span class="action-icon">🔄</span>
+                <span class="action-label">Changed</span>
+              </button>
+              <button
+                class="quick-action-btn"
+                :class="{ active: activeExtraAction === 'commented' }"
+                @click="onExtraAction('commented')"
+                title="Most Commented"
+              >
+                <span class="action-icon">💬</span>
+                <span class="action-label">Comments</span>
+              </button>
+              <button
+                class="quick-action-btn"
+                :class="{ active: activeExtraAction === 'largest' }"
+                @click="onExtraAction('largest')"
+                title="Largest Resolution"
+              >
+                <span class="action-icon">📐</span>
+                <span class="action-label">Largest</span>
               </button>
               <button
                 class="quick-action-btn"
@@ -290,6 +321,7 @@ export default {
     infiniteScroll: { type: Boolean, default: false },
     masonryMode: { type: Boolean, default: false },
     activeExtraAction: { type: String, default: null },
+    loadingRandom: { type: Boolean, default: false },
   },
   emits: [
     "update:search-query",
@@ -323,30 +355,19 @@ export default {
     const syncStateFromRoute = () => {
       const tags = route.query.tags || "";
 
-      // Sync Rating from URL logic removed to prevent overwriting 'general' default
-
-      // Sync Time Range
-      if (tags.includes("age:<1d")) selectedTimeRange.value = "day";
-      else if (tags.includes("age:<1w")) selectedTimeRange.value = "week";
-      else if (tags.includes("age:<1month") || tags.includes("age:<1m"))
-        selectedTimeRange.value = "month";
-      else if (tags.includes("age:<1y")) selectedTimeRange.value = "year";
-      else if (tags.includes("age:<")) {
-        /* fallback for unknown age */
+      const ageMatch = tags.match(/age:<(\d+)([dwm]|month|y)\b/);
+      if (ageMatch) {
+        const unit = ageMatch[2];
+        const map = { d: 'day', w: 'week', m: 'month', month: 'month', y: 'year' };
+        selectedTimeRange.value = map[unit] || 'month';
+      } else if (
+        /order:(?:score|favcount|rank|change|comment|mpixels)|status:deleted/.test(tags)
+      ) {
+        selectedTimeRange.value = "all";
       } else {
-        if (
-          tags.includes("order:score") ||
-          tags.includes("order:favcount") ||
-          tags.includes("status:deleted") ||
-          tags.includes("order:rank")
-        ) {
-          selectedTimeRange.value = "all";
-        } else {
-          selectedTimeRange.value = "month";
-        }
+        selectedTimeRange.value = "month";
       }
 
-      // Auto-open Extra section if it's active
       if (props.activeExtraAction) activeSection.value = "extra";
     };
 
@@ -1680,14 +1701,21 @@ export default {
   gap: 6px;
 }
 
-.actions-grid .quick-action-btn:last-child {
-  grid-column: 1 / -1;
-  background: rgba(167, 139, 250, 0.1); /* Slight highlight */
-  border-color: rgba(167, 139, 250, 0.2);
+.quick-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
-.actions-grid .quick-action-btn:last-child:hover {
-  background: rgba(167, 139, 250, 0.2);
+.quick-action-btn.loading {
+  background: rgba(167, 139, 250, 0.15);
+  border-color: rgba(167, 139, 250, 0.3);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .quick-action-btn {
