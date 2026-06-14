@@ -121,7 +121,7 @@ import PostGallery from "@/components/PostGallery.vue";
 import ImageDetailModal from "@/components/ImageDetailModal.vue";
 import ModeBanner from "@/components/ModeBanner.vue";
 import { useDanbooruApi } from "@/composables/useDanbooruApi";
-import { useRatingCounts } from "@/composables/useRatingCounts";
+import { useRatingCountsQuery } from "@/composables/useRatingCounts";
 import { useLayout } from "@/composables/useLayout";
 import DanbooruService from "@/services/danbooru";
 
@@ -193,11 +193,12 @@ watch(apiError, (val) => {
   }
 });
 
+const ratingTags = ref("");
+
 const {
   ratingCounts,
-  fetchRatingCounts,
-  cleanup: cleanupRatingCounts,
-} = useRatingCounts();
+  isLoading: countsLoading,
+} = useRatingCountsQuery(ratingTags);
 
 // ==========================================
 // COMPUTED PROPERTIES
@@ -331,7 +332,7 @@ watch(
         .split(/[,،\s]+/)
         .filter((t) => t.trim())
         .join(" ");
-      fetchRatingCounts(normalized);
+      ratingTags.value = normalized;
     }
 
     if (oldQuery && newPage !== currentPage.value && !loading.value) {
@@ -697,10 +698,6 @@ onUnmounted(() => {
   if (removeAfterEach) removeAfterEach();
   clearTimeout(scrollTimeout);
 });
-
-if (typeof cleanupRatingCounts === "function") {
-  cleanupRatingCounts();
-}
 </script>
 
 <style scoped>

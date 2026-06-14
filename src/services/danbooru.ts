@@ -416,7 +416,7 @@ class DanbooruService {
     return this._fetch<DanbooruPost>('posts/random.json', {}, options);
   }
 
-  async getPostCount(tags: string): Promise<number> {
+  async getPostCount(tags: string, signal?: AbortSignal): Promise<number> {
     const cleanTags = tags.trim();
     const isSingleTag = /^[a-zA-Z0-9_().]+$/.test(cleanTags);
 
@@ -424,10 +424,10 @@ class DanbooruService {
       if (isSingleTag) {
         const data = await this._fetch<DanbooruTag[]>('tags.json', {
           'search[name]': cleanTags
-        });
+        }, { signal });
         return data?.[0]?.post_count || 0;
       } else {
-        const data = await this._fetch<{ counts: PostCounts }>('counts/posts.json', { tags });
+        const data = await this._fetch<{ counts: PostCounts }>('counts/posts.json', { tags }, { signal });
         return data?.counts?.posts || 0;
       }
     } catch (error) {
