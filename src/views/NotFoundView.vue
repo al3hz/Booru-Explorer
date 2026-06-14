@@ -62,9 +62,7 @@ import { useRoute, useRouter } from "vue-router";
 const route = useRoute();
 const router = useRouter();
 
-// Estados reactivos
 const stats = ref(true);
-const showRefresh = ref(false);
 
 // Computed properties
 const requestedPath = computed(() => route.fullPath);
@@ -91,19 +89,7 @@ const goHome = () => {
   router.push("/");
 };
 
-// Verificar si es apropiado mostrar refresh
-const checkRefreshNeeded = () => {
-  if (performance && performance.timing) {
-    const loadTime =
-      performance.timing.loadEventEnd - performance.timing.navigationStart;
-    showRefresh.value = loadTime > 30000;
-  }
-};
 
-// Efectos
-onMounted(() => {
-  checkRefreshNeeded();
-});
 </script>
 
 <style scoped>

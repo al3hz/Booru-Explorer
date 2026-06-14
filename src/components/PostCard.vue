@@ -420,7 +420,7 @@ const openSource = (source) => {
     new URL(source);
     window.open(source, "_blank", "noopener,noreferrer");
   } catch {
-    console.log("Source no es una URL válida:", source);
+    if (import.meta.env.DEV) console.log("Source no es una URL válida:", source);
   }
 };
 </script>

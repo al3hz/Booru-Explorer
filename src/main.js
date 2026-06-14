@@ -221,7 +221,7 @@ app.config.warnHandler = (msg, instance, trace) => {
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (const registration of registrations) {
-      console.log("[SW] Desregistrando Service Worker:", registration);
+      if (import.meta.env.DEV) console.log("[SW] Desregistrando Service Worker:", registration);
       registration.unregister();
     }
   });

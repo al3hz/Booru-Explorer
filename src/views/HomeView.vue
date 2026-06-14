@@ -326,7 +326,7 @@ watch(
       }
     }
 
-    if (tagsChanged || ratingChanged) {
+    if (tagsChanged || ratingChanged || (!oldQuery && newRating !== undefined)) {
       const normalized = newTags
         .split(/[,،\s]+/)
         .filter((t) => t.trim())
@@ -532,7 +532,7 @@ const handleAction = async (action, timeRange) => {
 };
 
 const handleRefresh = async () => {
-  console.log("[HomeView] Refreshing gallery...");
+  if (import.meta.env.DEV) console.log("[HomeView] Refreshing gallery...");
   await refreshGallery();
   window.scrollTo({ top: 0, behavior: "smooth" });
 };

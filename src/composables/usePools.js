@@ -1,5 +1,4 @@
-
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useQuery, useInfiniteQuery } from '@tanstack/vue-query';
 import DanbooruService from '@/services/danbooru';
 
@@ -126,18 +125,15 @@ export function usePoolDetail() {
   });
 
   // Auto-fetch all pages
-  import('vue').then(({ watch }) => {
-    watch([hasNextPage, postsLoadingNext, poolId], ([hasMore, isFetching, pid]) => {
-      if (pid && hasMore && !isFetching) {
-        // Small delay to prevent potential call stack issues or race conditions
-        setTimeout(() => {
-          if (hasNextPage.value && !postsLoadingNext.value) {
-            fetchNextPage();
-          }
-        }, 100);
-      }
-    }, { immediate: true });
-  });
+  watch([hasNextPage, postsLoadingNext, poolId], ([hasMore, isFetching, pid]) => {
+    if (pid && hasMore && !isFetching) {
+      setTimeout(() => {
+        if (hasNextPage.value && !postsLoadingNext.value) {
+          fetchNextPage();
+        }
+      }, 100);
+    }
+  }, { immediate: true });
 
   const poolPosts = computed(() => {
     return postsData.value?.pages?.flatMap(page => page) || [];

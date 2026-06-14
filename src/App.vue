@@ -61,7 +61,7 @@ const handleLogoClick = async () => {
     // Scroll al top suave
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    console.log("[App] Home refreshed");
+    if (import.meta.env.DEV) console.log("[App] Home refreshed");
   } else {
     // Navegar a home limpio
     await router.push({ path: "/", query: {} });
