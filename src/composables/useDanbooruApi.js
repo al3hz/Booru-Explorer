@@ -229,25 +229,23 @@ export function useDanbooruApi(
       }
     },
 
-    // FIX: Polling cada 60s solo si:
-    // - Estamos en primera página
-    // - Tenemos posts cargados
-    // - No estamos en modo random
     refetchInterval: computed(() => {
+      if (isRandomMode.value) return false;
+      if (/order:|status:deleted/.test(queryKey.value[1]?.tags || "")) return false;
       const isFirstPage = !currentPageRef?.value || currentPageRef.value === 1;
       const hasPosts = posts.value.length > 0;
-      const canPoll = isFirstPage && hasPosts && !isRandomMode.value;
-      return canPoll ? 60000 : false; // false = desactivar polling
+      return isFirstPage && hasPosts ? 120000 : false;
     }),
 
     refetchIntervalInBackground: false,
     staleTime: 0,
     gcTime: 0,
     enabled: computed(() => {
-      // Solo habilitar query si cumple condiciones
+      if (isRandomMode.value) return false;
+      if (/order:|status:deleted/.test(queryKey.value[1]?.tags || "")) return false;
       const isFirstPage = !currentPageRef?.value || currentPageRef.value === 1;
       const hasPosts = posts.value.length > 0;
-      return isFirstPage && hasPosts && !isRandomMode.value;
+      return isFirstPage && hasPosts;
     }),
   });
 

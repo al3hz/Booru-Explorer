@@ -162,17 +162,9 @@
 
         <div class="divider"></div>
 
-        <div
-          class="accordion-section popular-section"
-          :class="{ open: activeSection === 'trending' }"
-        >
-          <div class="accordion-header" @click="toggleSection('trending')">
-            <h3 class="section-label">Trending (Top 15)</h3>
-            <span class="accordion-arrow">▼</span>
-          </div>
-
-          <div class="accordion-content">
-            <div class="tags-cloud">
+        <div class="popular-section">
+          <h3 class="section-label">Trending (Top 15)</h3>
+          <div class="tags-cloud">
               <div v-if="loadingTrending" class="loading-tags">
                 <span class="tag-skeleton" v-for="i in 5" :key="i"></span>
               </div>
@@ -187,22 +179,13 @@
                 {{ tag.name }}
               </button>
             </div>
-          </div>
         </div>
 
         <div class="divider"></div>
 
-        <div
-          class="accordion-section actions-section"
-          :class="{ open: activeSection === 'extra' }"
-        >
-          <div class="accordion-header" @click="toggleSection('extra')">
-            <h3 class="section-label">Extra</h3>
-            <span class="accordion-arrow">▼</span>
-          </div>
-
-          <div class="accordion-content">
-            <div class="time-range-selector">
+        <div class="actions-section">
+          <h3 class="section-label">Extra</h3>
+          <div class="time-range-selector">
               <span class="range-label">Time Range:</span>
               <div class="range-options">
                 <button
@@ -295,7 +278,6 @@
                 <span class="action-label">Trending</span>
               </button>
             </div>
-          </div>
         </div>
       </div>
     </aside>
@@ -347,8 +329,6 @@ export default {
       useDanbooruTrending();
     const { isSidebarVisible, toggleSidebar } = useLayout();
 
-    // Accordion state - default to trending
-    const activeSection = ref("trending");
     const selectedTimeRange = ref("month"); // Default to month
 
     // En SearchForm.vue, dentro del setup()
@@ -367,8 +347,6 @@ export default {
       } else {
         selectedTimeRange.value = "month";
       }
-
-      if (props.activeExtraAction) activeSection.value = "extra";
     };
 
     // Watch for route change to update sidebar UI
@@ -393,15 +371,6 @@ export default {
 
     const onExtraAction = (action) => {
       emit("trigger-action", action, selectedTimeRange.value);
-    };
-
-    const toggleSection = (section) => {
-      if (activeSection.value === section) {
-        // Optional: allow closing all sections? For now, keep it toggleable or strict accordion
-        activeSection.value = null;
-      } else {
-        activeSection.value = section;
-      }
     };
 
     const activeSuggestionIndex = ref(-1);
@@ -640,9 +609,6 @@ export default {
       showLimitTooltip,
       showSearchTooltip,
 
-      // Accordion
-      activeSection,
-      toggleSection,
       selectedTimeRange,
       onExtraAction,
 
@@ -822,61 +788,6 @@ export default {
   color: #64748b;
   margin-bottom: 6px;
   font-weight: 700;
-}
-
-/* Accordion Styles */
-.accordion-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  padding: 8px 0;
-  user-select: none;
-  transition: color 0.2s;
-}
-
-.accordion-header:hover {
-  color: #a78bfa;
-}
-
-.accordion-header:hover .section-label {
-  color: #a78bfa;
-}
-
-.accordion-header .section-label {
-  margin-bottom: 0; /* Align perfectly with arrow */
-}
-
-.accordion-arrow {
-  font-size: 12px;
-  color: #94a3b8;
-  transition: transform 0.3s ease;
-}
-
-.open .accordion-header .accordion-arrow {
-  transform: rotate(180deg);
-}
-
-.accordion-content {
-  display: grid;
-  grid-template-rows: 0fr;
-  overflow: hidden; /* Prevent ghost scrollbars */
-  transition:
-    grid-template-rows 0.3s ease-out,
-    opacity 0.3s ease,
-    margin 0.3s ease;
-  opacity: 0;
-}
-
-.open .accordion-content {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  margin-top: 6px;
-}
-
-.accordion-content > div {
-  overflow: hidden;
-  min-height: 0;
 }
 
 .section-label-wrapper {
@@ -1443,31 +1354,6 @@ export default {
     margin: 0 !important;
     overflow: hidden !important;
     transition: none !important;
-  }
-
-  /* === ACORDEÓN EXTRA - SIEMPRE ABIERTO EN MÓVIL === */
-  .actions-section {
-    position: relative;
-    flex-shrink: 0;
-    margin-bottom: 12px;
-  }
-
-  .actions-section .accordion-header {
-    pointer-events: none;
-    cursor: default;
-  }
-
-  .actions-section .accordion-arrow {
-    display: none;
-  }
-
-  .actions-section .accordion-content {
-    grid-template-rows: 1fr !important;
-    opacity: 1 !important;
-    margin-top: 10px !important;
-    display: block !important;
-    height: auto !important;
-    overflow: visible !important;
   }
 
   /* Asegurar que ocupe espacio mínimo necesario */
