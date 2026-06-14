@@ -63,14 +63,16 @@ class DanbooruService {
     this._pendingRequests.set(requestKey, controller);
 
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const onAbort = () => controller.abort();
 
     const cleanup = () => {
       if (timeoutId !== undefined) clearTimeout(timeoutId);
+      if (signal) signal.removeEventListener('abort', onAbort);
       this._pendingRequests.delete(requestKey);
     };
 
     if (signal) {
-      signal.addEventListener('abort', () => controller.abort());
+      signal.addEventListener('abort', onAbort);
     }
 
     let lastError: Error | undefined;
@@ -99,8 +101,13 @@ class DanbooruService {
 
         cleanup();
 
-        if (data && typeof data === 'object' && 'data' in data && 'success' in data) {
-          return data.data as T;
+        if (data && typeof data === 'object' && 'success' in data) {
+          if (data.success === false) {
+            throw new Error(data.message || data.error || 'Danbooru API error');
+          }
+          if ('data' in data) {
+            return data.data as T;
+          }
         }
 
         return data as T;
@@ -114,7 +121,12 @@ class DanbooruService {
           throw lastError;
         }
 
-        if (error instanceof Error && error.message.includes('HTTP 4')) {
+        if (
+          error instanceof Error &&
+          (error.message.includes('HTTP 4') ||
+           error.message.includes('database timed out') ||
+           error.message.includes('QueryCanceled'))
+        ) {
           break;
         }
 
@@ -154,9 +166,11 @@ class DanbooruService {
   ): Promise<DanbooruPost[]> {
     const normalizedTags = this._normalizeTags(tags);
     const tagList = normalizedTags.match(/(?:[^\s(]+|\([^)]*\))+/g) || [];
+    const originalTags = tags.trim();
+    const originalList = originalTags ? originalTags.match(/(?:[^\s(]+|\([^)]*\))+/g) || [] : [];
 
     let posts: DanbooruPost[];
-    if (tagList.length <= 2) {
+    if (originalList.length <= 2) {
       posts = await this._fetchStandard(normalizedTags, limit, page, options);
     } else {
       posts = await this._smartSearch(normalizedTags, tagList, limit, page, options);
@@ -283,10 +297,8 @@ class DanbooruService {
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') throw err;
         console.error(`[SmartSearch] Error fetching API Page ${currentApiPage}`, err);
-        // If one page fails, we might want to try the next? 
-        // Or stop? usually better to stop or retry. 
-        // For now, let's increment and try to salvage the rest.
-        currentApiPage++;
+        if (accumulated.length === 0) throw err;
+        break;
       }
     }
 

@@ -180,7 +180,10 @@ export function useDanbooruApi(
 
     refetchOnWindowFocus: false,
     refetchOnMount: true,
-    retry: 2,
+    retry: (failureCount, error) => {
+      if (error?.name === 'AbortError') return false;
+      return failureCount < 2;
+    },
     retryDelay: (attempt) => attempt * 1000,
   });
 

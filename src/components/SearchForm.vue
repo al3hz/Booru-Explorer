@@ -25,7 +25,7 @@
             </button>
             <transition name="tooltip-fade">
               <div v-if="showSearchTooltip" class="search-tooltip">
-                You can search up to 2 tags
+                Use smart search to find what you need
               </div>
             </transition>
           </div>

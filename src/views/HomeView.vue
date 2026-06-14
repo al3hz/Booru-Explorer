@@ -183,7 +183,14 @@ const {
 );
 
 watch(apiError, (val) => {
-  if (val) error.value = val;
+  if (val) {
+    if (val.includes('AbortError') || val === 'The operation was aborted') return;
+    if (val.includes('database timed out') || val.includes('QueryCanceled') || val.includes('Search Timeout')) {
+      error.value = "This search timed out on Danbooru's server. Try adding age:<1month, order:score, or reducing the post limit.";
+    } else {
+      error.value = val;
+    }
+  }
 });
 
 const {

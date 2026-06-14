@@ -42,7 +42,7 @@
               <!-- Left: Total Count -->
               <div class="rating-bar-left">
                 <span v-if="ratingCounts.all > 0" class="total-badge">
-                  Total: {{ formatCount(ratingCounts.all || 0) }}
+                  Total: {{ formatCount(ratingCounts.all) }}
                 </span>
               </div>
 
