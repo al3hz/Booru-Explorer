@@ -344,7 +344,7 @@ watch(
       if (isSpecialMode) {
         inputQuery.value = "";
       } else {
-        inputQuery.value = newTags;
+        inputQuery.value = newTags.replace(/ /g, ", ");
       }
 
       if (oldQuery) {
@@ -434,8 +434,12 @@ const toggleMasonry = async (val) => {
 };
 
 const handleSearch = async (overrideQuery) => {
-  const finalQuery =
-    typeof overrideQuery === "string" ? overrideQuery : inputQuery.value;
+  const finalQuery = (
+    typeof overrideQuery === "string" ? overrideQuery : inputQuery.value
+  )
+    .replace(/, ?/g, " ")
+    .replace(/ +/g, " ")
+    .trim();
 
   // Validación de tags (máximo 2 sin meta-tags)
   const contentTags = finalQuery

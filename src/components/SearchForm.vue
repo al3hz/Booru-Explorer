@@ -92,8 +92,8 @@
                 type="number"
                 :value="limit"
                 @input="handleLimitUpdate"
-                min="1"
-                max="100"
+                min="10"
+                max="200"
                 class="limit-input"
                 title="Number of posts to show per page"
               />
@@ -106,7 +106,7 @@
               </button>
               <transition name="limit-tooltip-fade">
                 <div v-if="showLimitTooltip" class="limit-tooltip">
-                  Min: 1, Max: 100 posts
+                  Min: 10, Max: 200 posts
                 </div>
               </transition>
             </div>
@@ -536,7 +536,7 @@ export default {
     const selectSuggestion = (tag) => {
       const newQuery = insertSuggestion(props.searchQuery, tag.name);
 
-      emit("update:search-query", newQuery);
+      emit("update:search-query", newQuery.replace(/ /g, ", "));
       clearSuggestions();
       // Keep focus
       if (searchInputRef.value) searchInputRef.value.focus();
@@ -558,7 +558,7 @@ export default {
         selectSuggestion(suggestions.value[activeSuggestionIndex.value]);
       } else {
         // Update URL and scroll to top
-        const trimmedQuery = props.searchQuery.trim();
+        const trimmedQuery = props.searchQuery.replace(/, ?/g, " ").replace(/ +/g, " ").trim();
         if (trimmedQuery) {
           await router.push({ path: "/", query: { tags: trimmedQuery } });
           closeSidebarOnMobile();
@@ -573,7 +573,7 @@ export default {
     };
 
     const handleSearch = async () => {
-      const trimmedQuery = props.searchQuery.trim();
+      const trimmedQuery = props.searchQuery.replace(/, ?/g, " ").replace(/ +/g, " ").trim();
 
       // Update URL with current rating filter
       const query = {};
@@ -609,8 +609,8 @@ export default {
       if (isNaN(val)) return;
 
       // Hard limits to prevent overload
-      if (val > 100) val = 100;
-      if (val < 1) val = 1;
+      if (val > 200) val = 200;
+      if (val < 10) val = 10;
 
       // Update input display if clamped
       if (val !== parseInt(e.target.value)) {

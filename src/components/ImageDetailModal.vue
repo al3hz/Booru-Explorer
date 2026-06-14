@@ -82,7 +82,7 @@
                   @click.stop="handleBannerClick(fPost)"
                 >
                   <img
-                    :src="fPost.preview_file_url || fPost.file_url"
+                    :src="getThumbnailUrl(fPost)"
                     :alt="`Post ${fPost.id}`"
                     loading="lazy"
                   />
@@ -146,7 +146,7 @@
                 <img
                   v-else
                   :key="`img-${post.id}`"
-                  :src="mediaSource || post.preview_file_url"
+                  :src="mediaSource || getThumbnailUrl(post)"
                   :alt="`Post ${post.id}`"
                   class="detail-image"
                   ref="imageElement"
@@ -231,7 +231,7 @@
 
             <div class="header-actions">
               <a
-                :href="post.file_url || post.large_file_url"
+                :href="getMediaUrl(post)"
                 target="_blank"
                 download
                 class="action-btn"
@@ -814,10 +814,7 @@ export default {
     const linkCopied = ref(false);
 
     const copyImageLink = async () => {
-      const url =
-        props.post.file_url ||
-        props.post.large_file_url ||
-        props.post.sample_url;
+      const url = getMediaUrl(props.post);
       if (!url) return;
 
       try {
@@ -836,7 +833,7 @@ export default {
     const downloadImage = async () => {
       if (downloading.value) return;
 
-      const url = props.post.file_url || props.post.large_file_url;
+      const url = getMediaUrl(props.post);
       const filename = `danbooru-${props.post.id}.${props.post.file_ext}`;
 
       if (!url) return;
@@ -906,23 +903,27 @@ export default {
       searchDropdownOpen.value = false;
     };
 
+    const getThumbnailUrl = (post) => {
+      if (post.media_asset?.variants?.length) {
+        const v = post.media_asset.variants;
+        const preview = v.find((x) => x.type === "preview");
+        const sample = v.find((x) => x.type === "sample");
+        return preview?.url || sample?.url || "";
+      }
+      return post.preview_file_url || post.preview_url || post.sample_url || "";
+    };
+
     const handleImageError = (e) => {
       imageReady.value = true;
       checkLoading();
       loading.value = false;
       const target = e.target;
       if (!target) return;
-      // Intentar fallbacks antes del placeholder
       const currentSrc = target.currentSrc || target.src;
-      if (currentSrc === props.post.file_url && props.post.large_file_url) {
-        target.src = props.post.large_file_url;
-        return;
-      }
-      if ((currentSrc === props.post.large_file_url || currentSrc === props.post.file_url) && props.post.preview_file_url) {
-        target.src = props.post.preview_file_url;
-        return;
-      }
-      if (!currentSrc?.includes(PLACEHOLDER_IMAGE)) {
+      const fallback = getThumbnailUrl(props.post) || getMediaUrl(props.post);
+      if (fallback && fallback !== currentSrc) {
+        target.src = fallback;
+      } else if (!currentSrc?.includes(PLACEHOLDER_IMAGE)) {
         target.src = PLACEHOLDER_IMAGE;
       }
     };
@@ -982,15 +983,19 @@ export default {
     );
 
     // Smart media source selection
+    const getMediaUrl = (post) => {
+      const variants = post.media_asset?.variants;
+      if (variants?.length) {
+        const original = variants.find((v) => v.type === "original" || v.type === "sample");
+        if (original) return original.url;
+      }
+      return post.file_url || post.large_file_url || post.sample_url || "";
+    };
+
     const mediaSource = computed(() => {
       if (props.post.is_banned) return BAN_IMAGE;
-      // For ZIP files (Ugoira animations), browsers can't play the ZIP directly
-      // Use the converted video (large_file_url) instead
-      if (props.post.file_ext === "zip") {
-        return props.post.large_file_url || props.post.file_url || PLACEHOLDER_IMAGE;
-      }
-      // For everything else, prioritize original quality
-      return props.post.file_url || props.post.large_file_url || PLACEHOLDER_IMAGE;
+      const url = getMediaUrl(props.post);
+      return url || PLACEHOLDER_IMAGE;
     });
 
     const isVideo = computed(() => {
@@ -1336,6 +1341,8 @@ export default {
       searchIQDB,
       searchGoogle,
       getExtensionClass,
+      getThumbnailUrl,
+      getMediaUrl,
       isFlash,
       ruffleContainer,
       modalContent,

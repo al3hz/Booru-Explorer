@@ -4,7 +4,7 @@
     :class="{
       'has-family': post.parent_id || post.has_children,
       loading: !isLoaded && !hasError,
-      'masonry-optimized': masonry && isMobile,
+      'masonry-optimized': masonry,
     }"
     @click="handleClick"
     @keydown.enter="handleClick"
@@ -84,13 +84,6 @@
           <i class="lni lni-frame-expand spec-icon"></i>
           {{ getDimensions(post) }}
         </div>
-        <div
-          class="spec-pill"
-          :title="`File size: ${formatFileSize(post.file_size)}`"
-        >
-          <i class="lni lni-files spec-icon"></i>
-          {{ formatFileSize(post.file_size) }}
-        </div>
         <div class="spec-pill format" :class="getExtensionClass(post.file_ext)">
           {{ (post.file_ext || "").toUpperCase() }}
         </div>
@@ -109,45 +102,16 @@
           <i class="lni lni-star-fill stat-icon"></i>
           <span class="stat-value">{{ post.fav_count || 0 }}</span>
         </div>
-        <div
-          v-if="post.comment_count"
-          class="stat comments"
-          :title="`Comments: ${post.comment_count}`"
-        >
-          <i class="lni lni-comments stat-icon"></i>
-          <span class="stat-value">{{ post.comment_count }}</span>
-        </div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="card-footer">
-        <div class="time-info" :title="formatUploadDate(post.created_at)">
-          <i class="lni lni-timer icon"></i>
-          {{ formatTimeAgo(post.created_at) }}
-        </div>
-
-        <div
-          v-if="post.source"
-          class="source-link"
-          @click.stop="openSource(post.source)"
-          @keydown.enter.stop="openSource(post.source)"
-          :title="`Source: ${post.source}`"
-          tabindex="0"
-          role="link"
-        >
-          <span class="trunc-source">{{ truncateSource(post.source) }}</span>
-          <i class="lni lni-link icon-external"></i>
-        </div>
       </div>
     </div>
   </article>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { ref, watch } from "vue";
 import SmartVideo from "./SmartVideo.vue";
 import SmartImage from "./SmartImage.vue";
+import DanbooruService from "@/services/danbooru";
 
 const props = defineProps({
   post: {
@@ -170,23 +134,6 @@ const props = defineProps({
 
 const emit = defineEmits(["click"]);
 
-const isMobile = ref(false);
-
-const onResize = () => {
-  isMobile.value = window.innerWidth <= 640;
-};
-
-onMounted(() => {
-  if (typeof window !== "undefined") {
-    isMobile.value = window.innerWidth <= 640;
-    window.addEventListener("resize", onResize);
-  }
-});
-
-onUnmounted(() => {
-  window.removeEventListener("resize", onResize);
-});
-
 // State
 const hasError = ref(false);
 const isLoaded = ref(false);
@@ -205,63 +152,103 @@ const isAnimatedVideo = (post) => {
 
 const BAN_IMAGE = "/ban.png";
 
-const getInitialImageUrl = (post) => {
-  if (post.is_banned) return BAN_IMAGE;
-  if (isAnimatedVideo(post)) {
-    return (
-      post.large_file_url ||
-      post.file_url ||
-      post.sample_url ||
-      post.preview_url ||
-      ""
-    );
-  }
-  if (post.file_ext === "gif") {
-    if (props.pauseAnimations) {
-      return post.preview_url || post.preview_file_url || "";
-    }
-    return post.file_url || post.sample_url || post.preview_url || "";
-  }
-  if (post.file_ext === "swf") {
-    return post.preview_url || post.preview_file_url || "";
+const getImageUrl = (post) => {
+  if (post.media_asset?.variants?.length) {
+    const v = post.media_asset.variants;
+    const sample = v.find((x) => x.type === "sample");
+    const original = v.find((x) => x.type === "original");
+    const preview = v.find((x) => x.type === "preview");
+    return sample?.url || original?.url || preview?.url || "";
   }
   return (
     post.sample_url ||
     post.large_file_url ||
     post.file_url ||
     post.preview_url ||
+    post.preview_file_url ||
     ""
   );
 };
 
-const getVideoPoster = (post) => {
-  if (post.media_asset && post.media_asset.variants) {
-    const variants = post.media_asset.variants;
-    const bestVariant =
-      variants.find(
-        (v) => v.type === "720x720" && ["webp", "jpg"].includes(v.file_ext),
-      ) ||
-      variants.find(
-        (v) => v.type === "360x360" && ["webp", "jpg"].includes(v.file_ext),
-      ) ||
-      variants.find((v) => v.type === "sample");
-
-    if (bestVariant) return bestVariant.url;
+const getThumbnailUrl = (post) => {
+  if (post.media_asset?.variants?.length) {
+    const v = post.media_asset.variants;
+    const preview = v.find((x) => x.type === "preview");
+    const sample = v.find((x) => x.type === "sample");
+    const original = v.find((x) => x.type === "original");
+    return preview?.url || sample?.url || original?.url || "";
   }
-  return post.preview_file_url || post.preview_url || "";
+  return (
+    post.preview_file_url ||
+    post.preview_url ||
+    post.sample_url ||
+    ""
+  );
 };
 
-// Initialize sources
-watch(
-  () => props.post,
-  (newPost) => {
-    currentSrc.value = getInitialImageUrl(newPost);
-    posterSrc.value = getVideoPoster(newPost);
+const getInitialImageUrl = (post) => {
+  if (post.is_banned) return BAN_IMAGE;
+  if (isAnimatedVideo(post)) {
+    return getImageUrl(post);
+  }
+  if (post.file_ext === "gif") {
+    if (props.pauseAnimations) {
+      return getThumbnailUrl(post);
+    }
+    return getImageUrl(post);
+  }
+  if (post.file_ext === "swf") {
+    return getThumbnailUrl(post);
+  }
+  return getImageUrl(post);
+};
+
+const getVideoPoster = (post) => {
+  if (post.media_asset?.variants?.length) {
+    const v = post.media_asset.variants;
+    const bestVariant =
+      v.find((x) => x.type === "720x720" && ["webp", "jpg"].includes(x.file_ext)) ||
+      v.find((x) => x.type === "360x360" && ["webp", "jpg"].includes(x.file_ext)) ||
+      v.find((x) => x.type === "sample");
+    if (bestVariant) return bestVariant.url;
+  }
+  return getThumbnailUrl(post);
+};
+
+let fetchId = 0;
+
+const resolvePost = async (post) => {
+  const url = getInitialImageUrl(post);
+  if (url) {
+    currentSrc.value = url;
+    posterSrc.value = getVideoPoster(post);
     hasError.value = false;
     isLoaded.value = false;
-  },
-  { immediate: true },
-);
+    return;
+  }
+  if (isAnimatedVideo(post)) {
+    hasError.value = true;
+    return;
+  }
+  const thisFetch = ++fetchId;
+  try {
+    const full = await DanbooruService.getPost(post.id);
+    if (thisFetch !== fetchId) return;
+    const url2 = getInitialImageUrl(full);
+    if (url2) {
+      currentSrc.value = url2;
+      posterSrc.value = getVideoPoster(full);
+      hasError.value = false;
+    } else {
+      hasError.value = true;
+    }
+  } catch {
+    if (thisFetch === fetchId) hasError.value = true;
+  }
+  isLoaded.value = false;
+};
+
+watch(() => props.post, resolvePost, { immediate: true });
 
 // React to pauseAnimations
 watch(
@@ -274,19 +261,9 @@ watch(
 );
 
 const handleError = () => {
-  const fallbackSources = [
-    props.post.sample_url,
-    props.post.preview_file_url,
-    props.post.preview_url,
-  ];
-
-  // Try to find a new source that isn't the current one
-  const nextSource = fallbackSources.find(
-    (src) => src && src !== currentSrc.value && !currentSrc.value.includes(src),
-  );
-
-  if (nextSource) {
-    currentSrc.value = nextSource;
+  const fallback = getThumbnailUrl(props.post);
+  if (fallback && fallback !== currentSrc.value) {
+    currentSrc.value = fallback;
   } else {
     hasError.value = true;
   }
@@ -323,18 +300,6 @@ const getDimensions = (post) => {
   return "N/A";
 };
 
-const formatFileSize = (bytes) => {
-  if (!bytes) return "N/A";
-  const units = ["B", "KB", "MB", "GB"];
-  let size = bytes;
-  let unitIndex = 0;
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
-  }
-  return `${size.toFixed(size < 10 ? 1 : 0)} ${units[unitIndex]}`;
-};
-
 const getExtensionClass = (ext) => {
   if (!ext) return "";
   const imageExts = ["jpg", "jpeg", "png", "bmp", "tiff", "webp"];
@@ -355,74 +320,6 @@ const getScoreClass = (score) => {
   return "score-low";
 };
 
-const formatUploadDate = (createdAt) => {
-  if (!createdAt) return "Desconocido";
-  const date = new Date(createdAt);
-  return date.toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const formatTimeAgo = (createdAt) => {
-  if (!createdAt) return "Unknown";
-  const date = new Date(createdAt);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  // Simplificado para el ejemplo, pero mantener lógica completa si es necesario
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-  if (diffSeconds < 60) return "Just now";
-  if (diffMinutes < 60)
-    return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
-  if (diffHours < 24)
-    return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
-  if (diffDays < 7)
-    return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
-
-  const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 4)
-    return diffWeeks === 1 ? "1 week ago" : `${diffWeeks} weeks ago`;
-
-  const diffMonths = Math.floor(diffDays / 30);
-  if (diffMonths < 12)
-    return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
-
-  const diffYears = Math.floor(diffDays / 365);
-  return diffYears === 1 ? "1 year ago" : `${diffYears} years ago`;
-};
-
-const truncateSource = (source) => {
-  if (!source) return "Sin source";
-  if (source.startsWith("file://")) {
-    const fileName = source.split("/").pop();
-    return fileName.length > 15 ? fileName.substring(0, 15) + "..." : fileName;
-  }
-  try {
-    const url = new URL(source);
-    const hostname = url.hostname.replace("www.", "");
-    return hostname.length > 20 ? hostname.substring(0, 20) + "..." : hostname;
-  } catch {
-    return source.length > 25 ? source.substring(0, 25) + "..." : source;
-  }
-};
-
-const openSource = (source) => {
-  if (!source || source.startsWith("file://")) return;
-  try {
-    new URL(source);
-    window.open(source, "_blank", "noopener,noreferrer");
-  } catch {
-    if (import.meta.env.DEV) console.log("Source no es una URL válida:", source);
-  }
-};
 </script>
 
 <style scoped>
@@ -604,6 +501,7 @@ const openSource = (source) => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  justify-content: center;
 }
 
 .spec-pill {
@@ -672,51 +570,9 @@ const openSource = (source) => {
 .stat.favs .stat-value {
   color: #f87171;
 }
-.stat.comments .stat-value {
-  color: #93c5fd;
-}
 .stat-icon {
   opacity: 0.8;
   font-size: 14px;
-}
-
-.divider {
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
-  margin: 4px 0;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-  color: #64748b;
-}
-
-.time-info {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.source-link:focus-visible {
-  outline: 2px solid #a78bfa;
-  outline-offset: 2px;
-}
-
-.icon {
-  font-size: 14px;
-  opacity: 0.9;
-}
-.icon-external {
-  font-size: 10px;
-  opacity: 0.7;
 }
 
 .image-error {
@@ -798,7 +654,6 @@ const openSource = (source) => {
   }
 }
 
-.card-footer,
 .tech-specs,
 .stats-row {
   font-size: clamp(11px, 1.5vw, 13px);
