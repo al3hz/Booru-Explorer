@@ -152,14 +152,19 @@ const isAnimatedVideo = (post) => {
 
 const BAN_IMAGE = "/ban.png";
 
-const getImageUrl = (post) => {
-  if (post.media_asset?.variants?.length) {
-    const v = post.media_asset.variants;
-    const sample = v.find((x) => x.type === "sample");
-    const original = v.find((x) => x.type === "original");
-    const preview = v.find((x) => x.type === "preview");
-    return sample?.url || original?.url || preview?.url || "";
+const findVariant = (post, ...types) => {
+  const v = post.media_asset?.variants;
+  if (!v?.length) return undefined;
+  for (const t of types) {
+    const found = v.find((x) => x.type === t);
+    if (found?.url) return found.url;
   }
+  return v[0]?.url;
+};
+
+const getImageUrl = (post) => {
+  const url = findVariant(post, "sample", "original", "preview", "720x720", "360x360");
+  if (url) return url;
   return (
     post.sample_url ||
     post.large_file_url ||
@@ -171,13 +176,8 @@ const getImageUrl = (post) => {
 };
 
 const getThumbnailUrl = (post) => {
-  if (post.media_asset?.variants?.length) {
-    const v = post.media_asset.variants;
-    const preview = v.find((x) => x.type === "preview");
-    const sample = v.find((x) => x.type === "sample");
-    const original = v.find((x) => x.type === "original");
-    return preview?.url || sample?.url || original?.url || "";
-  }
+  const url = findVariant(post, "preview", "sample", "original", "360x360", "720x720", "180x180");
+  if (url) return url;
   return (
     post.preview_file_url ||
     post.preview_url ||
@@ -204,13 +204,16 @@ const getInitialImageUrl = (post) => {
 };
 
 const getVideoPoster = (post) => {
-  if (post.media_asset?.variants?.length) {
-    const v = post.media_asset.variants;
-    const bestVariant =
-      v.find((x) => x.type === "720x720" && ["webp", "jpg"].includes(x.file_ext)) ||
-      v.find((x) => x.type === "360x360" && ["webp", "jpg"].includes(x.file_ext)) ||
-      v.find((x) => x.type === "sample");
-    if (bestVariant) return bestVariant.url;
+  const v = post.media_asset?.variants;
+  if (v?.length) {
+    const pick = (t, ext) => v.find((x) => x.type === t && (!ext || ["webp", "jpg"].includes(x.file_ext)));
+    return (
+      pick("720x720")?.url ||
+      pick("360x360")?.url ||
+      pick("sample")?.url ||
+      pick("original")?.url ||
+      v[0]?.url || ""
+    );
   }
   return getThumbnailUrl(post);
 };

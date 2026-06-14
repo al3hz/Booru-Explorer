@@ -425,7 +425,7 @@ export function usePostFamily(postId, parentId, hasChildren) {
       const posts = await DanbooruService.getPosts(tags, 20);
 
       return (posts || [])
-        .filter((p) => p.file_url || p.large_file_url)
+        .filter((p) => p.file_url || p.large_file_url || p.media_asset?.variants?.length)
         .sort((a, b) => a.id - b.id);
     },
     enabled: computed(() => {

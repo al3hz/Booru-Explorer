@@ -71,7 +71,7 @@
                 This post belongs to a
                 <strong v-if="post.parent_id">parent</strong
                 ><strong v-else>group</strong> and has
-                <strong>{{ familyPosts.length - 1 }} siblings</strong>.
+                <strong>{{ familyPosts.length - 1 }} sibling{{ familyPosts.length - 1 === 1 ? '' : 's' }}</strong>.
               </div>
               <div class="family-scroll">
                 <div
@@ -903,11 +903,18 @@ export default {
     };
 
     const getThumbnailUrl = (post) => {
-      if (post.media_asset?.variants?.length) {
-        const v = post.media_asset.variants;
-        const preview = v.find((x) => x.type === "preview");
-        const sample = v.find((x) => x.type === "sample");
-        return preview?.url || sample?.url || "";
+      const v = post.media_asset?.variants;
+      if (v?.length) {
+        const byType = (t) => v.find((x) => x.type === t);
+        return (
+          byType("preview")?.url ||
+          byType("sample")?.url ||
+          byType("original")?.url ||
+          byType("360x360")?.url ||
+          byType("720x720")?.url ||
+          byType("180x180")?.url ||
+          v[0]?.url || ""
+        );
       }
       return post.preview_file_url || post.preview_url || post.sample_url || "";
     };
@@ -983,10 +990,16 @@ export default {
 
     // Smart media source selection
     const getMediaUrl = (post) => {
-      const variants = post.media_asset?.variants;
-      if (variants?.length) {
-        const original = variants.find((v) => v.type === "original" || v.type === "sample");
-        if (original) return original.url;
+      const v = post.media_asset?.variants;
+      if (v?.length) {
+        const byType = (t) => v.find((x) => x.type === t);
+        return (
+          byType("sample")?.url ||
+          byType("original")?.url ||
+          byType("720x720")?.url ||
+          byType("360x360")?.url ||
+          v[0]?.url || ""
+        );
       }
       return post.file_url || post.large_file_url || post.sample_url || "";
     };
