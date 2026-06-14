@@ -150,7 +150,6 @@
                   :alt="`Post ${post.id}`"
                   class="detail-image"
                   ref="imageElement"
-                  referrerpolicy="no-referrer"
                   @load="onImageLoad"
                   @error="handleImageError"
                   @click="toggleMobileFullscreen"
