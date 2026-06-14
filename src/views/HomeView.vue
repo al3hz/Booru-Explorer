@@ -584,7 +584,7 @@ const openModal = (post) => {
   isRandomMode.value = false;
   selectedPost.value = post;
   lastListPost.value = post;
-  history.pushState(null, "");
+  history.pushState(history.state, "", location.href);
 };
 
 const closeModal = () => {
